@@ -1,0 +1,11 @@
+export const DropShowResponseMock = {
+  'added': { 'movies': 0, 'shows': 1, 'seasons': 0, 'users': 0 },
+  'not_found': {
+    'movies': [],
+    'shows': [],
+    'seasons': [],
+    'episodes': [],
+    'people': [],
+    'users': [],
+  },
+};

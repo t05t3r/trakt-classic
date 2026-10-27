@@ -1,0 +1,6 @@
+#!/bin/sh
+# Formatting and node_modules health; both run over the whole repo in well
+# under a second. Bypass a false positive with `git commit --no-verify`.
+set -e
+deno task fmt:check
+deno task nm:check

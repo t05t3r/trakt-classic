@@ -1,0 +1,952 @@
+@use '$style/scss/mixins/index' as *;
+
+@mixin dark-theme {
+  // Match native UI (scrollbars, form controls) to the theme, so the browser
+  // does not paint a light scrollbar over a themed page.
+  color-scheme: dark;
+
+  --color-shadow: var(--shade-940);
+
+  --color-medal-gold: var(--yellow-400);
+  --color-medal-silver: var(--shade-400);
+  --color-medal-bronze: var(--orange-400);
+  --color-text-emphasis: var(--purple-300);
+
+  --color-drawer-border: var(--shade-700);
+  --background-vip-drawer: radial-gradient(
+    ellipse 110% 50% at 50% 100%,
+    var(--purple-950) 0%,
+    var(--color-card-background) 75%
+  );
+
+  /**
+   * Navbar
+   */
+  --color-background-navbar-base: var(--color-floating-background);
+  --color-background-navbar: color-mix(
+    in srgb,
+    var(--color-background-navbar-base) 90%,
+    transparent
+  );
+  --color-foreground-navbar: var(--shade-10);
+  --color-snackbar-action-stroke: var(--purple-300);
+  --color-background-side-navbar: var(--color-background-navbar-base);
+
+  /*
+   * Card
+   */
+  --color-official-list-background: var(--purple-800);
+
+  /*
+   * Actions bar
+   */
+  --color-actions-bar-background: var(--color-floating-background);
+
+  /*
+   * Cta
+   */
+  --color-cta-background-gradient: linear-gradient(
+    260deg,
+    color-mix(in srgb, var(--shade-900) 45%, transparent) 0%,
+    color-mix(in srgb, var(--shade-900) 68%, transparent) 40%,
+    color-mix(in srgb, var(--shade-900) 88%, transparent) 72%,
+    var(--shade-900) 100%
+  );
+
+  /*
+   * List
+   */
+  --list-shadow: radial-gradient(
+    50% 50% at 50% 50%,
+    color-mix(in srgb, var(--color-shadow) 90%, transparent) 0%,
+    color-mix(in srgb, var(--color-shadow) 45%, transparent) 32%,
+    color-mix(in srgb, var(--color-shadow) 30%, transparent) 61%,
+    color-mix(in srgb, var(--color-shadow) 25%, transparent) 80%,
+    transparent 100%
+  );
+  --list-meta-info-color: var(--purple-400);
+
+  /*
+   * Button
+   */
+  --color-surface-button-disabled: var(--shade-800);
+  --color-foreground-button-disabled: var(--shade-400);
+
+  /*
+   * Select
+   */
+  --color-background-select: var(--color-background);
+  --color-select-item-hover: var(--shade-910);
+  --color-select-muted-foreground: var(--shade-200);
+  --color-select-raised-background: var(--shade-920);
+  --color-select-logo-border: var(--shade-800);
+
+  /*
+   * Navbar
+   */
+  --color-background-mobile-navbar: color-mix(
+    in srgb,
+    var(--color-background-navbar-base) 80%,
+    transparent
+  );
+
+  /*
+   * Tooltip
+   */
+  --color-tooltip-background: var(--shade-800);
+  --color-tooltip-text: var(--shade-10);
+
+  /**
+   * Tags
+   */
+  --color-text-time-tag: var(--shade-800);
+  --color-background-time-tag: var(--shade-10);
+
+  --color-text-duration-tag: var(--shade-800);
+  --color-background-duration-tag: var(--shade-10);
+
+  --color-text-indicator-tag: var(--shade-900);
+  --color-background-indicator-tag: var(--shade-10);
+  --color-background-indicator-remainder-tag: var(--shade-300);
+
+  /**
+   * Toasts
+   */
+  --color-toast-background: color-mix(
+    in srgb,
+    var(--shade-900) 70%,
+    transparent 30%
+  );
+  --color-toast-border: var(--shade-700);
+  --color-toast-progress-bar-background: var(--shade-500);
+  --color-toast-progress-bar-progress: var(--shade-200);
+  --color-toast-progress-bar-shadow: var(--shade-400);
+
+  /**
+   * Cookie
+   */
+  --color-cookie-background: var(--shade-900);
+
+  /**
+   * Reactions
+   */
+  --color-current-reaction-hover: var(--red-50);
+  --color-reaction-disabled-background: var(--shade-700);
+  --color-reaction-background: var(--shade-800);
+  --color-reaction-background-hover: var(--shade-600);
+  --color-current-reaction-background: var(--shade-940);
+  --color-reaction-distribution-background: var(--shade-700);
+
+  /**
+   * Calendar
+   */
+  --color-calendar-background: color-mix(
+    in srgb,
+    var(--color-background-navbar-base) 90%,
+    transparent
+  );
+  --color-calendar-inactive-background: var(--color-background-navbar-base);
+  --color-calendar-active-background: var(--shade-800);
+  --color-calendar-background-hover: var(--shade-700);
+  --color-calendar-item-indicator: var(--blue-500);
+
+  /*
+   * Landing
+   */
+  --color-step-shadow-text: var(--shade-920);
+
+  /*
+   * Toggle
+   */
+  --color-segmented-track-background: color-mix(
+    in srgb,
+    var(--shade-10) 6%,
+    transparent
+  );
+  --color-segmented-track-border: color-mix(
+    in srgb,
+    var(--shade-10) 8%,
+    transparent
+  );
+
+  /*
+   * Where to watch
+   */
+  --streaming-service-logo-filter: brightness(1);
+  --color-just-watch: #fcc405;
+
+  /*
+   * Dialogs & drawers
+   */
+  --color-drawer-background: color-mix(
+    in srgb,
+    var(--shade-920) 94%,
+    transparent
+  );
+  --color-dialog-background: var(--color-drawer-background);
+  --color-modal-background: var(--color-surface);
+  --color-modal-close: var(--shade-150);
+  --color-button-cancel-background: var(--shade-700);
+  --color-button-cancel-background-hover: var(--shade-740);
+  --color-option-list-background: color-mix(
+    in srgb,
+    var(--color-text-primary) 6%,
+    var(--shade-920)
+  );
+  --color-option-list-border: color-mix(
+    in srgb,
+    var(--color-text-primary) 8%,
+    transparent
+  );
+  --color-option-list-separator: color-mix(
+    in srgb,
+    var(--color-text-primary) 7%,
+    transparent
+  );
+  --color-option-list-selected: color-mix(
+    in srgb,
+    var(--color-text-primary) 10%,
+    transparent
+  );
+  --color-option-list-selected-hover: color-mix(
+    in srgb,
+    var(--color-text-primary) 14%,
+    transparent
+  );
+
+  /*
+   * Sentiment
+   */
+  --color-sentiment-good: var(--purple-200);
+  --color-sentiment-bad: var(--red-100);
+  --color-sentiment-highlight-border: color-mix(
+    in srgb,
+    var(--shade-10) 10%,
+    transparent
+  );
+
+  /*
+   * VIP page
+   */
+  --background-vip-content: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--purple-950) 70%, var(--shade-1000)) 0%,
+    var(--shade-1000) 100%
+  );
+  --background-usage-limits-card: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--shade-930) 80%, transparent) 0%,
+    color-mix(in srgb, var(--shade-1000) 80%, transparent) 100%
+  );
+  --color-usage-bar-background: color-mix(
+    in srgb,
+    var(--purple-500) 8%,
+    var(--shade-950)
+  );
+  --color-usage-bar: var(--purple-400);
+  --background-vip-glass-card: radial-gradient(
+    circle at top left,
+    color-mix(in srgb, var(--purple-900) 25%, transparent) 0%,
+    transparent 60%
+  );
+  --background-vip-plain-glass-card: color-mix(
+    in srgb,
+    var(--shade-10) 10%,
+    transparent
+  );
+  --color-vip-upgrade-button: color-mix(
+    in srgb,
+    var(--red-950) 25%,
+    transparent
+  );
+  --background-subscription-card: radial-gradient(
+    ellipse 110% 125% at 8% 100%,
+    var(--shade-920) 0%,
+    var(--shade-1000) 100%
+  );
+  --background-popular-subscription-card: radial-gradient(
+    ellipse 110% 125% at 8% 100%,
+    var(--purple-950) 0%,
+    var(--shade-1000) 100%
+  );
+  --color-soundtrack-row-active-background: color-mix(
+    in srgb,
+    var(--purple-950) 45%,
+    transparent
+  );
+  --color-soundtrack-play-background: var(--purple-500);
+  --color-soundtrack-play-foreground: var(--shade-10);
+
+  --color-vip-popular-tag: #fdc700;
+  --color-vip-border-accent: var(--purple-500);
+  --color-vip-surface-muted: var(--purple-950);
+  --background-vip-elevated-card: radial-gradient(
+    167.08% 143.09% at 7.82% 100%,
+    var(--color-vip-surface-muted) 0%,
+    var(--shade-1000) 100%
+  );
+  --color-vip-tablist-background: color-mix(
+    in srgb,
+    var(--shade-1000) 35%,
+    transparent
+  );
+  --background-vip-tab: linear-gradient(
+    135deg,
+    var(--purple-400),
+    var(--purple-600)
+  );
+  --color-vip-tab-hover-background: color-mix(
+    in srgb,
+    var(--purple-400) 10%,
+    transparent
+  );
+  /*
+   * Tab view
+   */
+  --color-tablist-background: var(--shade-800);
+  --color-tab-background: var(--shade-500);
+  --color-tab-hover-background: var(--shade-700);
+  --color-tab-active-text: var(--color-text-primary);
+
+  /*
+   * Streak
+   */
+  --color-streak-border: var(--shade-900);
+  --color-streak-surface: linear-gradient(
+    90deg,
+    var(--shade-940) 0%,
+    var(--shade-920) 100%
+  );
+  --color-streak-day: var(--purple-400);
+
+  /*
+   * Activity heatmap
+   */
+  --color-heatmap-empty: var(--shade-800);
+  --color-heatmap-l1: color-mix(in srgb, var(--purple-900) 80%, transparent);
+  --color-heatmap-l2: var(--purple-700);
+  --color-heatmap-l3: var(--purple-500);
+  --color-heatmap-l4: var(--purple-300);
+
+  /*
+   * Charts
+   */
+  --color-bar-chart-bar-default: var(--shade-300);
+  --color-bar-chart-bar-highlight: var(--shade-10);
+  --color-bar-chart-bar-hover: var(--purple-500);
+  --color-map-chart-background: var(--shade-300);
+  --color-map-chart-highlight: var(--purple-500);
+  --color-map-chart-border: var(--shade-950);
+  --color-map-chart-border-hover: var(--shade-10);
+  --color-map-chart-missing: var(--shade-800);
+
+  /*
+   * Confirmation
+   */
+  --color-confirmation-destructive-background: var(--red-200);
+  --color-confirmation-destructive-foreground: var(--red-1000);
+
+  /*
+   * Filters
+   */
+  --color-filter-tablist-background: var(--shade-910);
+  --color-filter-tab-background: var(--purple-700);
+  --color-filter-tab-active-text: var(--shade-10);
+
+  /*
+   * Data visualization (dark surfaces)
+   *
+   * Lifted to the 300/400 steps so saturated hues stay vivid against a dark
+   * panel; --viz-8 stays a touch deeper to round out the spread. Fades + glow
+   * read stronger on dark, hence the higher floor + bloom.
+   */
+  --viz-1: var(--purple-300);
+  --viz-2: var(--blue-400);
+  --viz-3: var(--purple-200);
+  --viz-4: var(--blue-300);
+  --viz-5: var(--purple-500);
+  --viz-6: var(--blue-600);
+  --viz-7: var(--purple-100);
+  --viz-8: var(--blue-200);
+
+  --viz-axis: var(--shade-700);
+  --viz-grid: var(--shade-800);
+  --viz-neutral: var(--shade-600);
+  --viz-track: var(--shade-900);
+  // Lighter than text-secondary so axis labels stay legible on very dark viz
+  // backgrounds (e.g. the near-black YIR template).
+  --viz-label: var(--shade-300);
+  --viz-positive: var(--green-400);
+  --viz-negative: var(--red-400);
+
+  --viz-fade-floor: 0.14;
+  --viz-glow-percent: 60%;
+  --viz-pattern-opacity: 0;
+
+  /*
+   * Year / Month in Review (see light-theme for the layer rationale)
+   */
+  // Chrome
+  --color-yir-background: var(--shade-950);
+  --color-yir-surface: var(--shade-1000);
+  --color-yir-surface-raised: var(--shade-930);
+  --color-yir-surface-chip: var(--shade-800);
+  --color-yir-text-primary: var(--shade-10);
+  --color-yir-text-secondary: var(--shade-300);
+  --color-yir-text-muted: var(--shade-500);
+  --color-yir-text-accent: var(--purple-300);
+  --color-yir-accent: var(--purple-500);
+  --color-yir-border: var(--shade-10);
+  --color-yir-border-subtle: var(--shade-600);
+  --color-yir-separator: var(--shade-800);
+  --color-yir-arrow: var(--shade-700);
+  --color-yir-badge-background: var(--shade-10);
+  --color-yir-badge-foreground: var(--shade-1000);
+  --color-yir-title-chip-background: color-mix(
+    in srgb,
+    var(--shade-1000) 50%,
+    transparent
+  );
+  --color-yir-tooltip-background: color-mix(
+    in srgb,
+    var(--shade-1000) 92%,
+    transparent
+  );
+  --color-yir-upgrade-glow: var(--red-800);
+  // List-progress logo plate: the dark chrome surface already gives white brand
+  // wordmarks enough contrast, so no plate is needed here (see light-theme).
+  --color-yir-list-logo-backdrop: none;
+  // Poster heroes (constant across themes)
+  --color-yir-poster-foreground: var(--shade-10);
+  --color-yir-poster-background: var(--shade-950);
+  --color-yir-poster-surface: var(--shade-1000);
+  --color-yir-poster-surface-raised: var(--shade-900);
+  --color-yir-poster-chip: var(--shade-800);
+  --color-yir-scrim: color-mix(in srgb, var(--shade-1000) 80%, transparent);
+  --color-yir-scrim-soft: color-mix(
+    in srgb,
+    var(--shade-1000) 30%,
+    transparent
+  );
+  // Review banner (adaptive accent card)
+  --color-review-foreground: var(--shade-10);
+  --color-review-accent: var(--purple-500);
+  --color-review-base: var(--shade-900);
+  --color-review-base-deep: var(--shade-920);
+  --color-mir-banner-base: var(--shade-900);
+  --color-mir-banner-foreground: var(--shade-10);
+  --color-mir-banner-pill: var(--purple-600);
+  --color-mir-banner-accent: var(--purple-200);
+  // 2024 template (see light-theme for the rationale)
+  --color-yir-hero-gradient-start: color-mix(
+    in srgb,
+    var(--purple-300) 80%,
+    white
+  );
+  --color-yir-hero-gradient-end: var(--purple-700);
+  --color-yir-panel-background: radial-gradient(
+    50% 39.27% at 50% 0%,
+    color-mix(in srgb, var(--shade-950) 90%, var(--blue-500) 10%) 0%,
+    color-mix(in srgb, var(--shade-950) 70%, var(--shade-900) 30%) 100%
+  );
+  --yir-hero-watermark-opacity: 1;
+
+  --color-background: var(--shade-930);
+  --color-foreground: var(--shade-10);
+  --color-surface: var(--shade-900);
+  --color-surface-recessed: var(--shade-910);
+  --color-surface-sunken: var(--shade-920);
+  --color-surface-raised: var(--shade-880);
+  --color-surface-card: var(--shade-860);
+  --color-surface-day: var(--shade-855);
+  --color-surface-menu: var(--shade-840);
+  --color-surface-hover: var(--shade-760);
+  --color-surface-nav-strip: var(--shade-915);
+  --color-footer-background: var(--color-background);
+  --color-card-background: var(--color-surface-card);
+  --color-floating-background: var(--color-surface-menu);
+  --color-input-background: var(--color-surface-menu);
+  --color-text-primary: var(--shade-10);
+  --color-text-secondary: var(--shade-40);
+  --color-text-tertiary: var(--shade-150);
+  --color-text-muted: var(--shade-300);
+  --color-text-help: var(--shade-350);
+  --color-text-heading-muted: var(--shade-400);
+  --color-text-footer: var(--shade-450);
+  --color-link: var(--purple-300);
+  --color-link-active: var(--color-link);
+  --color-toggle-selected: var(--color-link);
+  --color-border: var(--shade-760);
+  --color-border-subtle: var(--shade-850);
+  --color-border-strong: var(--shade-640);
+  --color-border-navigator: var(--shade-840);
+  --color-border-poster: var(--shade-930);
+  --color-border-ratings-bar: var(--shade-840);
+  --color-popover-border: rgb(0 0 0 / 20%);
+  --color-popover-arrow-border: rgb(0 0 0 / 25%);
+  --color-popover-arrow-fill-bottom: var(--shade-860);
+  --color-external-chip-background: var(--color-surface-menu);
+  --color-external-chip-background-hover: var(--shade-700);
+  --color-external-chip-text: var(--color-text-tertiary);
+  --color-external-chip-text-hover: var(--color-text-primary);
+  --color-avatar-ring: var(--shade-750);
+  --color-avatar-ring-header: var(--shade-40);
+  --color-avatar-ring-header-vip: var(--color-vip);
+  --color-avatar-ring-l: var(--shade-10);
+  --color-header-background: rgb(0 0 0 / 80%);
+  --color-overlay-light: rgb(255 255 255 / 20%);
+  --color-overlay-dark-40: rgb(0 0 0 / 40%);
+  --color-overlay-dark-50: rgb(0 0 0 / 50%);
+  --color-overlay-dark-60: rgb(0 0 0 / 60%);
+  --color-overlay-dark-70: rgb(0 0 0 / 70%);
+  --color-overlay-dark-75: rgb(0 0 0 / 75%);
+  --color-overlay-dark-80: rgb(0 0 0 / 80%);
+  --color-overlay-dark-90: rgb(0 0 0 / 90%);
+  --color-pill-background: rgb(255 255 255 / 15%);
+  --color-pill-background-hover: rgb(255 255 255 / 35%);
+  --color-pill-count-background: var(--shade-400);
+  --color-pill-count-background-active: var(--shade-10);
+  --color-pill-count-background-hover: var(--shade-930);
+  --color-pill-count-text: var(--shade-10);
+  --color-pill-count-text-active: var(--color-accent);
+  --color-scrollbar-track: rgb(100 100 100 / 30%);
+  --color-scrollbar-thumb: rgb(255 255 255 / 15%);
+  --color-scrollbar-thumb-hover: rgb(255 255 255 / 40%);
+  --color-scrollbar-thumb-standard: rgb(255 255 255 / 10%);
+  --fanart-logo-dim: 0.35;
+  --watched-fade-opacity: 0.35;
+  --navigator-item-opacity: 0.5;
+  --neighbour-link-opacity: 0.5;
+  --neighbour-link-opacity-hover: 0.9;
+  --genre-bar-dim-opacity: 0.5;
+  --cast-hover-dim-opacity: 0.7;
+  --action-side-icon-opacity: 0.75;
+  --gradient-hero-fade: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(0 0 0 / 60%)
+  );
+  --gradient-section-fade: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(0 0 0 / 40%)
+  );
+  --gradient-cover-fade: linear-gradient(
+    to right,
+    rgb(0 0 0 / 80%),
+    transparent
+  );
+  --poster-wall-opacity: 0.3;
+  --poster-wall-blur: var(--ni-4);
+  --filter-dropped: grayscale(100%);
+
+  --color-accent: var(--purple-500);
+  --color-accent-hover: var(--purple-600);
+  --color-accent-secondary: var(--blue-500);
+  --color-count: #009edf;
+  --color-vip: var(--red-500);
+  --color-checkin: var(--red-500);
+  --color-progress-track: #441a55;
+  --color-progress-fill: var(--color-link);
+  --color-action-watch: var(--color-accent);
+  --color-action-collect: #16a085;
+  --color-action-list: #0082ce;
+  --color-action-favorite: #ff5f06;
+  --color-action-watchnow: var(--shade-700);
+  --color-action-comment: #6e7a83;
+  --color-action-subscribe: #cc0c52;
+  --color-action-watch-darken: #9137b7;
+  --color-action-list-darken: #0072b4;
+  --color-action-favorite-darken: #ec5400;
+  --color-action-side-background-active: rgb(0 0 0 / 20%);
+  --color-action-side-background-hover: rgb(0 0 0 / 30%);
+  --color-chart-bar: var(--shade-300);
+  --color-chart-bar-hover: var(--purple-300);
+  --color-chart-1: #cc333f;
+  --color-chart-2: #00a0b0;
+  --color-chart-3: #eb6841;
+  --color-chart-4: #6a4a3c;
+  --color-chart-5: #edc951;
+  --color-chart-6: #ab3e5b;
+  --color-chart-7: #b3cc57;
+  --color-chart-8: #ef746f;
+  --color-chart-9: #3e4147;
+  --color-chart-10: #ffbe40;
+  --color-chart-label: var(--shade-450);
+  --color-chart-tooltip-background: var(--color-overlay-dark-90);
+  --color-genre-label: var(--shade-75);
+  --color-genre-label-hover: var(--shade-10);
+  --color-genre-count: var(--shade-350);
+  --color-genre-count-hover: var(--shade-300);
+  --color-genre-percentage: var(--shade-930);
+  --color-cast-text-dim: var(--shade-700);
+  --color-text-plays: var(--shade-180);
+  --color-danger: #da443e;
+  --color-success: #5cb85c;
+  --color-info: #0383ce;
+  --color-delta-positive: #47ad45;
+  --color-metascore-high: #66cc33;
+  --color-metascore-medium: #ffcc33;
+  --color-metascore-low: #ff0000;
+  --color-episode-series-premiere: #08a6a6;
+  --color-episode-season-premiere: #08a508;
+  --color-episode-midseason-premiere: #469ed0;
+  --color-episode-midseason-finale: #2444bf;
+  --color-episode-season-finale: #c30b50;
+  --color-episode-series-finale: #a608a6;
+  --color-episode-bonus: #7d19c4;
+  --color-episode-trailer: var(--shade-450);
+  --episode-ribbon-opacity: 0.7;
+  --color-tag-generic: var(--shade-700);
+  --color-certification-border: var(--shade-10);
+  --color-certification-background-hover: var(--shade-10);
+  --color-certification-text-hover: var(--shade-930);
+  --color-rating-1: #616161;
+  --color-rating-2: #675b5b;
+  --color-rating-3: #705252;
+  --color-rating-4: #7a4747;
+  --color-rating-5: #863c3c;
+  --color-rating-6: #922f30;
+  --color-rating-7: #9e2424;
+  --color-rating-8: #a81918;
+  --color-rating-9: #b11010;
+  --color-rating-10: #b70a0a;
+  --color-rating-heart-unchecked: var(--color-border);
+
+  --font-family-body: 'Varela Round', 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  --font-family-heading: 'Figtree Variable', Helvetica, Arial, sans-serif;
+  --font-family-serif: Georgia, 'Times New Roman', Times, serif;
+  --font-weight-body: 400;
+  --font-weight-heading: 600;
+  --font-weight-heading-heavy: 700;
+  --font-weight-heading-light: 400;
+  --line-height-text: calc(20 / 14);
+  --line-height-tag: 1;
+  --line-height-genre-label: 1;
+  --line-height-see-more: 2;
+  --line-height-heading: 1.1;
+  --line-height-hero-title: 1.2;
+  --line-height-hero-rating: 1;
+  --line-height-switcher: var(--ni-50);
+  --line-height-stat: var(--ni-40);
+  --line-height-stat-sm: var(--ni-34);
+  --line-height-action-label: var(--ni-34);
+  --line-height-card-title: var(--ni-18);
+  --line-height-card-subtitle: var(--ni-13);
+  --episode-ribbon-letter-spacing: 0.03125rem;
+  --font-size-h1: var(--ni-34);
+  --font-size-greeting: var(--ni-34);
+  --font-size-h2: var(--ni-24);
+  --font-size-h2-compact: var(--ni-18);
+  --font-size-hero-breadcrumb: var(--ni-18);
+  --font-size-hero-year: var(--ni-25);
+  --font-size-hero-rating: var(--ni-18);
+  --font-size-rating-question: var(--ni-14);
+  --font-size-switcher: var(--ni-14);
+  --font-size-h3: var(--ni-20);
+  --font-size-card-title-lg: var(--ni-18);
+  --font-size-card-title: var(--ni-16);
+  --font-size-card-subtitle: var(--ni-12);
+  --font-size-sidenav-link: var(--ni-22);
+  --font-size-nav: var(--ni-16);
+  --font-size-label-lg: var(--ni-16);
+  --font-size-action-label: var(--ni-15);
+  --font-size-button: var(--ni-14);
+  --font-size-heading-muted: var(--ni-14);
+  --font-size-small: var(--ni-13);
+  --font-size-tag: var(--ni-12);
+  --font-size-label: var(--ni-11);
+  --font-size-micro: var(--ni-10);
+  --font-size-stat: var(--ni-20);
+  --font-size-stat-sm: var(--ni-14);
+  --font-size-stats-strip: var(--ni-14);
+  --font-size-display: var(--ni-36);
+  --font-size-dialog-title: var(--ni-16);
+  --font-size-dialog-button: var(--ni-16);
+
+  --gutter-half: var(--ni-10);
+  --gutter-half-negative: var(--ni-neg-10);
+  --gutter: var(--ni-20);
+  --page-min-height: 100vh;
+  --grid-column-count: 12;
+  // 60 = lcm(12, 5), so five-up spans land on the 12-column grid's tracks.
+  --grid-column-count-five: 60;
+  --grid-column-count-twenty-four: 24;
+  --grid-column-track-min: 0;
+  --grid-column-track-max: 1fr;
+  --grid-column-span-mobile: 12;
+  --grid-column-span-tablet: 6;
+  --grid-column-span-desktop: 4;
+  --grid-column-span-five-tablet: 30;
+  --grid-column-span-fifth: 12;
+  --grid-column-span-quarter: 15;
+  --grid-column-span-third: 20;
+  --grid-column-span-twenty-four-tablet: 12;
+  --grid-column-span-twenty-fourth: 1;
+  --grid-column-span-three-twenty-fourths: 3;
+  --grid-column-span-fifteen-twenty-fourths: 15;
+  --greeting-column-span-tablet: 7;
+  --greeting-column-span-desktop: 6;
+  --schedule-near-column-span-tablet: 12;
+  --schedule-near-column-span-desktop: 7;
+  --schedule-far-column-span-desktop: 5;
+  --schedule-day-column-span: 6;
+  --schedule-poster-column-span-tablet: 4;
+  --schedule-poster-column-span-desktop: 6;
+  --schedule-entries-column-span-tablet: 8;
+  --schedule-entries-column-span-desktop: 6;
+  --schedule-far-day-column-span: 4;
+  --summary-info-column-span-tablet: 9;
+  --summary-info-column-span-desktop: 10;
+  --summary-overview-column-span-tablet-lg: 7;
+  --summary-overview-column-span-desktop-lg: 8;
+  --summary-actions-column-span-tablet-lg: 5;
+  --summary-actions-column-span-desktop-lg: 4;
+  --episode-card-column-span-tablet: 5;
+  --episode-card-column-span-desktop: 4;
+  --episode-info-column-span-tablet: 7;
+  --episode-info-column-span-desktop: 8;
+  --cast-cell-width-desktop-lg: 10.15%;
+  --cast-cell-width-tablet-lg: 12.73%;
+  --cast-cell-width-tablet-sm: 17%;
+  --cast-cell-width-mobile: 25%;
+  --container-sm: var(--ni-740);
+  --container-md: var(--ni-960);
+  --container-lg: var(--ni-1160);
+  --poster-width-mobile: 50vw;
+  --poster-width-tablet: var(--ni-165);
+  --poster-width-desktop: var(--ni-140);
+  --poster-width-desktop-lg: var(--ni-173);
+  --header-height: var(--ni-65);
+  --header-height-mobile: var(--ni-60);
+  --header-gap: var(--ni-24);
+  --header-padding-inline-start: var(--ni-32);
+  --header-padding-inline-end: var(--ni-16);
+  --search-height: var(--ni-42);
+  --search-width: var(--ni-250);
+  --sidenav-width: var(--ni-300);
+  --hero-height: calc(var(--ni-500) + var(--header-height));
+  --hero-height-mobile: var(--ni-350);
+  --hero-backdrop-position: 50% 10%;
+  --cover-height-slim: calc(var(--ni-170) + var(--header-height));
+  --tab-bar-height: var(--ni-40);
+
+  --aspect-poster: 2 / 3;
+  --aspect-fanart: 16 / 9;
+  --poster-columns-mobile: 2;
+  --poster-columns-tablet: 4;
+  --poster-columns-desktop: 6;
+  --fanart-columns-mobile: 1;
+  --fanart-columns-tablet: 2;
+  --fanart-columns-desktop: 3;
+  --fanart-columns-desktop-xl: 4;
+  --avatar-size-s: var(--ni-30);
+  --avatar-size-m: var(--ni-40);
+  --avatar-size-l: var(--ni-72);
+  --quick-icons-height: var(--ni-40);
+  --quick-icons-height-sm: var(--ni-34);
+  --quick-icon-width: var(--ni-35);
+  --quick-icon-width-sm: var(--ni-28);
+  --icon-size-action: var(--ni-30);
+  --icon-size-action-star: var(--ni-28);
+  --icon-size-action-side: var(--ni-16);
+  --icon-size-hero-rating: var(--ni-30);
+  --icon-size-heading: var(--ni-24);
+  --heading-icon-width: var(--ni-30);
+  --icon-size-see-more: var(--ni-18);
+  --neighbour-link-width: var(--ni-63);
+  --neighbour-link-height: var(--ni-143);
+  --icon-width-neighbour-link: var(--ni-38);
+  --icon-height-neighbour-link: var(--ni-69);
+  --neighbour-link-glyph-offset-block: var(--ni-30);
+  --neighbour-link-glyph-offset-inline: var(--ni-9);
+  --icon-size-count-stat: var(--ni-18);
+  --progress-height-sm: var(--ni-5);
+  --progress-height: var(--ni-15);
+  --progress-height-lg: var(--progress-height);
+  --action-button-height: var(--ni-54);
+  --action-button-glyph-width: var(--ni-50);
+  --ratings-bar-height: var(--ni-60);
+  --ratings-bar-item-gap: var(--ni-30);
+  --metascore-bar-height: var(--ni-8);
+  --stats-strip-height: var(--ni-60);
+  --daily-minutes-chart-height: var(--ni-136);
+  --genre-bar-height: var(--ni-30);
+  --genre-bar-min-width: var(--ni-45);
+  --genre-bars-padding-block-start: var(--ni-70);
+  --action-button-side-width: var(--ni-32);
+  --headshot-width: var(--ni-86);
+  --comment-clamp-height: var(--ni-300);
+  --clamp-max-height: var(--ni-300);
+  --clamp-shade-height: var(--ni-100);
+  --rank-badge-size: var(--ni-22);
+  --corner-rating-size: var(--ni-30);
+  --carousel-height: var(--ni-600);
+  --featured-tile-height: var(--ni-240);
+  // A recommendations phone pill's 25.7px height plus its 8px offset.
+  --recommendations-navigator-room: 2.10625rem;
+
+  --shadow-dropdown: 0 var(--ni-6) var(--ni-12) rgb(0 0 0 / 17.5%);
+  --shadow-popover: 0 var(--ni-5) var(--ni-10) rgb(0 0 0 / 20%);
+  --shadow-poster: 0 0 var(--ni-20) var(--shade-930);
+  --shadow-poster-soft: 0 0 var(--ni-20) var(--shade-840);
+  --shadow-poster-fan: 0 0 var(--ni-15) var(--shade-840);
+  --shadow-raised: 0 var(--ni-5) var(--ni-20) var(--shade-930);
+  --shadow-card: 0 0 var(--ni-10) rgb(0 0 0 / 25%);
+  --shadow-modal: 0 0 var(--ni-30) var(--shade-930);
+  --shadow-accent-glow: 0 0 var(--ni-10) var(--color-accent);
+  --shadow-pressed: inset 0 var(--ni-3) var(--ni-5) rgb(0 0 0 / 12.5%);
+  --shadow-inset-input: inset 0 var(--ni-1) var(--ni-1) rgb(0 0 0 / 7.5%);
+  --text-shadow-on-image: 0 0 var(--ni-20) var(--shade-930);
+  --shadow-neighbour-link: 0 0 var(--ni-10) var(--shade-640);
+  --blur-header: var(--ni-4);
+  --icon-stroke-strip: 2.5;
+  --icon-stroke-chrome: 1.25;
+  --icon-stroke-badge: 2;
+  --icon-size-strip: var(--ni-22);
+  --icon-size-strip-lg: var(--ni-28);
+  --icon-size-strip-star: var(--ni-19);
+  --icon-size-strip-star-lg: var(--ni-24);
+  --icon-size-strip-heart: var(--ni-14);
+  --icon-size-strip-heart-lg: var(--ni-16);
+  --icon-size-chrome-eye: var(--ni-21);
+  --icon-size-badge-dropped: var(--ni-46);
+  --icon-size-badge-dropped-sm: var(--ni-34);
+  --icon-size-navigator: var(--ni-16);
+  --icon-size-menu-check: var(--ni-13);
+  --icon-size-help-arrow: var(--ni-13);
+  --icon-size-title-row: var(--ni-14);
+  --icon-size-sort-direction: var(--ni-22);
+  --icon-size-dropdown-caret: var(--ni-16);
+  --icon-size-stats: var(--ni-29);
+  --stats-icon-width: var(--ni-36);
+  --icon-size-trailer: var(--ni-22);
+  --trailer-icon-width: var(--ni-34);
+  --avatar-ring: var(--ni-2);
+  --avatar-ring-l: var(--ni-3);
+  --btn-radius: var(--border-radius-l);
+  --btn-radius-less: var(--border-radius-s);
+  --divider-rule: var(--color-border);
+  --menu-min-width: var(--ni-130);
+  --menu-row-height: var(--ni-32);
+  --menu-padding-block: var(--ni-10);
+  --dropdown-min-width: var(--ni-160);
+  --dropdown-row-height: var(--ni-26);
+  --modal-width: var(--ni-360);
+  --modal-padding-inline: var(--ni-30);
+  --modal-padding-block-end: var(--ni-24);
+  --modal-offset: var(--ni-100);
+  --modal-offset-mobile: var(--ni-50);
+  --popover-width: var(--ni-276);
+  --popover-padding-block: var(--ni-9);
+  --popover-padding-inline: var(--ni-14);
+  --popover-arrow-size: var(--ni-11);
+  --popover-arrow-fill-size: var(--ni-10);
+  --rating-heart-size: var(--ni-20);
+  // Classic's 1.22em heart cell at its 20px glyph.
+  --rating-heart-width: 1.525rem;
+  --rating-heart-height: var(--ni-24);
+  --rating-heart-padding-inline: var(--ni-4);
+  --rating-heart-press-offset: var(--ni-2);
+  --rating-slot-min-width: var(--ni-175);
+  --search-type-width: var(--ni-140);
+  --suggestion-row-height: var(--ni-54);
+  --suggestion-poster-width: var(--ni-30);
+  --login-card-width: var(--ni-360);
+  --login-card-offset: 15vh;
+  --sidebar-poster-overlap: var(--ni-neg-190);
+  --sidebar-poster-overlap-switcher: calc(var(--ni-neg-180) - var(--header-height));
+  --summary-sidebar-top: calc(var(--header-height) + var(--ni-25));
+  --summary-section-scroll-margin: calc(var(--header-height) + var(--ni-5));
+  --related-min-height: var(--ni-432);
+  --related-min-height-tablet-lg: var(--ni-382);
+  --poster-stack-width: var(--ni-250);
+  --poster-stack-height: var(--ni-180);
+  --poster-stack-poster-width: var(--ni-120);
+  --poster-stack-sliver-width: var(--ni-32);
+  --poster-stack-poster-width-mobile: 20%;
+
+  @include for-desktop-lg-and-below {
+    --header-gap: var(--ni-8);
+    --header-padding-inline-start: var(--ni-16);
+    --header-padding-inline-end: var(--ni-8);
+  }
+
+  @include for-tablet-lg-and-below {
+    --font-size-stats-strip: var(--ni-13);
+  }
+
+  @include for-tablet-sm {
+    --ratings-bar-item-gap: var(--ni-20);
+  }
+
+  @include for-tablet-sm-and-below {
+    --font-size-stats-strip: var(--ni-12);
+    --icon-size-stats: var(--ni-27);
+    --stats-icon-width: var(--ni-34);
+  }
+
+  @include for-mobile {
+    --header-height: var(--header-height-mobile);
+    --menu-min-width: var(--ni-140);
+    --header-padding-inline-end: 0;
+    --font-size-h1: var(--ni-18);
+    --font-size-hero-breadcrumb: var(--ni-14);
+    --font-size-hero-year: var(--ni-14);
+    --font-size-switcher: var(--ni-13);
+    --line-height-switcher: var(--ni-40);
+    --font-size-hero-rating: var(--ni-16);
+    --icon-size-hero-rating: var(--ni-28);
+    --ratings-bar-item-gap: var(--ni-23);
+    --ratings-bar-height: var(--ni-100);
+    --font-size-greeting: var(--ni-26);
+    --font-size-h2: var(--ni-18);
+    --icon-size-heading: var(--ni-18);
+    --heading-icon-width: var(--ni-22);
+    --line-height-see-more: 1.6;
+
+    @media (orientation: portrait) {
+      --modal-width: 90%;
+      --modal-padding-inline: var(--ni-15);
+      --modal-padding-block-end: var(--ni-15);
+    }
+  }
+}
+
+:root {
+  @include dark-theme();
+}
+
+:root:dir(rtl) {
+  --gradient-cover-fade: linear-gradient(
+    to left,
+    rgb(0 0 0 / 80%),
+    transparent
+  );
+}
+
+@mixin viz-high-contrast-dark {
+  --viz-1: var(--purple-100);
+  --viz-2: var(--blue-100);
+  --viz-3: var(--purple-300);
+  --viz-4: var(--blue-300);
+  --viz-5: var(--purple-50);
+  --viz-6: var(--blue-50);
+  --viz-7: var(--purple-200);
+  --viz-8: var(--blue-200);
+
+  --viz-axis: var(--shade-50);
+  --viz-grid: var(--shade-600);
+  --viz-neutral: var(--shade-500);
+  --viz-label: var(--color-foreground);
+  --viz-fade-floor: 0.45;
+  --viz-glow-percent: 0%;
+  --viz-pattern-opacity: 1;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    @include viz-high-contrast-dark();
+  }
+}

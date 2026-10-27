@@ -1,0 +1,21 @@
+:root {
+  /* Measured Classic reds; the other stops keep the inherited oklch ramp. */
+  --red-20: oklch(98.0% 0.0093 25.0);
+  --red-50: oklch(96.5% 0.016 25.0);
+  --red-60: oklch(95.0% 0.024 25.0);
+  --red-70: oklch(93.5% 0.031 25.0);
+  --red-80: oklch(92.0% 0.039 25.0);
+  --red-90: oklch(90.5% 0.047 25.0);
+  --red-100: oklch(88.5% 0.058 25.0);
+  --red-200: oklch(80.0% 0.1044 25.0);
+  --red-300: oklch(69.0% 0.144 25.0);
+  --red-400: oklch(62.0% 0.171 25.0);
+  --red-500: #ed1c24;
+  --red-600: #c61017;
+  --red-700: #b50d13;
+  --red-800: #850a0e;
+  --red-900: oklch(28.0% 0.099 25.0);
+  --red-950: oklch(21.0% 0.072 25.0);
+  --red-975: oklch(16.0% 0.0576 25.0);
+  --red-1000: oklch(11.0% 0.0468 25.0);
+}

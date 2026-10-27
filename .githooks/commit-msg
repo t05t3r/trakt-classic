@@ -1,0 +1,4 @@
+#!/bin/sh
+# Conventional Commits, against commitlint.config.js at the repo root. The CLI
+# is fetched on first use and cached by Deno; it is not a repo dependency.
+exec deno run -A npm:@commitlint/cli@20.1.0 --edit "$1"

@@ -1,0 +1,121 @@
+@use '$style/scss/mixins/index' as *;
+
+// Global baseline reset, not component-scoped styling.
+html {
+  background: var(--color-background);
+}
+
+body {
+  min-height: var(--page-min-height);
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-text);
+  line-height: var(--line-height-text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+// Browsers give form controls their own font instead of the page's.
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h6 {
+  font-family: var(--font-family-heading);
+}
+
+// The inherited typography sheet sizes every heading alike and loads first,
+// so Classic's own heading scale has to override it here.
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-heading);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+}
+
+h3 {
+  font-size: var(--font-size-h3);
+}
+
+h2,
+h3,
+h4,
+h6 {
+  font-weight: var(--font-weight-heading-light);
+}
+
+h5 {
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-body);
+}
+
+[data-layout='grid'] {
+  display: grid;
+  grid-template-columns: repeat(
+    var(--grid-column-count),
+    minmax(var(--grid-column-track-min), var(--grid-column-track-max))
+  );
+  margin-inline: var(--gutter-half-negative);
+}
+
+[data-layout='grid'] > [data-grid-column] {
+  grid-column: span var(--grid-column-span, var(--grid-column-span-mobile));
+  padding-inline: var(--gutter-half);
+}
+
+@include for-tablet-sm {
+  [data-layout='grid'] > [data-grid-column] {
+    --grid-column-span: var(--grid-column-span-tablet);
+  }
+}
+
+@include for-tablet-lg-and-above {
+  [data-layout='grid'] > [data-grid-column] {
+    --grid-column-span: var(--grid-column-span-desktop);
+  }
+
+  [data-layout='grid'] > [data-grid-column][data-grid-span='one-fifth'] {
+    --grid-column-span: var(--grid-column-span-fifth);
+  }
+
+  [data-layout='grid'] > [data-grid-column][data-grid-span='one-quarter'] {
+    --grid-column-span: var(--grid-column-span-quarter);
+  }
+
+  [data-layout='grid'] > [data-grid-column][data-grid-span='one-third'] {
+    --grid-column-span: var(--grid-column-span-third);
+  }
+
+  [data-layout='grid'] > [data-grid-column][data-grid-span='three-twenty-fourths'] {
+    --grid-column-span: var(--grid-column-span-three-twenty-fourths);
+  }
+
+  [data-layout='grid'] > [data-grid-column][data-grid-span='fifteen-twenty-fourths'] {
+    --grid-column-span: var(--grid-column-span-fifteen-twenty-fourths);
+  }
+}
+
+[data-layout='grid'][data-grid-variant='five-columns'] {
+  --grid-column-count: var(--grid-column-count-five);
+  --grid-column-span-mobile: var(--grid-column-count-five);
+  --grid-column-span-tablet: var(--grid-column-span-five-tablet);
+  --grid-column-span-desktop: var(--grid-column-span-fifth);
+}
+
+[data-layout='grid'][data-grid-variant='twenty-four-columns'] {
+  --grid-column-count: var(--grid-column-count-twenty-four);
+  --grid-column-span-mobile: var(--grid-column-count-twenty-four);
+  --grid-column-span-tablet: var(--grid-column-span-twenty-four-tablet);
+  --grid-column-span-desktop: var(--grid-column-span-twenty-fourth);
+}

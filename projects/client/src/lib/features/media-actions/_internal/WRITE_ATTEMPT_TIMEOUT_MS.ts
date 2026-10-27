@@ -1,0 +1,1 @@
+export const WRITE_ATTEMPT_TIMEOUT_MS = 15_000;

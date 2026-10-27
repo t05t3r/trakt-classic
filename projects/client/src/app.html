@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="%paraglide.lang%" dir="%paraglide.textDirection%"
+  data-theme="%theme.current%">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+    <style>
+      body {
+        /* Keeps bits-ui's scroll lock padding from widening body and shifting the page. */
+        box-sizing: border-box;
+      }
+    </style>
+    %sveltekit.head%
+  </head>
+  <body>
+    <div
+      style="display: contents"
+      data-sveltekit-preload-code="viewport"
+      data-sveltekit-preload-data="tap"
+    >
+      %sveltekit.body%
+    </div>
+  </body>
+</html>

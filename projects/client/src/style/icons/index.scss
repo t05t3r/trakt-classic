@@ -1,0 +1,5 @@
+// A horizontal flip that ignores the reading direction. It sets transform,
+// so a glyph never pairs it with trakt-icon-directional.
+.trakt-icon-mirrored {
+  transform: scaleX(-1);
+}

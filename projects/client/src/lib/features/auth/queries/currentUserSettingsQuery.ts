@@ -1,0 +1,200 @@
+import { defineQuery } from '$lib/features/query/defineQuery.ts';
+import { api, type ApiParams } from '$lib/requests/api.ts';
+import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import {
+  type Permission,
+  permissionSchema,
+} from '$lib/requests/models/Permission.ts';
+import { UserNameSchema } from '$lib/requests/models/UserName.ts';
+import { PLACEHOLDERS } from '$lib/features/image/placeholders.ts';
+import { toImageUrl } from '$lib/features/image/toImageUrl.ts';
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { parseLocalDate } from '$lib/utils/date/parseLocalDate.ts';
+import { toUserName } from '$lib/utils/formatting/string/toUserName.ts';
+import {
+  genreOptionSchema,
+  type SettingsResponse,
+  upNextSortOptionSchema,
+} from '@trakt/api';
+import { z } from 'zod';
+import { time } from '$lib/utils/timing/time.ts';
+import { Theme } from '$lib/features/theme/models/Theme.ts';
+
+const UserSettingsSchema = z.object({
+  id: z.union([z.number(), z.string()]),
+  email: z.string().email().optional(),
+  key: z.string(),
+  slug: z.string(),
+  token: z.string().nullish(),
+  name: UserNameSchema,
+  username: z.string(),
+  about: z.string().nullish(),
+  location: z.string().optional(),
+  joinedAt: z.date().optional(),
+  avatar: z.object({
+    url: z.string(),
+  }),
+  isVip: z.boolean(),
+  isDirector: z.boolean(),
+  isPrivate: z.boolean(),
+  preferences: z.object({
+    progress: z.object({
+      sort: z.object({
+        by: upNextSortOptionSchema,
+        direction: z.enum(['asc', 'desc']).optional(),
+      }),
+    }),
+    watch: z.object({
+      action: z.enum(['now', 'released', 'unknown']),
+    }),
+    isSpoilerHidden: z.boolean().optional(),
+    hasWatchAgain: z.boolean(),
+    showRatingPrompt: z.boolean(),
+    displayEarlyRatings: z.boolean(),
+  }),
+  genres: z.object({
+    loved: genreOptionSchema.array(),
+  }),
+  services: z.object({
+    country: z.string().nullish(),
+    favorites: z.array(z.string()).optional(),
+    showOnlyFavorites: z.boolean().optional(),
+  }),
+  permissions: permissionSchema.array(),
+  limits: z.object({
+    lists: z.object({
+      limit: z.number(),
+      itemLimit: z.number(),
+    }),
+  }),
+  preferredTheme: z.nativeEnum(Theme),
+  locale: z.string().nullish(),
+  birthday: z.date().nullish(),
+});
+
+export type UserSettings = z.infer<typeof UserSettingsSchema>;
+
+const PERMISSIONS_MAP: Record<
+  keyof SettingsResponse['permissions'],
+  Permission
+> = {
+  commenting: 'comment',
+  liking: 'like',
+  following: 'follow',
+};
+
+function mapToPreferredTheme(themeResponse?: string | Nil) {
+  if (!themeResponse || themeResponse === 'true') {
+    return Theme.Dark;
+  }
+
+  if (themeResponse === 'auto') {
+    return Theme.System;
+  }
+
+  return Theme.Light;
+}
+
+const InternalSettingsSchema = z.object({
+  user: z.object({
+    email: z.string().email().optional(),
+  }),
+});
+
+function mapUserSettingsResponse(response: SettingsResponse): UserSettings {
+  const { user, account, browsing } = response;
+  const email = InternalSettingsSchema.parse(response).user.email;
+
+  const id = assertDefined(
+    user.ids.trakt ?? user.ids.uuid,
+    'Current user should have a valid ID',
+  );
+
+  return {
+    id,
+    key: `user-${id}`,
+    slug: user.ids.slug,
+    token: account.token,
+    name: toUserName(user.name),
+    username: user.username,
+    email,
+    about: user.about,
+    location: user.location ?? '',
+    joinedAt: new Date(user.joined_at),
+    avatar: {
+      url: toImageUrl({
+        url: user.images.avatar.full,
+        placeholder: PLACEHOLDERS.avatar,
+      }),
+    },
+    isVip: user.vip || user.vip_ep,
+    isDirector: user.director,
+    isPrivate: user.private,
+    preferences: {
+      watch: {
+        action: browsing?.watch_popup_action === 'ask'
+          ? 'now'
+          : browsing?.watch_popup_action ?? 'now',
+      },
+      hasWatchAgain: !(browsing?.watch_only_once ?? true),
+      showRatingPrompt: browsing?.show_rating_prompt ?? true,
+      displayEarlyRatings: browsing?.display_early_ratings ?? false,
+      progress: {
+        sort: {
+          by: 'added',
+          direction: browsing?.progress.on_deck.sort_how,
+        },
+      },
+      isSpoilerHidden: [
+        browsing?.spoilers.episodes,
+        browsing?.spoilers.movies,
+        browsing?.spoilers.shows,
+      ]
+        .some((topic) => topic?.includes('hide')),
+    },
+    genres: {
+      loved: browsing?.genres?.favorites ?? [],
+    },
+    services: {
+      country: browsing?.watchnow.country,
+      favorites: browsing?.watchnow.favorites,
+      showOnlyFavorites: browsing?.watchnow.only_favorites,
+    },
+    permissions: Object.entries(response.permissions)
+      .filter(([_, value]) => value)
+      .map(([key]) => PERMISSIONS_MAP[key as keyof typeof PERMISSIONS_MAP]),
+    limits: {
+      lists: {
+        limit: response.limits?.list.count ?? 0,
+        itemLimit: response.limits?.list.item_count ?? 0,
+      },
+    },
+    preferredTheme: mapToPreferredTheme(browsing?.dark_knight),
+    locale: browsing?.locale,
+    birthday: user.dob ? parseLocalDate(user.dob) : null,
+  };
+}
+
+const currentUserRequest = ({ fetch }: ApiParams) =>
+  api({ fetch })
+    .users
+    .settings({
+      query: {
+        extended: 'browsing',
+      },
+    });
+
+export const currentUserSettingsQuery = defineQuery({
+  key: 'currentUserSettings',
+  invalidations: [
+    InvalidateAction.User.Avatar,
+    InvalidateAction.User.Settings,
+    InvalidateAction.User.CoverImage,
+  ],
+  dependencies: [],
+  request: currentUserRequest,
+  mapper: (response) => mapUserSettingsResponse(response.body),
+  schema: UserSettingsSchema,
+  ttl: time.hours(3),
+  refetchOnWindowFocus: true,
+});

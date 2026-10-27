@@ -1,0 +1,1 @@
+export const MAX_RETRY_AFTER_SECONDS = 30;

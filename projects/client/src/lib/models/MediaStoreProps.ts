@@ -1,0 +1,54 @@
+type ArrayOrSingle<T> = T | T[];
+type SeasonInfo = {
+  seasons: Array<{
+    number: number;
+    episodes: Array<{
+      number: number;
+      watched_at?: string;
+    }>;
+  }>;
+};
+
+type EpisodeCount = {
+  episode: {
+    count: number;
+  };
+};
+
+export type SeasonMedia<T extends { id: number } = { id: number }> = T & {
+  number: number;
+  episodes: { count: number; aired: number };
+};
+
+type SeasonProps<T extends { id: number }> = {
+  type: 'season';
+  media: ArrayOrSingle<SeasonMedia<T>>;
+  show: { id: number };
+};
+
+type EpisodeProps<T> = {
+  type: 'episode';
+  media: ArrayOrSingle<T & { season: number; number: number }>;
+  show: { id: number; title: string };
+};
+
+type MovieProps<T> = {
+  type: 'movie';
+  media: ArrayOrSingle<T>;
+};
+
+type ShowProps<T> = {
+  type: 'show';
+  media: ArrayOrSingle<
+    T & Partial<SeasonInfo> & Partial<EpisodeCount>
+  >;
+};
+
+export type MediaStoreProps<T extends { id: number } = { id: number }> =
+  | EpisodeProps<T>
+  | ShowProps<T>
+  | MovieProps<T>;
+
+export type ExtendedMediaStoreProps<T extends { id: number } = { id: number }> =
+  | MediaStoreProps<T>
+  | SeasonProps<T>;

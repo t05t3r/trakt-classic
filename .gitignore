@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+
+test-results
+tmp
+node_modules
+.playwright-cli
+
+# Output
+.output
+.vercel
+.svelte-kit
+build
+projects/client/i18n/messages/en.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Local Docker Compose overrides (reverse-proxy wiring)
+compose.override.yaml
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Cloudflare Pages
+.wrangler
+
+# Vitest
+coverage
+
+# Image Cache (dev default; the Dockerfile volume is outside the repo tree)
+projects/client/.cache/
+
+# ai junk
+.todos
+.superpowers

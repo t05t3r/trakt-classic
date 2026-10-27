@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    ".svelte-kit/ambient.d.ts",
+    ".svelte-kit/non-ambient.d.ts",
+    "src/**/*.d.ts",
+    "src/**/*.js",
+    "src/**/*.svelte",
+    "src/**/*.ts",
+    "test/**/*.d.ts",
+    "test/**/*.js",
+    "test/**/*.svelte",
+    "test/**/*.ts"
+  ],
+  "exclude": [".scripts/**", "i18n/**"]
+}

@@ -1,0 +1,69 @@
+import { defineQuery } from '$lib/features/query/defineQuery.ts';
+import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
+import { type ApiParams, rawApiFetch } from '$lib/requests/api.ts';
+import type { FilterParams } from '$lib/requests/models/FilterParams.ts';
+import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import type { LimitParams } from '$lib/requests/models/LimitParams.ts';
+import { time } from '$lib/utils/timing/time.ts';
+import { z } from 'zod';
+import { getRecommendedSearchParams } from '$lib/requests/_internal/getRecommendedSearchParams.ts';
+import { mapToMovieEntry } from '$lib/requests/_internal/mapToMovieEntry.ts';
+import { mapToRecommendationSource } from '$lib/requests/_internal/mapToRecommendationSource.ts';
+import { MovieEntrySchema } from '$lib/requests/models/MovieEntry.ts';
+import { RecommendationSourceSchema } from '$lib/requests/models/RecommendationSource.ts';
+import { RecommendationsMovieResponseSchema } from '$lib/requests/models/RecommendationsResponse.ts';
+
+const RecommendedMovieSchema = MovieEntrySchema.extend({
+  sources: z.array(RecommendationSourceSchema),
+});
+export type RecommendedMovie = z.infer<typeof RecommendedMovieSchema>;
+
+type RecommendedMoviesParams =
+  & LimitParams
+  & ApiParams
+  & FilterParams;
+
+const recommendedMoviesRequest = async (
+  { fetch, limit, filter, filterOverride }: RecommendedMoviesParams,
+) => {
+  const filterParams = filterOverride?.movie ?? filter;
+  const searchParams = getRecommendedSearchParams({ limit, filterParams });
+
+  const response = await rawApiFetch({
+    fetch,
+    path: `/movies/recommendations?${searchParams}`,
+  });
+
+  return response.ok
+    ? {
+      body: RecommendationsMovieResponseSchema.parse(await response.json()),
+      status: 200,
+    }
+    : { body: undefined, status: response.status };
+};
+
+export const recommendedMoviesQuery = defineQuery({
+  key: 'recommendedMovies',
+  invalidations: [
+    InvalidateAction.Watchlisted('movie'),
+    InvalidateAction.MarkAsWatched('movie'),
+    InvalidateAction.HideRecommended('movie'),
+  ],
+  dependencies: (
+    params,
+  ) => [
+    params.limit,
+    params.filter?.watch_window,
+    ...getGlobalFilterDependencies(
+      params.filterOverride?.movie ?? params.filter,
+    ),
+  ],
+  request: recommendedMoviesRequest,
+  mapper: (response) =>
+    response.body?.map((item) => ({
+      ...mapToMovieEntry(item.movie),
+      sources: item.sources.map(mapToRecommendationSource),
+    })) ?? [],
+  schema: RecommendedMovieSchema.array(),
+  ttl: time.hours(3),
+});

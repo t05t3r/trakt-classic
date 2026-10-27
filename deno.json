@@ -1,0 +1,47 @@
+{
+  "workspace": [
+    "./projects/client"
+  ],
+  "tasks": {
+    "reinstall": "deno install --reload",
+    "install": "deno install --frozen",
+    "format": "deno fmt && deno lint --fix",
+    "fmt:check": "deno fmt --check",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "nm:check": "find node_modules projects/client/node_modules -maxdepth 2 -xtype l -print -quit | grep -q . && echo 'broken node_modules symlinks: run deno task reinstall' && exit 1 || exit 0",
+    "check": "cd projects/client && deno task check",
+    "lint": "cd projects/client && deno task lint",
+    "test:unit": "cd projects/client && deno task test:unit",
+    "client:dev": "cd projects/client && deno task dev",
+    "client:i18n:resolve": "cd projects/client && deno task i18n:resolve",
+    "upstream:status": "cd projects/client && deno task upstream:status",
+    "upstream:diff": "cd projects/client && deno task upstream:diff",
+    "upstream:verbatim": "cd projects/client && deno task upstream:verbatim",
+    "gates": "deno task fmt:check && deno task nm:check && deno task check && deno task lint && deno task test:unit"
+  },
+  "unstable": [
+    "broadcast-channel",
+    "sloppy-imports"
+  ],
+  "nodeModulesDir": "manual",
+  "fmt": {
+    "singleQuote": true,
+    "indentWidth": 2
+  },
+  "compilerOptions": {
+    "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "strictBindCallApply": true,
+    "strict": true,
+    "verbatimModuleSyntax": true
+  },
+  "allowScripts": ["npm:esbuild@0.28.2"]
+}

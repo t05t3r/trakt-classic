@@ -1,0 +1,21 @@
+:root {
+  /**
+   * Animation transition variables
+   */
+  --transition-increment: 150ms;
+  --transition-duration-short: 300ms;
+
+  --transition-default: 500ms;
+  --transition-fast: 250ms;
+  --transition-instant: 100ms;
+  --transition-slow: 1000ms;
+
+  @media (prefers-reduced-motion: reduce) {
+    --transition-increment: 0ms;
+    --transition-duration-short: 0ms;
+    --transition-default: 0ms;
+    --transition-fast: 0ms;
+    --transition-instant: 0ms;
+    --transition-slow: 0ms;
+  }
+}

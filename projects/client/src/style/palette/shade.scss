@@ -1,0 +1,42 @@
+:root {
+  /* Measured Classic greys; the other stops keep the inherited oklch ramp. */
+  --shade-10: #fff;
+  --shade-20: oklch(98.3% 0.005 300.0);
+  --shade-30: oklch(97.7% 0.006 300.0);
+  --shade-40: #eee;
+  --shade-50: oklch(95.5% 0.007 300.0);
+  --shade-60: oklch(93.5% 0.008 300.0);
+  --shade-70: oklch(91.5% 0.009 300.0);
+  --shade-75: #ddd;
+  --shade-80: oklch(89.5% 0.01 300.0);
+  --shade-90: oklch(87.5% 0.01 300.0);
+  --shade-100: oklch(85.5% 0.011 300.0);
+  --shade-150: #ccc;
+  --shade-180: #bbb;
+  --shade-200: oklch(78.0% 0.012 300.0);
+  --shade-300: #aaa;
+  --shade-350: #999;
+  --shade-400: #888;
+  --shade-450: #777;
+  --shade-500: #878787;
+  --shade-600: #6d6d6d;
+  --shade-640: #666;
+  --shade-700: #555;
+  --shade-740: #494949;
+  --shade-750: #464646;
+  --shade-760: #444;
+  --shade-800: oklch(30.0% 0.011 300.0);
+  --shade-840: #333;
+  --shade-850: #2d2d2d;
+  --shade-855: #2a2a2a;
+  --shade-860: #292929;
+  --shade-880: #222;
+  --shade-900: #1d1d1d;
+  --shade-910: #161616;
+  --shade-915: #151515;
+  --shade-920: #111;
+  --shade-930: #000;
+  --shade-940: oklch(14.0% 0.007 300.0);
+  --shade-950: oklch(13.0% 0.007 300.0);
+  --shade-1000: oklch(11.0% 0.006 300.0);
+}

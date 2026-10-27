@@ -1,0 +1,26 @@
+import { type ApiParams, rawApiFetch } from '$lib/requests/api.ts';
+import { time } from '$lib/utils/timing/time.ts';
+
+type StartShowRewatchingParams = {
+  id: number | string;
+} & ApiParams;
+
+export async function startShowRewatchingRequest(
+  { fetch, id }: StartShowRewatchingParams,
+): Promise<boolean> {
+  const resetAt = new Date(Date.now() - time.minutes(3)).toISOString();
+
+  const response = await rawApiFetch({
+    fetch,
+    path: `/shows/${encodeURIComponent(`${id}`)}/progress/watched/reset`,
+    init: {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reset_at: resetAt }),
+    },
+  });
+
+  return response.ok;
+}
