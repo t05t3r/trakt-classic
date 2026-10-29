@@ -1,10 +1,14 @@
 import { http, HttpResponse } from 'msw';
+import { pageHeaders } from '$mocks/pageHeaders.ts';
 
 import { OfficialListsResponseMock } from '$mocks/data/lists/response/OfficialListsResponseMock.ts';
 import { EpisodeSiloCommentsResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloCommentsResponseMock.ts';
 import { EpisodeSiloPeopleResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloPeopleResponseMock.ts';
 import { EpisodeSiloWatchNowResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloWatchNowResponseMock.ts';
 import { ShowSiloCommentsResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloCommentsResponseMock.ts';
+import { SILO_COMMENTS_URL } from '$mocks/data/shows/SILO_COMMENTS_URL.ts';
+import { SILO_EPISODE_COMMENTS_URL } from '$mocks/data/shows/SILO_EPISODE_COMMENTS_URL.ts';
+import { SILO_SEASON_COMMENTS_URL } from '$mocks/data/shows/SILO_SEASON_COMMENTS_URL.ts';
 import { SILO_EPISODE_OFFICIAL_LISTS_URL } from '$mocks/data/shows/SILO_EPISODE_OFFICIAL_LISTS_URL.ts';
 import { SILO_EPISODE_PERSONAL_LISTS_URL } from '$mocks/data/shows/SILO_EPISODE_PERSONAL_LISTS_URL.ts';
 import { SILO_LAST_EPISODE_URL } from '$mocks/data/shows/SILO_LAST_EPISODE_URL.ts';
@@ -195,10 +199,11 @@ export const shows = [
     },
   ),
   http.get(
-    `http://localhost/shows/${ShowSiloResponseMock.ids.slug}/seasons/${EpisodeSiloResponseMock.season}/comments/likes*`,
-    () => {
-      return HttpResponse.json(ShowSiloCommentsResponseMock);
-    },
+    `${SILO_SEASON_COMMENTS_URL}/:sort`,
+    () =>
+      HttpResponse.json(ShowSiloCommentsResponseMock, {
+        headers: pageHeaders(),
+      }),
   ),
   http.get(
     `http://localhost/shows/${ShowSiloResponseMock.ids.slug}/seasons/${EpisodeSiloResponseMock.season}/people`,
@@ -207,10 +212,11 @@ export const shows = [
     },
   ),
   http.get(
-    `http://localhost/shows/${ShowSiloResponseMock.ids.slug}/seasons/${EpisodeSiloResponseMock.season}/episodes/${EpisodeSiloResponseMock.number}/comments/likes*`,
-    () => {
-      return HttpResponse.json(EpisodeSiloCommentsResponseMock);
-    },
+    `${SILO_EPISODE_COMMENTS_URL}/:sort`,
+    () =>
+      HttpResponse.json(EpisodeSiloCommentsResponseMock, {
+        headers: pageHeaders(),
+      }),
   ),
   http.get(
     `http://localhost/shows/${ShowSiloResponseMock.ids.slug}/seasons/${EpisodeSiloResponseMock.season}/episodes/${EpisodeSiloResponseMock.number}/people`,
@@ -303,10 +309,11 @@ export const shows = [
     },
   ),
   http.get(
-    `http://localhost/shows/${ShowSiloResponseMock.ids.slug}/comments/likes*`,
-    () => {
-      return HttpResponse.json(ShowSiloCommentsResponseMock);
-    },
+    `${SILO_COMMENTS_URL}/:sort`,
+    () =>
+      HttpResponse.json(ShowSiloCommentsResponseMock, {
+        headers: pageHeaders(),
+      }),
   ),
   http.get(
     `http://localhost/shows/${ShowSiloResponseMock.ids.slug}/videos`,

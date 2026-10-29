@@ -1,14 +1,19 @@
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { SYNC_RATINGS_URL } from '$mocks/data/sync/SYNC_RATINGS_URL.ts';
 import { MovieMatrixResponseMock } from '$mocks/data/summary/movies/matrix/MovieMatrixResponseMock.ts';
+import { MovieHereticStatsResponseMock } from '$mocks/data/summary/movies/heretic/response/MovieHereticStatsResponseMock.ts';
 import { MovieHereticResponseMock } from '$mocks/data/summary/movies/heretic/response/MovieHereticResponseMock.ts';
+import { HERETIC_COMMENTS_URL } from '$mocks/data/movies/HERETIC_COMMENTS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { stubOverflow } from '$test/beds/layout/stubOverflow.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { commentPage } from '$test/beds/request/commentPage.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
+import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -41,6 +46,18 @@ function serveMatrix() {
     ),
     http.get(`http://localhost/movies/${MATRIX_SLUG}/*`, notFound),
   );
+}
+
+const commentsRegion = () => screen.getByRole('region', { name: 'Comments' });
+
+// Resolves once the comments show `count` cards, to their bodies.
+async function commentBodies(count: number) {
+  const read = () =>
+    within(commentsRegion()).queryAllByText(/^Comment \d+$/).map((body) =>
+      body.textContent
+    );
+  await waitFor(() => expect(read()).toHaveLength(count));
+  return read();
 }
 
 describe('component: MoviePage', () => {
@@ -112,6 +129,45 @@ describe('component: MoviePage', () => {
 
     expect(await screen.findByRole('button', { name: 'Read more' }))
       .toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // Matrix's stats are in the cache on the way back, so only the key remounts its comments.
+  it("should start the next movie's comments at its own first three", async () => {
+    setLayout('desktop');
+    serveMatrix();
+    server.use(
+      http.get(
+        `http://localhost/movies/${MATRIX_SLUG}/stats`,
+        () => HttpResponse.json(MovieHereticStatsResponseMock),
+      ),
+      http.get(
+        `http://localhost/movies/${MATRIX_SLUG}/comments/likes`,
+        () => pagedResponse({ body: commentPage({ page: 3 }) }),
+      ),
+    );
+    serveTwoPages({
+      url: `${HERETIC_COMMENTS_URL}/likes`,
+      first: commentPage({ page: 1 }),
+      second: notFound,
+    });
+    const { rerender } = renderPage(MATRIX_SLUG);
+    await commentBodies(3);
+
+    await rerender({ slug: HERETIC_SLUG });
+    await commentBodies(3);
+    await userEvent.click(
+      within(commentsRegion()).getByRole('button', { name: 'more' }),
+    );
+    await commentBodies(10);
+    await rerender({ slug: MATRIX_SLUG });
+
+    expect(await commentBodies(3)).toEqual([
+      'Comment 21',
+      'Comment 22',
+      'Comment 23',
+    ]);
+    expect(within(commentsRegion()).queryByRole('button', { name: 'less' }))
+      .toBeNull();
   });
 
   describe('the lists block', () => {

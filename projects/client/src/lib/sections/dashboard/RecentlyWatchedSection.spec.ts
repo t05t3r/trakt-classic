@@ -20,6 +20,7 @@ import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { cleanup, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import type { ActivityHistoryResponse } from '@trakt/api';
@@ -504,6 +505,8 @@ describe('section: RecentlyWatchedSection', () => {
     });
 
     it('should hand the focus to the section when its card collapses', async () => {
+      // "less" scrolls its controls into view, which jsdom cannot do.
+      stubScrollIntoView();
       serve(() => pagedResponse({ body: NINE_PLAYS }));
       const region = await renderSection(SECTION);
       const fourth =

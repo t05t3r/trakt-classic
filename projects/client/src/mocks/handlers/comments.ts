@@ -1,7 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
-import { EpisodeSiloCommentsMappedMock } from '$mocks/data/summary/episodes/silo/mapped/EpisodeSiloCommentsMappedMock.ts';
+import { SILO_EPISODE_COMMENT_REPLIES_URL } from '$mocks/data/shows/SILO_EPISODE_COMMENT_REPLIES_URL.ts';
 import { EpisodeSiloCommentReplyResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloCommentReplyResponseMock.ts';
 import { EpisodeSiloCommentsResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloCommentsResponseMock.ts';
 import { MovieHereticCommentsResponseMock } from '$mocks/data/summary/movies/heretic/response/MovieHereticCommentsResponseMock.ts';
@@ -47,9 +46,7 @@ export const comments = [
     },
   ),
   http.get(
-    `http://localhost/comments/${
-      assertDefined(EpisodeSiloCommentsMappedMock.at(0)).id
-    }/replies`,
+    SILO_EPISODE_COMMENT_REPLIES_URL,
     () => {
       return HttpResponse.json(EpisodeSiloCommentReplyResponseMock);
     },

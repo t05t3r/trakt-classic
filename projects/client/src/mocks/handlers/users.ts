@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { pageHeaders } from '$mocks/pageHeaders.ts';
 
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { AllListedShowsResponseMock } from '$mocks/data/lists/response/AllListedShowsResponseMock.ts';
@@ -70,7 +71,7 @@ export const users = [
     DROPPED_URL,
     () =>
       HttpResponse.json(DroppedShowsResponseMock, {
-        headers: { 'x-pagination-page': '1', 'x-pagination-page-count': '1' },
+        headers: pageHeaders(),
       }),
   ),
   http.post(
@@ -146,7 +147,7 @@ export const users = [
     HISTORY_URL,
     () =>
       HttpResponse.json(ActivityHistoryResponseMock, {
-        headers: { 'x-pagination-page': '1', 'x-pagination-page-count': '1' },
+        headers: pageHeaders(),
       }),
   ),
   http.get('http://localhost/users/me/history/shows*', () => {
@@ -163,7 +164,7 @@ export const users = [
     'http://localhost/users/me/lists/:id/items*',
     () =>
       HttpResponse.json(ListItemIdsResponseMock, {
-        headers: { 'x-pagination-page': '1', 'x-pagination-page-count': '1' },
+        headers: pageHeaders(),
       }),
   ),
   http.post(
@@ -181,7 +182,7 @@ export const users = [
     LISTS_URL,
     () =>
       HttpResponse.json(PersonalListsResponseMock, {
-        headers: { 'x-pagination-page': '1', 'x-pagination-page-count': '1' },
+        headers: pageHeaders(),
       }),
   ),
   http.get('http://localhost/users/me/watching*', () => {

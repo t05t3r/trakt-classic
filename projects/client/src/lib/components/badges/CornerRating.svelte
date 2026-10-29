@@ -1,11 +1,16 @@
 <script lang="ts">
-  const { rating, label }: { rating: number | Nil; label: string } = $props();
+  const {
+    rating,
+    label,
+    size,
+  }: { rating: number | Nil; label: string; size?: 'sm' } = $props();
 </script>
 
 {#if rating != null}
   <div
     class="trakt-corner-rating"
     data-rating={rating}
+    data-size={size}
     role="img"
     title={label}
     aria-label={label}
@@ -46,6 +51,17 @@
       line-height: var(--line-height-tag);
       text-align: center;
       transform: rotate(calc(var(--rtl-sign) * 45deg));
+    }
+
+    &[data-size='sm'] {
+      border-inline-end-width: var(--corner-rating-size-sm);
+      border-block-end-width: var(--corner-rating-size-sm);
+
+      .corner-rating-text {
+        inset-inline-end: var(--ni-neg-17);
+        font-size: var(--font-size-label);
+        line-height: var(--line-height-corner-rating-sm);
+      }
     }
   }
 </style>

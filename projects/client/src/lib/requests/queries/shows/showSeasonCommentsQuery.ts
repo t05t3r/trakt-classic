@@ -2,7 +2,6 @@ import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { mapToMediaComment } from '$lib/requests/_internal/mapToMediaComment.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import type { CommentSortType } from '$lib/requests/models/CommentSortType.ts';
-import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { MediaCommentSchema } from '$lib/requests/models/MediaComment.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
@@ -42,10 +41,7 @@ const showSeasonCommentsRequest = (
 
 export const showSeasonCommentsQuery = defineInfiniteQuery({
   key: 'showSeasonComments',
-  invalidations: [
-    InvalidateAction.Comment.Post('season'),
-    InvalidateAction.Comment.Reply('season'),
-  ],
+  invalidations: [],
   dependencies: (params) => [
     params.slug,
     params.season,

@@ -51,6 +51,7 @@ const UserSettingsSchema = z.object({
     hasWatchAgain: z.boolean(),
     showRatingPrompt: z.boolean(),
     displayEarlyRatings: z.boolean(),
+    hideCommentSpoilers: z.boolean(),
   }),
   genres: z.object({
     loved: genreOptionSchema.array(),
@@ -151,6 +152,7 @@ function mapUserSettingsResponse(response: SettingsResponse): UserSettings {
         browsing?.spoilers.shows,
       ]
         .some((topic) => topic?.includes('hide')),
+      hideCommentSpoilers: browsing?.spoilers.comments === 'hide',
     },
     genres: {
       loved: browsing?.genres?.favorites ?? [],

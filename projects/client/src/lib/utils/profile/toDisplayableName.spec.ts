@@ -9,7 +9,7 @@ describe('toDisplayableName', () => {
     );
   });
 
-  it('should return username with @ prefix when full name is empty string', () => {
+  it('should return the plain username when full name is empty string', () => {
     const profile = {
       ...ExtendedUserSettingsMappedMock,
       name: {
@@ -17,6 +17,6 @@ describe('toDisplayableName', () => {
       },
     };
 
-    expect(toDisplayableName(profile)).toBe(`@${profile.username}`);
+    expect(toDisplayableName(profile)).toBe(profile.username);
   });
 });

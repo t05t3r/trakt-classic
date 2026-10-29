@@ -69,7 +69,7 @@
     aria-labelledby={shown ? tabId(shownIndex) : undefined}
   >
     {#if shown}
-      {@render children(shown.value)}
+      {@render children(shown.value, tabId(shownIndex))}
     {/if}
   </div>
 </div>
@@ -83,6 +83,8 @@
       flex-wrap: wrap;
       align-items: flex-start;
       margin-block-start: var(--ni-neg-2);
+      // Padding, since a margin collapses into the pane's first top margin.
+      padding-block-end: var(--ni-2);
     }
 
     .pill-tab {

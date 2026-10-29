@@ -99,14 +99,11 @@
     }
 
     .list-row-avatar {
+      @include ringed-avatar;
+
       flex: none;
-      box-sizing: border-box;
       width: var(--avatar-size-m);
       height: var(--avatar-size-m);
-      overflow: hidden;
-      border: var(--avatar-ring) solid var(--color-avatar-ring);
-      border-radius: var(--border-radius-round);
-      background: var(--color-avatar-ring);
     }
 
     .list-row-names {

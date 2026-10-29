@@ -3,6 +3,7 @@
   import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
   import IconCircleMinus from '@tabler/icons-svelte/icons/circle-minus';
   import IconCirclePlus from '@tabler/icons-svelte/icons/circle-plus';
+  import { tick } from 'svelte';
   import type { LoadMoreProps } from './_internal/LoadMoreProps.ts';
 
   const { showLess, showMore, onless, onmore, variant }: LoadMoreProps =
@@ -10,6 +11,14 @@
 
   let navigator = $state<HTMLElement>();
   const retention = createFocusRetention();
+
+  // "less" collapses what sits above the pill, which can carry it out of view;
+  // the focus moves without scrolling, so the pill is brought back here.
+  const less = async () => {
+    onless();
+    await tick();
+    navigator?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  };
 
   // A control that reached its limit leaves, so the other one takes its focus.
   $effect(() => {
@@ -29,7 +38,7 @@
     {@attach retention.track}
   >
     {#if showLess}
-      <button type="button" class="load-more-control" onclick={onless}>
+      <button type="button" class="load-more-control" onclick={less}>
         <IconCircleMinus class="load-more-glyph" aria-hidden="true" />
         {m.button_text_show_less()}
       </button>
@@ -53,6 +62,8 @@
     display: inline-block;
     // A hook a caller sets to move the pill off its edge.
     margin-block-start: var(--load-more-offset, var(--ni-neg-2));
+    // Scrolled back into view after "less", it stops below the fixed navbar.
+    scroll-margin-block-start: var(--header-height);
     border: var(--border-thickness-xxs) solid var(--color-border-navigator);
     border-radius: var(--border-radius-m);
     background: var(--color-surface-sunken);

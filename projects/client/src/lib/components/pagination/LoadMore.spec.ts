@@ -1,7 +1,10 @@
+import { mountElement } from '$test/beds/dom/mountElement.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { tick } from 'svelte';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LoadMore from './LoadMore.svelte';
 
 function renderLoadMore(
@@ -18,6 +21,11 @@ function renderLoadMore(
 }
 
 describe('component: LoadMore', () => {
+  // "less" scrolls its controls into view, which jsdom cannot do.
+  beforeEach(() => {
+    stubScrollIntoView();
+  });
+
   it('should call onless and onmore from their controls', async () => {
     const { onless, onmore } = renderLoadMore();
 
@@ -116,6 +124,31 @@ describe('component: LoadMore', () => {
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
+  it('should bring its controls into view at once after less', async () => {
+    const scroll = stubScrollIntoView();
+    renderLoadMore();
+    const navigator = screen.getByRole('button', { name: 'less' })
+      .parentElement;
+
+    await userEvent.click(screen.getByRole('button', { name: 'less' }));
+
+    expect(scroll.mock.contexts).toEqual([navigator]);
+    expect(scroll).toHaveBeenCalledWith({
+      block: 'nearest',
+      behavior: 'instant',
+    });
+  });
+
+  it('should leave the scroll where it is after more', async () => {
+    const scroll = stubScrollIntoView();
+    renderLoadMore();
+
+    await userEvent.click(screen.getByRole('button', { name: 'more' }));
+    await waitNegativeClaim();
+
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
   it('should leave the focus where it is when a control it is not on leaves', async () => {
     const props = {
       showLess: true,
@@ -140,9 +173,7 @@ describe('component: LoadMore', () => {
       onmore: vi.fn(),
     };
     const { rerender } = render(LoadMore, { props });
-    const elsewhere = document.createElement('button');
-    document.body.append(elsewhere);
-    onTestFinished(() => elsewhere.remove());
+    const elsewhere = mountElement('button');
     screen.getByRole('button', { name: 'more' }).focus();
 
     elsewhere.focus();

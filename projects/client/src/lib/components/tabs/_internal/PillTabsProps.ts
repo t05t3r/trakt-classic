@@ -12,5 +12,6 @@ export type PillTabsProps = {
   tabs: ReadonlyArray<PillTab>;
   value: string;
   onValueChange: (value: string) => void;
-  children: Snippet<[string]>;
+  // Takes the shown tab's value and the id of its tab, which can describe what the pane holds.
+  children: Snippet<[string, string]>;
 };

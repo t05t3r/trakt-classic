@@ -36,6 +36,10 @@
     listsStatus,
   } = useMovie(fromRune(() => slug));
 
+  const media = $derived(
+    $movie ? toMediaCard({ type: 'movie', movie: $movie }).target : undefined,
+  );
+
   const sections: ReadonlyArray<InfoSection> = $derived([
     {
       id: 'overview',
@@ -82,7 +86,7 @@
 {/snippet}
 
 {#snippet overviewContent()}
-  {#if $movie}
+  {#if $movie && media}
     <!-- Keyed, so the next movie's overview starts clamped. -->
     {#key $movie.id}
       <SummaryOverview
@@ -92,10 +96,7 @@
         trailer={$movie.trailer}
       >
         {#snippet actions()}
-          <ActionColumn
-            target={toMediaCard({ type: 'movie', movie: $movie }).target}
-            favorite
-          />
+          <ActionColumn target={media} favorite />
         {/snippet}
       </SummaryOverview>
     {/key}
@@ -107,7 +108,13 @@
 {/snippet}
 
 {#snippet commentsContent()}
-  <SummaryComments status={$commentsStatus} />
+  {#if $movie && media}
+    <SummaryComments
+      status={$commentsStatus}
+      target={{ type: 'movie', slug: $movie.slug }}
+      {media}
+    />
+  {/if}
 {/snippet}
 
 {#snippet listsContent()}

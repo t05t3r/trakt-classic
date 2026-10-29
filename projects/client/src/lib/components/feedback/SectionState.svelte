@@ -1,9 +1,7 @@
 <script lang="ts" generics="T">
   import SectionHeader from '$lib/components/headers/SectionHeader.svelte';
-  import * as m from '$lib/features/i18n/messages.ts';
-  import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
-  import type { Attachment } from 'svelte/attachments';
   import EmptyState from './EmptyState.svelte';
+  import SectionError from './SectionError.svelte';
   import type { SectionStateProps } from './SectionStateProps.ts';
 
   const { header, lead, label, status, emptyText, children }:
@@ -13,17 +11,6 @@
   const isLoading = $derived(status.kind === 'loading');
 
   let section: HTMLElement | undefined = $state();
-  const retention = createFocusRetention();
-
-  // Remembered on the press, since a Safari click leaves the focus on the body.
-  const retryInPlace = (button: HTMLButtonElement, retry: () => void) => {
-    retention.remember(button);
-    retry();
-  };
-
-  // A pressed retry may unmount its own button, so the section holds the focus it drops.
-  const holdFocusOnLeave: Attachment<HTMLButtonElement> = () => () =>
-    retention.settle(section);
 </script>
 
 <section
@@ -46,18 +33,7 @@
   {#if status.kind === 'empty'}
     <EmptyState>{emptyText}</EmptyState>
   {:else if status.kind === 'error'}
-    <EmptyState>
-      {m.error_text_section_load()}
-      <button
-        type="button"
-        class="section-state-retry"
-        aria-describedby={titleId}
-        onclick={({ currentTarget }) => retryInPlace(currentTarget, status.retry)}
-        {@attach holdFocusOnLeave}
-      >
-        {m.button_text_retry()}
-      </button>
-    </EmptyState>
+    <SectionError retry={status.retry} fallback={section} describedBy={titleId} />
   {:else if status.kind === 'ready'}
     {@render children?.(status.data)}
   {/if}
@@ -77,15 +53,6 @@
     .section-state-title {
       flex: 1;
       min-width: var(--ni-0);
-    }
-
-    .section-state-retry {
-      padding: var(--ni-0);
-      border: none;
-      background: none;
-      color: var(--color-link);
-      text-decoration: underline;
-      cursor: pointer;
     }
   }
 </style>

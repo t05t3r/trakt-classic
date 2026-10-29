@@ -1,25 +1,16 @@
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import { blurOnMoveAndRemoval } from '$test/beds/focus/blurOnMoveAndRemoval.ts';
 import { honourInert } from '$test/beds/focus/honourInert.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createFocusRetention } from './createFocusRetention.ts';
 
-function mount<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  parent: HTMLElement = document.body,
-) {
-  const element = document.createElement(tag);
-  parent.append(element);
-  onTestFinished(() => element.remove());
-  return element;
-}
-
 // A section that holds a tracked region of two buttons.
 function mountRegion() {
-  const fallback = mount('section');
-  const region = mount('div', fallback);
-  const control = mount('button', region);
-  const sibling = mount('button', region);
+  const fallback = mountElement('section');
+  const region = mountElement('div', fallback);
+  const control = mountElement('button', region);
+  const sibling = mountElement('button', region);
 
   return { fallback, region, control, sibling };
 }
@@ -87,7 +78,7 @@ describe('util: createFocusRetention', () => {
 
   it('should leave focus moved elsewhere before its deferred forget runs', () => {
     const { fallback, region, control } = mountRegion();
-    const elsewhere = mount('button');
+    const elsewhere = mountElement('button');
     const retention = createFocusRetention();
     onTestFinished(retention.track(region));
     control.focus();
@@ -102,7 +93,7 @@ describe('util: createFocusRetention', () => {
 
   it('should leave focus moved elsewhere while its control can still hold it', () => {
     const { fallback, control } = mountRegion();
-    const elsewhere = mount('button');
+    const elsewhere = mountElement('button');
     const retention = createFocusRetention();
     retention.remember(control);
 

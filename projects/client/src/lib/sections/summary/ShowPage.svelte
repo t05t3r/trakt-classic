@@ -60,6 +60,10 @@
     }],
   );
 
+  const media = $derived(
+    $show ? toMediaCard({ type: 'show', show: $show }).target : undefined,
+  );
+
   const sections: ReadonlyArray<InfoSection> = $derived([
     {
       id: 'overview',
@@ -95,7 +99,7 @@
 </svelte:head>
 
 {#snippet overviewContent()}
-  {#if $show}
+  {#if $show && media}
     <!-- Keyed, so the next show's overview starts clamped. -->
     {#key $show.id}
       <SummaryOverview
@@ -105,7 +109,7 @@
       >
         {#snippet actions()}
           <ActionColumn
-            target={toMediaCard({ type: 'show', show: $show }).target}
+            target={media}
             progress={$progressStatus}
             favorite
           />
@@ -137,7 +141,14 @@
 {/snippet}
 
 {#snippet commentsContent()}
-  <SummaryComments status={$commentsStatus} />
+  {#if $show && media}
+    <SummaryComments
+      status={$commentsStatus}
+      target={{ type: 'show', slug: $show.slug }}
+      {media}
+      progress={$progressStatus}
+    />
+  {/if}
 {/snippet}
 
 {#snippet listsContent()}

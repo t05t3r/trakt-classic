@@ -21,6 +21,24 @@ describe('component: CornerRating', () => {
     expect(screen.getByText('8')).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('should mark the small corner by its size', () => {
+    const { container } = render(CornerRating, {
+      props: { rating: 7, label: 'Your rating: 7', size: 'sm' },
+    });
+
+    expect(container.querySelector('.trakt-corner-rating'))
+      .toHaveAttribute('data-size', 'sm');
+  });
+
+  it('should leave the size unset on the default corner', () => {
+    const { container } = render(CornerRating, {
+      props: { rating: 7, label: 'Your rating: 7' },
+    });
+
+    expect(container.querySelector('.trakt-corner-rating'))
+      .not.toHaveAttribute('data-size');
+  });
+
   it('should render nothing without a rating', () => {
     const { container } = render(CornerRating, {
       props: { rating: null, label: 'Your rating' },

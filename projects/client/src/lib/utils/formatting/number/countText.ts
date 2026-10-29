@@ -9,7 +9,8 @@ export type CountUnit =
   | 'plays'
   | 'seasons'
   | 'episodesTitle'
-  | 'comments';
+  | 'comments'
+  | 'replies';
 
 export type Count = { distinct: number; plays: number };
 
@@ -69,6 +70,10 @@ const UNIT_WORDS: Readonly<Record<CountUnit, UnitWords>> = {
     one: m.text_comments_title_one,
     other: m.text_comments_title,
   },
+  replies: {
+    one: m.text_comment_replies_one,
+    other: m.text_comment_replies_other,
+  },
 };
 
 // A count that is not known reads with the plural, as after a dash.
@@ -78,7 +83,10 @@ function word({ count, unit }: WordParams, locale: Locale = 'en'): string {
   return count === 1 ? words.one({}, { locale }) : words.other({}, { locale });
 }
 
-function partsOf({ count, unit }: OfParams, locale: Locale): CountParts {
+function parts(
+  { count, unit }: OfParams,
+  locale: Locale = 'en',
+): CountParts {
   const figure = toGroupedNumber(count, locale);
   const unitWord = word({ count, unit }, locale);
 
@@ -90,7 +98,7 @@ function partsOf({ count, unit }: OfParams, locale: Locale): CountParts {
 }
 
 function of({ count, unit }: OfParams, locale: Locale = 'en'): string {
-  return partsOf({ count, unit }, locale).count;
+  return parts({ count, unit }, locale).count;
 }
 
 function playsText(
@@ -112,21 +120,21 @@ function withPlays(
   { count: { distinct, plays = 0 }, unit, form }: WithPlaysParams,
   locale: Locale = 'en',
 ): CountWithPlays {
-  const parts = partsOf({ count: distinct, unit }, locale);
+  const distinctParts = parts({ count: distinct, unit }, locale);
   if (plays <= distinct) {
-    return { ...parts, plays: undefined, text: parts.count };
+    return { ...distinctParts, plays: undefined, text: distinctParts.count };
   }
 
   const text = playsText({ count: plays, form }, locale);
 
   return {
-    ...parts,
+    ...distinctParts,
     plays: { count: plays, text },
     text: m.text_stats_count_with_plays(
-      { count: parts.count, plays: text },
+      { count: distinctParts.count, plays: text },
       { locale },
     ),
   };
 }
 
-export const countText = { word, of, withPlays };
+export const countText = { word, of, parts, withPlays };

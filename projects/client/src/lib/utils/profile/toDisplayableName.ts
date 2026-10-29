@@ -10,5 +10,5 @@ export function toDisplayableName(profile: UserWithName) {
     return profile.name.full;
   }
 
-  return `@${profile.username}`;
+  return profile.username;
 }

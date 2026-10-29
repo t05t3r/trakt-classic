@@ -7,6 +7,7 @@
   import { toMediaCard } from '$lib/features/media-card/toMediaCard.ts';
   import type { Season } from '$lib/requests/models/Season.ts';
   import { countText } from '$lib/utils/formatting/number/countText.ts';
+  import { isProgressComplete } from '$lib/utils/media/isProgressComplete.ts';
   import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
   import { SEASONS_SORT } from '../_internal/SEASONS_SORT.ts';
   import { sortSeasons } from '../_internal/sortSeasons.ts';
@@ -48,7 +49,7 @@
   const isWatched = (season: Season) => {
     const watched = progressOf(season);
     if (!watched || season.number === SPECIALS) return false;
-    return watched.total > 0 && watched.completed === watched.total;
+    return isProgressComplete(watched);
   };
 </script>
 

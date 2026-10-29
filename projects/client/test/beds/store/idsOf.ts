@@ -1,5 +1,5 @@
-import type { TargetId } from '$lib/requests/models/TargetId.ts';
-
-export function idsOf(entries: ReadonlyArray<TargetId>): ReadonlyArray<number> {
+export function idsOf(
+  entries: ReadonlyArray<{ id: number }>,
+): ReadonlyArray<number> {
   return entries.map(({ id }) => id);
 }

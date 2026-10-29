@@ -2,7 +2,6 @@ import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { mapToMediaComment } from '$lib/requests/_internal/mapToMediaComment.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import type { CommentSortType } from '$lib/requests/models/CommentSortType.ts';
-import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { MediaCommentSchema } from '$lib/requests/models/MediaComment.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
@@ -34,10 +33,7 @@ const showCommentsRequest = (
 
 export const showCommentsQuery = defineInfiniteQuery({
   key: 'showComments',
-  invalidations: [
-    InvalidateAction.Comment.Post('show'),
-    InvalidateAction.Comment.Reply('show'),
-  ],
+  invalidations: [],
   dependencies: (
     params,
   ) => [params.slug, params.page, params.limit, params.sort, params.language],

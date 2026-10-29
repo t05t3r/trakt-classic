@@ -1,6 +1,7 @@
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import { blurOnMoveAndRemoval } from '$test/beds/focus/blurOnMoveAndRemoval.ts';
 import { honourInert } from '$test/beds/focus/honourInert.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
@@ -11,18 +12,11 @@ import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import RowRevealGridHost from '$test/beds/pagination/RowRevealGridHost.svelte';
 import RowRevealMenuGridHost from '$test/beds/pagination/RowRevealMenuGridHost.svelte';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps, createRawSnippet, tick } from 'svelte';
-import {
-  beforeEach,
-  describe,
-  expect,
-  expectTypeOf,
-  it,
-  onTestFinished,
-  vi,
-} from 'vitest';
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { RowReveal } from './RowReveal.ts';
 import RowRevealGrid from './RowRevealGrid.svelte';
 
@@ -210,6 +204,8 @@ describe('component: RowRevealGrid', () => {
   });
 
   it('should open a row on more and close one on less', async () => {
+    // "less" scrolls its controls into view, which jsdom cannot do.
+    stubScrollIntoView();
     await renderGrid({ count: 18, rowCount: 1 });
 
     await userEvent.click(screen.getByRole('button', { name: 'more' }));
@@ -241,6 +237,8 @@ describe('component: RowRevealGrid', () => {
   });
 
   it('should close from the rows the items fill', async () => {
+    // "less" scrolls its controls into view, which jsdom cannot do.
+    stubScrollIntoView();
     await renderGrid({ count: 8, rowCount: 3 });
 
     await userEvent.click(screen.getByRole('button', { name: 'less' }));
@@ -359,6 +357,8 @@ describe('component: RowRevealGrid', () => {
   });
 
   it('should let a parent with its own navigator step from the open rows', async () => {
+    // "less" scrolls its controls into view, which jsdom cannot do.
+    stubScrollIntoView();
     renderComponent(RowRevealGridHost, { props: { count: 8, rowCount: 3 } });
 
     await userEvent.click(await screen.findByRole('button', { name: 'less' }));
@@ -534,6 +534,8 @@ describe('component: RowRevealGrid', () => {
     it.each(REMOVALS)(
       'should hand the focus between the navigator controls at either end, where removal $removal',
       async ({ emulate }) => {
+        // "less" scrolls its controls into view, which jsdom cannot do.
+        stubScrollIntoView();
         const ids = Array.from({ length: 18 }, (_, index) => index + 1);
         await renderFocusGrid({ ids, rowCount: 2 });
         emulate();
@@ -588,9 +590,7 @@ describe('component: RowRevealGrid', () => {
     );
 
     it('should hand the focus to the section that holds it by default', async () => {
-      const section = document.createElement('section');
-      document.body.append(section);
-      onTestFinished(() => section.remove());
+      const section = mountElement('section');
       const props = (ids: number[]) => ({
         items: ids.map((id) => ({ id })),
         key: (poster: Poster) => poster.id,

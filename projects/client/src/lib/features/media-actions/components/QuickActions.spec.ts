@@ -2,11 +2,11 @@ import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.t
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
-import { AIRED } from '$mocks/data/media-actions/AIRED.ts';
 import { HERETIC_ACTIONS_TARGET } from '$mocks/data/media-actions/HERETIC_ACTIONS_TARGET.ts';
 import { MATRIX_ACTIONS_TARGET } from '$mocks/data/media-actions/MATRIX_ACTIONS_TARGET.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
 import { SILO_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_ACTIONS_TARGET.ts';
+import { SILO_EPISODE_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_EPISODE_ACTIONS_TARGET.ts';
 import { SILO_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_SEASON_ACTIONS_TARGET.ts';
 import { SYNC_FAVORITES_REMOVE_URL } from '$mocks/data/sync/SYNC_FAVORITES_REMOVE_URL.ts';
 import { SYNC_FAVORITES_URL } from '$mocks/data/sync/SYNC_FAVORITES_URL.ts';
@@ -28,7 +28,6 @@ import { createRawSnippet } from 'svelte';
 import { beforeEach, describe, expect, it } from 'vitest';
 import QuickActionsHost from '$test/beds/media-actions/QuickActionsHost.svelte';
 import QuickActions from './QuickActions.svelte';
-import type { QuickActionsTarget } from './QuickActionsProps.ts';
 
 const setLayout = fakeLayouts({ desktop: WELL_KNOWN_MEDIA_QUERY.desktop });
 
@@ -41,17 +40,6 @@ const settledButton = async (name: string) => {
     expect(button(name)).toHaveAttribute('aria-disabled', 'false')
   );
   return button(name);
-};
-
-// Its show's watched history holds this episode's play.
-const SILO_EPISODE: QuickActionsTarget = {
-  type: 'episode',
-  id: 1,
-  title: 'Freedom Day',
-  season: 1,
-  number: 1,
-  show: { id: 180770, title: 'Silo' },
-  airDate: AIRED,
 };
 
 const button = (name: string) => screen.getByRole('button', { name });
@@ -290,7 +278,7 @@ describe('component: QuickActions', () => {
 
   it("should show a watched episode selected, with its show's favourite state", async () => {
     renderComponent(QuickActions, {
-      props: { target: SILO_EPISODE, favorite: true },
+      props: { target: SILO_EPISODE_ACTIONS_TARGET, favorite: true },
     });
 
     const watch = await settledButton('Remove "Freedom Day" from your History');
@@ -315,7 +303,7 @@ describe('component: QuickActions', () => {
       ),
     );
     renderComponent(QuickActions, {
-      props: { target: SILO_EPISODE, favorite: true },
+      props: { target: SILO_EPISODE_ACTIONS_TARGET, favorite: true },
     });
 
     await userEvent.click(

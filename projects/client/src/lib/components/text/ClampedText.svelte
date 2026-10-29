@@ -1,8 +1,8 @@
 <script lang="ts">
   import * as m from '$lib/features/i18n/messages.ts';
   import { appendClassList } from '$lib/utils/actions/appendClassList.ts';
+  import { observeResize } from '$lib/utils/actions/observeResize.ts';
   import type { Snippet } from 'svelte';
-  import type { Attachment } from 'svelte/attachments';
 
   const { children, classList = '' }: { children: Snippet; classList?: string } =
     $props();
@@ -13,13 +13,8 @@
 
   const isTruncated = $derived(isOverflowing && !isExpanded);
 
-  const measureOverflow: Attachment<HTMLElement> = (node) => {
-    const observer = new ResizeObserver(() => {
-      isOverflowing = node.scrollHeight > node.clientHeight;
-    });
-    observer.observe(node);
-
-    return () => observer.disconnect();
+  const measureOverflow = (node: HTMLElement) => {
+    isOverflowing = node.scrollHeight > node.clientHeight;
   };
 
   // The button leaves once pressed, so the focus moves to the text it revealed.
@@ -36,7 +31,7 @@
     class:is-clamped={!isExpanded}
     tabindex="-1"
     use:appendClassList={classList}
-    {@attach measureOverflow}
+    use:observeResize={measureOverflow}
   >
     {@render children()}
     {#if isTruncated}

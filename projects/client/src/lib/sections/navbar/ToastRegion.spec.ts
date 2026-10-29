@@ -1,4 +1,5 @@
 import { useToasts } from '$lib/features/action-toast/stores/useToasts.ts';
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -166,90 +167,69 @@ describe('section: ToastRegion', () => {
     it('should return to the prior element when the last strip is dismissed', async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        const only = focusStrip(0);
+      prior.focus();
+      const only = focusStrip(0);
 
-        await fireEvent.click(only ?? document.body);
-        await tick();
+      await fireEvent.click(only ?? document.body);
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(prior);
-      } finally {
-        prior.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(prior);
     });
 
     it('should return to the prior element when the last strip times out', async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        focusStrip(0);
+      prior.focus();
+      focusStrip(0);
 
-        await vi.runAllTimersAsync();
-        await tick();
+      await vi.runAllTimersAsync();
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(prior);
-      } finally {
-        prior.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(prior);
     });
 
     it('should return to the prior element after moving through the remaining strips', async () => {
       render(ToastRegion);
       await notifyAll('first', 'second');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        await fireEvent.click(focusStrip(0) ?? document.body);
-        await tick();
-        await fireEvent.click(dismissButtons().at(0) ?? document.body);
-        await tick();
+      prior.focus();
+      await fireEvent.click(focusStrip(0) ?? document.body);
+      await tick();
+      await fireEvent.click(dismissButtons().at(0) ?? document.body);
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(prior);
-      } finally {
-        prior.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(prior);
     });
 
     it('should keep the prior element while focus moves between strips', async () => {
       render(ToastRegion);
       await notifyAll('first', 'second');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        focusStrip(0);
-        focusStrip(1);
-        await fireEvent.click(dismissButtons().at(0) ?? document.body);
-        await tick();
-        await fireEvent.click(focusStrip(0) ?? document.body);
-        await tick();
+      prior.focus();
+      focusStrip(0);
+      focusStrip(1);
+      await fireEvent.click(dismissButtons().at(0) ?? document.body);
+      await tick();
+      await fireEvent.click(focusStrip(0) ?? document.body);
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(prior);
-      } finally {
-        prior.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(prior);
     });
 
     it('should move to the main content when the prior element left the document', async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
       prior.focus();
       const only = focusStrip(0);
       prior.remove();
@@ -264,87 +244,66 @@ describe('section: ToastRegion', () => {
     it('should move to the main content when the prior element cannot take focus', async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        const only = focusStrip(0);
-        prior.disabled = true;
+      prior.focus();
+      const only = focusStrip(0);
+      prior.disabled = true;
 
-        await fireEvent.click(only ?? document.body);
-        await tick();
+      await fireEvent.click(only ?? document.body);
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(main);
-      } finally {
-        prior.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(main);
     });
 
     it('should return to the prior element without scrolling to it', async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        const only = focusStrip(0);
-        const focus = vi.spyOn(prior, 'focus');
+      prior.focus();
+      const only = focusStrip(0);
+      const focus = vi.spyOn(prior, 'focus');
 
-        await fireEvent.click(only ?? document.body);
-        await tick();
+      await fireEvent.click(only ?? document.body);
+      await tick();
 
-        expect(document.activeElement).toBe(prior);
-        expect(focus).toHaveBeenCalledWith({ preventScroll: true });
-      } finally {
-        prior.remove();
-      }
+      expect(document.activeElement).toBe(prior);
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
     });
 
     it("should keep focus where the prior element's own focus handler moved it", async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      const moved = document.createElement('button');
-      document.body.append(prior, moved);
+      const prior = mountElement('button');
+      const moved = mountElement('button');
 
-      try {
-        prior.focus();
-        const only = focusStrip(0);
-        prior.addEventListener('focus', () => moved.focus());
+      prior.focus();
+      const only = focusStrip(0);
+      prior.addEventListener('focus', () => moved.focus());
 
-        await fireEvent.click(only ?? document.body);
-        await tick();
+      await fireEvent.click(only ?? document.body);
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(moved);
-      } finally {
-        prior.remove();
-        moved.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(moved);
     });
 
     it('should move to the main content when focus last entered with no related target', async () => {
       render(ToastRegion);
       await notifyAll('first');
-      const prior = document.createElement('button');
-      document.body.append(prior);
+      const prior = mountElement('button');
 
-      try {
-        prior.focus();
-        focusStrip(0)?.blur();
-        const only = focusStrip(0);
+      prior.focus();
+      focusStrip(0)?.blur();
+      const only = focusStrip(0);
 
-        await fireEvent.click(only ?? document.body);
-        await tick();
+      await fireEvent.click(only ?? document.body);
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(0);
-        expect(document.activeElement).toBe(main);
-      } finally {
-        prior.remove();
-      }
+      expect(dismissButtons()).toHaveLength(0);
+      expect(document.activeElement).toBe(main);
     });
 
     it('should leave focus on a strip that stays', async () => {
@@ -362,20 +321,15 @@ describe('section: ToastRegion', () => {
       render(ToastRegion);
       await notifyAll('first', 'second');
       const second = focusStrip(1);
-      const external = document.createElement('button');
-      document.body.append(external);
+      const external = mountElement('button');
 
-      try {
-        const dismissed = fireEvent.click(second ?? document.body);
-        external.focus();
-        await dismissed;
-        await tick();
+      const dismissed = fireEvent.click(second ?? document.body);
+      external.focus();
+      await dismissed;
+      await tick();
 
-        expect(dismissButtons()).toHaveLength(1);
-        expect(document.activeElement).toBe(external);
-      } finally {
-        external.remove();
-      }
+      expect(dismissButtons()).toHaveLength(1);
+      expect(document.activeElement).toBe(external);
     });
   });
 
@@ -384,19 +338,14 @@ describe('section: ToastRegion', () => {
       render(ToastRegion);
       await notifyAll('existing');
       focusStrip(0);
-      const external = document.createElement('button');
-      document.body.append(external);
+      const external = mountElement('button');
 
-      try {
-        useToasts().notify('new');
-        external.focus();
-        await tick();
-        await tick();
+      useToasts().notify('new');
+      external.focus();
+      await tick();
+      await tick();
 
-        expect(document.activeElement).toBe(external);
-      } finally {
-        external.remove();
-      }
+      expect(document.activeElement).toBe(external);
     });
   });
 });

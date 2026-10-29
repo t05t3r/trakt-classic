@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, type Snippet } from 'svelte';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import PillTabs from './PillTabs.svelte';
 
@@ -14,9 +14,26 @@ const children = createRawSnippet((value: () => string) => ({
   render: () => `<p>Pane ${value()}</p>`,
 }));
 
-function renderTabs(props: { value?: string; tabs?: typeof TABS } = {}) {
+// A raw snippet renders once, so the pane keeps the getter for after a switch.
+function recordTabId() {
+  const tabIds: Array<() => string> = [];
+  const pane = createRawSnippet((value: () => string, tabId: () => string) => {
+    tabIds.push(tabId);
+    return { render: () => `<p>Pane ${value()}</p>` };
+  });
+
+  return { pane, shownTabId: () => tabIds.at(-1)?.() };
+}
+
+function renderTabs(
+  props: {
+    value?: string;
+    tabs?: typeof TABS;
+    children?: Snippet<[string, string]>;
+  } = {},
+) {
   const onValueChange = vi.fn();
-  render(PillTabs, {
+  const { rerender } = render(PillTabs, {
     props: {
       label: 'Actors',
       tabs: TABS,
@@ -27,7 +44,7 @@ function renderTabs(props: { value?: string; tabs?: typeof TABS } = {}) {
     },
   });
 
-  return { onValueChange };
+  return { onValueChange, rerender };
 }
 
 describe('component: PillTabs', () => {
@@ -79,6 +96,24 @@ describe('component: PillTabs', () => {
     renderTabs({ value: 'guest' });
 
     expect(screen.getByRole('tabpanel')).toHaveTextContent('Pane guest');
+  });
+
+  it("should pass the pane the id of the shown tab's element", () => {
+    const { pane, shownTabId } = recordTabId();
+    renderTabs({ value: 'guest', children: pane });
+
+    expect(shownTabId()).toBe(
+      screen.getByRole('tab', { name: 'Guest Stars 112' }).id,
+    );
+  });
+
+  it("should pass the pane the newly shown tab's id after a switch", async () => {
+    const { pane, shownTabId } = recordTabId();
+    const { rerender } = renderTabs({ children: pane });
+
+    await rerender({ value: 'crew' });
+
+    expect(shownTabId()).toBe(screen.getByRole('tab', { name: 'Crew' }).id);
   });
 
   it('should mark only the active tab for the active pill style', () => {

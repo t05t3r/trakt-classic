@@ -48,6 +48,15 @@ describe('util: countText', () => {
     ])('should title $name $title', ({ count, title }) => {
       expect(countText.word({ count, unit: 'comments' })).toBe(title);
     });
+
+    it.each([
+      { name: 'one reply', count: 1, word: 'reply' },
+      { name: 'no replies', count: 0, word: 'replies' },
+      { name: 'four replies', count: 4, word: 'replies' },
+      { name: 'an unknown count', count: undefined, word: 'replies' },
+    ])('should word $name $word', ({ count, word }) => {
+      expect(countText.word({ count, unit: 'replies' })).toBe(word);
+    });
   });
 
   describe('of', () => {
@@ -55,6 +64,24 @@ describe('util: countText', () => {
       expect(countText.of({ count: 1, unit: 'movies' })).toBe('1 movie');
       expect(countText.of({ count: 66, unit: 'episodes' })).toBe('66 episodes');
       expect(countText.of({ count: 1234, unit: 'shows' })).toBe('1,234 shows');
+    });
+  });
+
+  describe('parts', () => {
+    it('should give the count, its figure grouped with commas and its word', () => {
+      expect(countText.parts({ count: 1234, unit: 'plays' })).toEqual({
+        count: '1,234 plays',
+        figure: '1,234',
+        word: 'plays',
+      });
+    });
+
+    it('should give the singular word for a count of one', () => {
+      expect(countText.parts({ count: 1, unit: 'plays' })).toEqual({
+        count: '1 play',
+        figure: '1',
+        word: 'play',
+      });
     });
   });
 
