@@ -1,23 +1,10 @@
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { mountElement } from '$test/beds/dom/mountElement.ts';
+import { describe, expect, it, vi } from 'vitest';
 import { holdFallbackFocus } from './holdFallbackFocus.ts';
-
-const mountTarget = () => {
-  const target = document.createElement('main');
-  document.body.append(target);
-  onTestFinished(() => target.remove());
-  return target;
-};
-
-const mountButton = () => {
-  const button = document.createElement('button');
-  document.body.append(button);
-  onTestFinished(() => button.remove());
-  return button;
-};
 
 describe('util: holdFallbackFocus', () => {
   it('should focus the target without scrolling', () => {
-    const target = mountTarget();
+    const target = mountElement('main');
     const focus = vi.spyOn(target, 'focus');
 
     holdFallbackFocus(target);
@@ -27,8 +14,8 @@ describe('util: holdFallbackFocus', () => {
   });
 
   it('should drop the tabindex it added once focus moves elsewhere', () => {
-    const target = mountTarget();
-    const other = mountButton();
+    const target = mountElement('main');
+    const other = mountElement('button');
 
     holdFallbackFocus(target);
     const added = target.getAttribute('tabindex');
@@ -39,7 +26,7 @@ describe('util: holdFallbackFocus', () => {
   });
 
   it('should keep its tabindex through a blur that leaves it active', () => {
-    const target = mountTarget();
+    const target = mountElement('main');
 
     holdFallbackFocus(target);
     target.dispatchEvent(new FocusEvent('blur'));
@@ -49,8 +36,8 @@ describe('util: holdFallbackFocus', () => {
   });
 
   it('should still drop its tabindex on a real blur after one that left it active', () => {
-    const target = mountTarget();
-    const other = mountButton();
+    const target = mountElement('main');
+    const other = mountElement('button');
 
     holdFallbackFocus(target);
     target.dispatchEvent(new FocusEvent('blur'));
@@ -60,8 +47,8 @@ describe('util: holdFallbackFocus', () => {
   });
 
   it('should leave no listener behind once focus moves elsewhere', () => {
-    const target = mountTarget();
-    const other = mountButton();
+    const target = mountElement('main');
+    const other = mountElement('button');
 
     holdFallbackFocus(target);
     const focused = document.activeElement === target;
@@ -78,7 +65,7 @@ describe('util: holdFallbackFocus', () => {
   });
 
   it('should leave a tabindex the target already carries', () => {
-    const target = mountTarget();
+    const target = mountElement('main');
     target.tabIndex = 0;
 
     holdFallbackFocus(target);

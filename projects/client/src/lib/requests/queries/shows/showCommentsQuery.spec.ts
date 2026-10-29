@@ -1,25 +1,20 @@
+import { SILO_COMMENTS_URL } from '$mocks/data/shows/SILO_COMMENTS_URL.ts';
 import { ShowSiloCommentsMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloCommentsMappedMock.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
-import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
-import { runQuery } from '$test/beds/query/runQuery.ts';
-import { mapToEntries } from '$test/utils/mapToEntries.ts';
-import { describe, expect, it } from 'vitest';
+import { ShowSiloCommentsResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloCommentsResponseMock.ts';
+import { describeCommentsQuery } from '$test/beds/query/describeCommentsQuery.ts';
 import { showCommentsQuery } from './showCommentsQuery.ts';
 
-describe('showCommentsQuery', () => {
-  it('should query for comments on a show', async () => {
-    const result = await runQuery({
-      factory: () =>
-        createTestBedInfiniteQuery(
-          showCommentsQuery({
-            slug: ShowSiloMappedMock.slug,
-            limit: 10,
-            sort: 'likes',
-          }),
-        ),
-      mapper: mapToEntries,
-    });
-
-    expect(result).to.deep.equal(ShowSiloCommentsMappedMock);
-  });
+describeCommentsQuery({
+  name: 'showCommentsQuery',
+  subject: 'a show',
+  query: () =>
+    showCommentsQuery({
+      slug: ShowSiloMappedMock.slug,
+      limit: 10,
+      sort: 'likes',
+    }),
+  url: `${SILO_COMMENTS_URL}/likes`,
+  response: ShowSiloCommentsResponseMock,
+  mapped: ShowSiloCommentsMappedMock,
 });

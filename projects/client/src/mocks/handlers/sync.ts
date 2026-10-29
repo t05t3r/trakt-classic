@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { pageHeaders } from '$mocks/pageHeaders.ts';
 
 import { MediaLibraryResponseMock } from '$mocks/data/sync/response/MediaLibraryResponseMock.ts';
 import { UpNextResponseMock } from '$mocks/data/sync/response/UpNextResponseMock.ts';
@@ -90,24 +91,17 @@ export const sync = [
   http.get(WATCHLIST_URL, (response) => {
     const { searchParams } = new URL(response.request.url);
     const extended = searchParams.get('extended');
-    const pageHeaders = {
-      'x-pagination-page': '1',
-      'x-pagination-page-count': '1',
-    };
 
     if (extended === 'full,images') {
       return HttpResponse.json(WatchlistPreviewResponseMock, {
-        headers: {
-          ...pageHeaders,
-          'x-pagination-item-count': String(
-            WatchlistPreviewResponseMock.length,
-          ),
-        },
+        headers: pageHeaders({
+          itemCount: WatchlistPreviewResponseMock.length,
+        }),
       });
     }
 
     return HttpResponse.json(WatchlistAllResponseMock, {
-      headers: pageHeaders,
+      headers: pageHeaders(),
     });
   }),
   http.get(

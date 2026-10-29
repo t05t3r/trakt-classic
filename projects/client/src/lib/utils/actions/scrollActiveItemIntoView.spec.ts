@@ -1,6 +1,7 @@
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import { stubRowLayout } from '$test/beds/layout/stubRowLayout.ts';
 import { nextFrame } from '$test/beds/promise/nextFrame.ts';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -14,14 +15,8 @@ const setMotion = fakeLayouts({
 // Ten items of 40 in a strip 100 wide, so the eighth starts out of view.
 function renderStrip() {
   const scrollTo = stubRowLayout({ itemWidth: 40, viewWidth: 100 });
-  const items = Array.from(
-    { length: 10 },
-    () => document.createElement('div'),
-  );
-  const strip = document.createElement('div');
-  strip.append(...items);
-  document.body.append(strip);
-  onTestFinished(() => strip.remove());
+  const strip = mountElement('div');
+  const items = Array.from({ length: 10 }, () => mountElement('div', strip));
 
   return { scrollTo, strip, eighth: assertDefined(items.at(7)) };
 }

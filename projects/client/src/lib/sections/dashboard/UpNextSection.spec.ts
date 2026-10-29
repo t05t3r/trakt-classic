@@ -19,6 +19,7 @@ import { collapsedCells } from '$test/beds/pagination/collapsedCells.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
+import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import type { UpNextResponse } from '@trakt/api';
@@ -197,6 +198,8 @@ describe('section: UpNextSection', () => {
     afterEach(() => safeLocalStorage.clear());
 
     it('should open the stored rows after a remount, on less and on more', async () => {
+      // "less" scrolls its controls into view, which jsdom cannot do.
+      stubScrollIntoView();
       serveUpNext(() => HttpResponse.json(THREE_ROWS));
       const first = await renderSection(SECTION);
       await readyCards({ region: first, selector: CARD_SELECTOR, count: 13 });
@@ -219,6 +222,8 @@ describe('section: UpNextSection', () => {
     });
 
     it('should render the cards with the stored rows from the start, with no jump', async () => {
+      // "less" scrolls its controls into view, which jsdom cannot do.
+      stubScrollIntoView();
       serveUpNext(() => HttpResponse.json(THREE_ROWS));
       const first = await renderSection(SECTION);
       await readyCards({ region: first, selector: CARD_SELECTOR, count: 13 });

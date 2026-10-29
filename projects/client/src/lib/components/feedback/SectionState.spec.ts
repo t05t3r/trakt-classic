@@ -1,8 +1,9 @@
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import IconPlayerTrackNext from '@tabler/icons-svelte/icons/player-track-next';
 import { createRawSnippet } from 'svelte';
-import { describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import SectionState from './SectionState.svelte';
 import type { SectionStateProps } from './SectionStateProps.ts';
 import type { SectionStatus } from './SectionStatus.ts';
@@ -198,9 +199,7 @@ describe('component: SectionState', () => {
 
     it('should keep focus moved elsewhere before a late reload removes the retry', async () => {
       const { rerender } = renderSection({ kind: 'error', retry: vi.fn() });
-      const elsewhere = document.createElement('button');
-      document.body.append(elsewhere);
-      onTestFinished(() => elsewhere.remove());
+      const elsewhere = mountElement('button');
 
       screen.getByRole('button', { name: 'Retry' }).focus();
       await userEvent.keyboard('{Enter}');

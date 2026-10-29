@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/ExtendedUserSettingsMappedMock.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
+import { HideCommentSpoilersUserSettingsResponseMock } from '$mocks/data/users/response/HideCommentSpoilersUserSettingsResponseMock.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { currentUserSettingsQuery } from './currentUserSettingsQuery.ts';
@@ -36,6 +37,28 @@ describe('currentUserSettingsQuery', () => {
       preferences: {
         ...ExtendedUserSettingsMappedMock.preferences,
         displayEarlyRatings: true,
+      },
+    });
+  });
+
+  it('should map the comments spoiler setting', async () => {
+    server.use(
+      http.get(
+        USER_SETTINGS_URL,
+        () => HttpResponse.json(HideCommentSpoilersUserSettingsResponseMock),
+      ),
+    );
+
+    const result = await runQuery({
+      factory: () => createTestBedQuery(currentUserSettingsQuery()),
+      mapper: (response) => response?.data,
+    });
+
+    expect(result).to.deep.equal({
+      ...ExtendedUserSettingsMappedMock,
+      preferences: {
+        ...ExtendedUserSettingsMappedMock.preferences,
+        hideCommentSpoilers: true,
       },
     });
   });

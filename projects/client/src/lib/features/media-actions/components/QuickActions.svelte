@@ -3,13 +3,13 @@
   import { useFavorite } from '$lib/features/media-actions/stores/useFavorite.ts';
   import { useWatched } from '$lib/features/media-actions/stores/useWatched.ts';
   import { useWatchlist } from '$lib/features/media-actions/stores/useWatchlist.ts';
+  import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
   import IconAlignLeft from '@tabler/icons-svelte/icons/align-left';
   import IconCheck from '@tabler/icons-svelte/icons/check';
   import IconStarFilled from '@tabler/icons-svelte/icons/star-filled';
   import ListMenu from './ListMenu.svelte';
   import QuickIcon from './_internal/QuickIcon.svelte';
   import { hasTargetAired } from './_internal/hasTargetAired.ts';
-  import { toWatchedProps } from './_internal/toWatchedProps.ts';
   import type {
     QuickActionsProps,
     QuickActionsTarget,

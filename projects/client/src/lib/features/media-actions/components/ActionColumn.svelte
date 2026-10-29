@@ -6,6 +6,8 @@
   import { useFavorite } from '$lib/features/media-actions/stores/useFavorite.ts';
   import { useWatched } from '$lib/features/media-actions/stores/useWatched.ts';
   import { useWatchlist } from '$lib/features/media-actions/stores/useWatchlist.ts';
+  import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
+  import { isProgressComplete } from '$lib/utils/media/isProgressComplete.ts';
   import IconAlignLeft from '@tabler/icons-svelte/icons/align-left';
   import IconCheck from '@tabler/icons-svelte/icons/check';
   import IconCircleMinus from '@tabler/icons-svelte/icons/circle-minus';
@@ -19,7 +21,6 @@
   import HistoryChoice from './_internal/HistoryChoice.svelte';
   import type { ActionColumnProps } from './_internal/ActionColumnProps.ts';
   import { hasTargetAired } from './_internal/hasTargetAired.ts';
-  import { toWatchedProps } from './_internal/toWatchedProps.ts';
 
   const { target, progress, favorite = false }: ActionColumnProps = $props();
 
@@ -63,11 +64,6 @@
   const shownProgress = $derived(
     progress?.kind === 'ready' ? progress.data : undefined,
   );
-
-  // A show or season reads watched once it has aired episodes and every one is watched.
-  const isProgressComplete = (
-    { completed, total }: NonNullable<typeof shownProgress>,
-  ) => total > 0 && completed === total;
 
   // A pending write's value until it lands, then the progress.
   const isProgressSelected = () =>

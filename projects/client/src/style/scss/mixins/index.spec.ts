@@ -108,4 +108,22 @@ describe('style: mixins', () => {
       ].join(''),
     );
   });
+
+  it("should ring an avatar round, in the avatar ring's colour by default", async () => {
+    expect(await compileRule('@include ringed-avatar;')).toBe(
+      [
+        'a{box-sizing:border-box;',
+        'overflow:hidden;',
+        'border:var(--avatar-ring) solid var(--color-avatar-ring);',
+        'border-radius:var(--border-radius-round);',
+        'background:var(--color-avatar-ring)}',
+      ].join(''),
+    );
+  });
+
+  it('should ring an avatar in the colour it is given', async () => {
+    expect(await compileRule('@include ringed-avatar(var(--ring));')).toContain(
+      'border:var(--avatar-ring) solid var(--ring);',
+    );
+  });
 });

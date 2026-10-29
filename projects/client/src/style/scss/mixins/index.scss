@@ -214,9 +214,17 @@ $_episode-type-colors: (
   }
 }
 
+// A round avatar ring over the avatar ring's shade, in its colour by default.
+@mixin ringed-avatar($ring-color: var(--color-avatar-ring)) {
+  box-sizing: border-box;
+  overflow: hidden;
+  border: var(--avatar-ring) solid $ring-color;
+  border-radius: var(--border-radius-round);
+  background: var(--color-avatar-ring);
+}
+
 @mixin spoiler-blur() {
-  --blur-size: calc(var(--ni-2) * 1.5);
-  filter: blur(var(--blur-size));
+  filter: blur(var(--blur-spoiler));
 }
 
 @mixin adaptive-gap($property: gap) {

@@ -634,6 +634,7 @@
   --line-height-action-label: var(--ni-34);
   --line-height-card-title: var(--ni-18);
   --line-height-card-subtitle: var(--ni-13);
+  --line-height-corner-rating-sm: var(--ni-10);
   --episode-ribbon-letter-spacing: 0.03125rem;
   --font-size-h1: var(--ni-34);
   --font-size-greeting: var(--ni-34);
@@ -777,11 +778,11 @@
   --genre-bars-padding-block-start: var(--ni-70);
   --action-button-side-width: var(--ni-32);
   --headshot-width: var(--ni-86);
-  --comment-clamp-height: var(--ni-300);
   --clamp-max-height: var(--ni-300);
   --clamp-shade-height: var(--ni-100);
   --rank-badge-size: var(--ni-22);
   --corner-rating-size: var(--ni-30);
+  --corner-rating-size-sm: var(--ni-24);
   --carousel-height: var(--ni-600);
   --featured-tile-height: var(--ni-240);
   // A recommendations phone pill's 25.7px height plus its 8px offset.
@@ -801,6 +802,7 @@
   --text-shadow-on-image: 0 0 var(--ni-20) var(--shade-930);
   --shadow-neighbour-link: 0 0 var(--ni-10) var(--shade-640);
   --blur-header: var(--ni-4);
+  --blur-spoiler: var(--ni-8);
   --icon-stroke-strip: 2.5;
   --icon-stroke-chrome: 1.25;
   --icon-stroke-badge: 2;
@@ -816,6 +818,8 @@
   --icon-size-navigator: var(--ni-16);
   --icon-size-menu-check: var(--ni-13);
   --icon-size-help-arrow: var(--ni-13);
+  --icon-size-comment-watched: var(--ni-13);
+  --icon-size-comment-replies: var(--font-size-small);
   --icon-size-title-row: var(--ni-14);
   --icon-size-sort-direction: var(--ni-22);
   --icon-size-dropdown-caret: var(--ni-16);

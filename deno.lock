@@ -47,6 +47,7 @@
     "npm:globals@17.12.0": "17.12.0",
     "npm:idb-keyval@6.3.0": "6.3.0",
     "npm:jsdom@30.0.1": "30.0.1",
+    "npm:marked@18.0.11": "18.0.11",
     "npm:msw@2.15.0": "2.15.0_typescript@5.9.3",
     "npm:resolve-accept-language@3.2.2": "3.2.2",
     "npm:rxjs@7.8.2": "7.8.2",
@@ -2356,6 +2357,10 @@
         "semver@7.8.5"
       ]
     },
+    "marked@18.0.11": {
+      "integrity": "sha512-HnslJfsZkRPBDJRHvVtAaWlZHEpSu7u8LgQuJCELjRKuWR+hpq4A7sLq3p8HaI9ypVoXDXxV34CsQJEe1+J5Aw==",
+      "bin": true
+    },
     "mdn-data@2.27.1": {
       "integrity": "sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ=="
     },
@@ -3369,6 +3374,7 @@
             "npm:globals@17.12.0",
             "npm:idb-keyval@6.3.0",
             "npm:jsdom@30.0.1",
+            "npm:marked@18.0.11",
             "npm:msw@2.15.0",
             "npm:resolve-accept-language@3.2.2",
             "npm:rxjs@7.8.2",

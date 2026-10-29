@@ -60,6 +60,12 @@
 
   const posterTitle = $derived(seasonLabel(season, $show?.title));
 
+  const media = $derived(
+    $episode && $show
+      ? toMediaCard({ type: 'episode', episode: $episode, show: $show }).target
+      : undefined,
+  );
+
   const sections: ReadonlyArray<InfoSection> = $derived([
     {
       id: 'overview',
@@ -142,7 +148,7 @@
 {/snippet}
 
 {#snippet overviewContent()}
-  {#if $episode && $show}
+  {#if $episode && $show && media}
     <!-- Keyed, so the next episode's overview starts clamped and its column gets its own Target. -->
     {#key $episode.id}
       <SummaryOverview
@@ -150,9 +156,7 @@
         overview={$episode.overview}
       >
         {#snippet actions()}
-          <ActionColumn
-            target={toMediaCard({ type: 'episode', episode: $episode, show: $show }).target}
-          />
+          <ActionColumn target={media} />
         {/snippet}
       </SummaryOverview>
     {/key}
@@ -164,7 +168,18 @@
 {/snippet}
 
 {#snippet commentsContent()}
-  <SummaryComments status={$commentsStatus} />
+  {#if $episode && $show && media}
+    <SummaryComments
+      status={$commentsStatus}
+      target={{
+        type: 'episode',
+        slug: $show.slug,
+        season: $episode.season,
+        episode: $episode.number,
+      }}
+      {media}
+    />
+  {/if}
 {/snippet}
 
 {#snippet listsContent()}

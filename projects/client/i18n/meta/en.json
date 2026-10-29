@@ -2084,6 +2084,18 @@
         }
       }
     },
+    "label_comment_rating": {
+      "default": "{name}'s rating: {rating}",
+      "description": "Tooltip and accessible name of a comment author's rating in the corner of their avatar on a comment card; name is the author's display name, and the corner shows only the number.",
+      "variables": {
+        "name": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "number"
+        }
+      }
+    },
     "label_your_rating_description": {
       "default": "Your rating",
       "description": "Accessible description, never shown, of the user-rating slot in a detail page's ratings bar while it shows the user's stored rating, never while it previews a heart; the slot's name stays its visible number and label, as in '10 Totally Ninja!'."
@@ -2579,8 +2591,8 @@
       "description": "Aria-label for the switch that allows users to mark a review as a spoiler."
     },
     "text_spoiler": {
-      "default": "Spoiler",
-      "description": "Text used to indicate that something is a spoiler."
+      "default": "Spoilers",
+      "description": "Pill in a comment card's header that marks the comment as a spoiler, whose body stays blurred until revealed."
     },
     "button_label_close_error": {
       "default": "Close error",
@@ -3279,6 +3291,10 @@
     "button_label_read_more": {
       "default": "Read more",
       "description": "Text of the button under a clamped text, such as an overview or a list description, that reveals the rest of it."
+    },
+    "button_label_show_spoiler": {
+      "default": "Show spoiler",
+      "description": "Accessible name of the button over a blurred spoiler in a comment, the whole body of a spoiler comment or an inline spoiler, that reveals it."
     },
     "button_label_add_comment": {
       "default": "Add review",
@@ -11467,11 +11483,11 @@
     },
     "text_dashboard_stats_plays_one": {
       "default": "play",
-      "description": "Unit word after a count of one in the dashboard's watch stats (the stats strip and the Last 30 Days section): times watched."
+      "description": "Unit word after a count of one in the dashboard's watch stats (the stats strip and the Last 30 Days section): times watched; also in a comment card's footer, the author's play count, as in '1 play'."
     },
     "text_dashboard_stats_plays_other": {
       "default": "plays",
-      "description": "Unit word after any other count in the dashboard's watch stats (the stats strip and the Last 30 Days section), or after a dash when the stats failed to load: times watched."
+      "description": "Unit word after any other count in the dashboard's watch stats (the stats strip and the Last 30 Days section), or after a dash when the stats failed to load: times watched; also in a comment card's footer, the author's play count, as in '54 plays'."
     },
     "text_dashboard_stats_shows_one": {
       "default": "show",
@@ -11721,6 +11737,52 @@
     "text_comments_empty": {
       "default": "No comments yet.",
       "description": "Shown in a detail page's comments block when the movie or show has no comments."
+    },
+    "text_comments_tab_likes": {
+      "default": "Likes",
+      "description": "Pill tab of a detail page's comments block that shows the most liked comments, followed by its 'All Time' pill, as in 'Likes All Time'."
+    },
+    "text_comments_tab_all_time": {
+      "default": "All Time",
+      "description": "Small pill inside the Likes tab of a detail page's comments block, saying the likes are counted over all time, as in 'Likes All Time'."
+    },
+    "text_comments_tab_recent": {
+      "default": "Recent",
+      "description": "Pill tab of a detail page's comments block that shows the newest comments first."
+    },
+    "text_comment_shout": {
+      "default": "Shout by <b>{name}</b>",
+      "description": "Header of a comment card for a shout, a comment that is not a review; name is the author's display name. The <b> tags wrap the name as a bold highlight - keep them when translating.",
+      "variables": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "text_comment_review": {
+      "default": "Review by <b>{name}</b>",
+      "description": "Header of a comment card for a review; name is the author's display name. The <b> tags wrap the name as a bold highlight - keep them when translating.",
+      "variables": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "text_comment_watched": {
+      "default": "Watched",
+      "description": "Word after the percent in a comment card's footer, the share of the show's or season's aired episodes the author has watched, as in '82% Watched'."
+    },
+    "text_comment_replies_one": {
+      "default": "reply",
+      "description": "Word after the count in a comment card's footer when the comment has one reply, as in '1 reply'; pressing it shows the reply under the comment."
+    },
+    "text_comment_replies_other": {
+      "default": "replies",
+      "description": "Word after the count in a comment card's footer for any other reply count, as in '4 replies' or '0 replies'; pressing a count above 0 shows the replies under the comment, and '0 replies' is plain text."
+    },
+    "text_comment_replies_empty": {
+      "default": "No replies to show.",
+      "description": "Shown under a comment card, in place of its replies, when the comment's replies come back empty."
     },
     "text_external_official_site": {
       "default": "Official Site",

@@ -1,25 +1,16 @@
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { createFocusKeeper } from './createFocusKeeper.ts';
 
-function append<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  parent: HTMLElement,
-) {
-  const element = document.createElement(tag);
-  parent.append(element);
-  return element;
-}
-
 // A section whose grid holds a navigator of two controls.
 function mountGrid() {
-  const fallback = append('section', document.body);
-  onTestFinished(() => fallback.remove());
-  const grid = append('div', fallback);
-  const navigator = append('div', grid);
+  const fallback = mountElement('section');
+  const grid = mountElement('div', fallback);
+  const navigator = mountElement('div', grid);
   navigator.className = 'trakt-load-more';
-  const less = append('button', navigator);
-  const more = append('button', navigator);
+  const less = mountElement('button', navigator);
+  const more = mountElement('button', navigator);
 
   return { fallback, grid, navigator, less, more };
 }

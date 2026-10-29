@@ -37,6 +37,7 @@ export const ExtendedUserSettingsMappedMock: UserSettings = {
     'hasWatchAgain': true,
     'showRatingPrompt': false,
     'displayEarlyRatings': false,
+    'hideCommentSpoilers': false,
   },
   'services': {
     'country': 'us',

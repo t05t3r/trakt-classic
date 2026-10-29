@@ -75,7 +75,6 @@ describe('holdHashSection', () => {
   }
 
   it("should scroll the hash's section to the top on the call", () => {
-    controlResize();
     const { scroll } = stubSectionScroll();
 
     hold('#comments');
@@ -170,7 +169,6 @@ describe('holdHashSection', () => {
   );
 
   it('should match a percent-encoded id', () => {
-    controlResize();
     const { scroll } = stubSectionScroll();
 
     hold('#caf%C3%A9');

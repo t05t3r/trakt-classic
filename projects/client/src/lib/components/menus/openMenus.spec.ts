@@ -1,3 +1,4 @@
+import { mountElement } from '$test/beds/dom/mountElement.ts';
 import MenuHost from '$test/beds/menus/MenuHost.svelte';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
@@ -11,13 +12,6 @@ const trigger = () => screen.getByRole('button', { name: 'Rank' });
 
 function renderMenu() {
   return render(MenuHost, { props: { onSelect: vi.fn() } });
-}
-
-function outsideRegion() {
-  const region = document.createElement('div');
-  document.body.append(region);
-  onTestFinished(() => region.remove());
-  return region;
 }
 
 beforeEach(() => {
@@ -40,7 +34,7 @@ describe('openMenus', () => {
 
       await openMenuFromKeyboard(trigger(), 'Added Date');
 
-      expect(openMenuIn(outsideRegion())).toBeUndefined();
+      expect(openMenuIn(mountElement('div'))).toBeUndefined();
     });
   });
 
@@ -102,7 +96,7 @@ describe('openMenus', () => {
 
     it('should not report a menu outside the region', async () => {
       renderMenu();
-      const onToggle = watch(outsideRegion());
+      const onToggle = watch(mountElement('div'));
 
       await openMenuFromKeyboard(trigger(), 'Added Date');
       await waitNegativeClaim();

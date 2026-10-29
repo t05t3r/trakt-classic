@@ -1,5 +1,5 @@
 import type { WatchedStoreProps } from '$lib/features/media-actions/stores/useWatched.ts';
-import type { QuickActionsTarget } from '../QuickActionsProps.ts';
+import type { QuickActionsTarget } from '$lib/features/media-actions/components/QuickActionsProps.ts';
 
 export function toWatchedProps(media: QuickActionsTarget): WatchedStoreProps {
   switch (media.type) {

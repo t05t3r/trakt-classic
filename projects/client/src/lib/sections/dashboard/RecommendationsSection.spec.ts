@@ -18,6 +18,7 @@ import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
+import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -155,6 +156,8 @@ async function clickShared(name: 'less' | 'more') {
 describe('section: RecommendationsSection', () => {
   beforeEach(() => {
     setLayout('desktop');
+    // "less" scrolls its controls into view, which jsdom cannot do.
+    stubScrollIntoView();
   });
 
   afterEach(() => safeLocalStorage.clear());

@@ -8,7 +8,7 @@ import '$test/mocks/matchMedia.mock.ts';
 import '$test/mocks/messages.mock.ts';
 import '$test/mocks/navigation.mock.ts';
 import '$test/mocks/navigator.mock.ts';
-import '$test/mocks/ResizeObserver.mock.ts';
+import { RESIZE_OBSERVERS } from '$test/mocks/ResizeObserver.mock.ts';
 import '$test/mocks/scrollTo.mock.ts';
 import '$test/mocks/state.mock.ts';
 import '$test/mocks/variables.mock.ts';
@@ -46,6 +46,8 @@ afterEach(() => {
 afterEach(() => resetPendingOverrides());
 // A hidden recommendation is module state, so it would stay hidden in the next test.
 afterEach(() => resetHiddenRecommendations());
+// An observer a test never disconnects would take a later test's resize.
+afterEach(() => RESIZE_OBSERVERS.clear());
 afterEach(async () => {
   if (typeof window === 'undefined') return;
   await act();
