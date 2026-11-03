@@ -38,6 +38,8 @@ export type PosterCardProps =
     // The quick-icons strip's background, which differs per page.
     strip?: 'recessed' | 'overlay';
     image: Snippet;
+    // Centred over the poster's top edge, outside the poster link.
+    rank?: Snippet;
     actions?: Snippet;
     badges?: Snippet;
     progress?: Snippet;

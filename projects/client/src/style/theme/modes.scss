@@ -1,4 +1,5 @@
 @use '$style/scss/mixins/index' as *;
+@use '$style/scss/variables/index' as *;
 
 @mixin dark-theme {
   // Match native UI (scrollbars, form controls) to the theme, so the browser
@@ -462,6 +463,7 @@
   --color-surface-menu: var(--shade-840);
   --color-surface-hover: var(--shade-760);
   --color-surface-nav-strip: var(--shade-915);
+  --color-surface-list-description: var(--shade-870);
   --color-footer-background: var(--color-background);
   --color-card-background: var(--color-surface-card);
   --color-floating-background: var(--color-surface-menu);
@@ -493,6 +495,8 @@
   --color-avatar-ring-header: var(--shade-40);
   --color-avatar-ring-header-vip: var(--color-vip);
   --color-avatar-ring-l: var(--shade-10);
+  --color-private-label-background: var(--shade-350);
+  --color-cover-tint: transparent;
   --color-header-background: rgb(0 0 0 / 80%);
   --color-overlay-light: rgb(255 255 255 / 20%);
   --color-overlay-dark-40: rgb(0 0 0 / 40%);
@@ -521,6 +525,7 @@
   --genre-bar-dim-opacity: 0.5;
   --cast-hover-dim-opacity: 0.7;
   --action-side-icon-opacity: 0.75;
+  --action-blocked-opacity: 0.5;
   --gradient-hero-fade: linear-gradient(
     to bottom,
     transparent,
@@ -544,6 +549,7 @@
   --color-accent-hover: var(--purple-600);
   --color-accent-secondary: var(--blue-500);
   --color-count: #009edf;
+  --color-under-count: var(--shade-640);
   --color-vip: var(--red-500);
   --color-checkin: var(--red-500);
   --color-progress-track: #441a55;
@@ -601,6 +607,7 @@
   --color-certification-border: var(--shade-10);
   --color-certification-background-hover: var(--shade-10);
   --color-certification-text-hover: var(--shade-930);
+  --color-rank-badge-border: var(--shade-10);
   --color-rating-1: #616161;
   --color-rating-2: #675b5b;
   --color-rating-3: #705252;
@@ -635,11 +642,13 @@
   --line-height-card-title: var(--ni-18);
   --line-height-card-subtitle: var(--ni-13);
   --line-height-corner-rating-sm: var(--ni-10);
+  --line-height-rank-badge: 1.6;
   --episode-ribbon-letter-spacing: 0.03125rem;
   --font-size-h1: var(--ni-34);
   --font-size-greeting: var(--ni-34);
   --font-size-h2: var(--ni-24);
   --font-size-h2-compact: var(--ni-18);
+  --font-size-title-bar: var(--font-size-h2-compact);
   --font-size-hero-breadcrumb: var(--ni-18);
   --font-size-hero-year: var(--ni-25);
   --font-size-hero-rating: var(--ni-18);
@@ -651,7 +660,10 @@
   --font-size-card-subtitle: var(--ni-12);
   --font-size-sidenav-link: var(--ni-22);
   --font-size-nav: var(--ni-16);
+  --font-size-pagination: var(--font-size-nav);
   --font-size-label-lg: var(--ni-16);
+  --font-size-private-label: var(--font-size-label-lg);
+  --font-size-cover-title: var(--ni-34);
   --font-size-action-label: var(--ni-15);
   --font-size-button: var(--ni-14);
   --font-size-heading-muted: var(--ni-14);
@@ -662,6 +674,7 @@
   --font-size-stat: var(--ni-20);
   --font-size-stat-sm: var(--ni-14);
   --font-size-stats-strip: var(--ni-14);
+  --font-size-subnav-stat: var(--font-size-small);
   --font-size-display: var(--ni-36);
   --font-size-dialog-title: var(--ni-16);
   --font-size-dialog-button: var(--ni-16);
@@ -730,8 +743,19 @@
   --hero-height: calc(var(--ni-500) + var(--header-height));
   --hero-height-mobile: var(--ni-350);
   --hero-backdrop-position: 50% 10%;
+  --cover-backdrop-position: 50% 20%;
   --cover-height-slim: calc(var(--ni-170) + var(--header-height));
   --tab-bar-height: var(--ni-40);
+  --cover-content-offset: calc(var(--ni-30) + var(--header-height));
+  --cover-avatar-inset: var(--ni-0);
+  --cover-avatar-gap: var(--ni-15);
+  --cover-title-padding-block-start: var(--ni-6);
+  --profile-tab-padding-inline: var(--ni-17);
+  --private-label-padding-block: var(--ni-5);
+  --private-label-padding-inline: var(--ni-7);
+  --private-label-margin-block-end: var(--ni-5);
+  --private-label-margin-inline-start: var(--ni-10);
+  --private-label-letter-spacing: var(--ni-1);
 
   --aspect-poster: 2 / 3;
   --aspect-fanart: 16 / 9;
@@ -745,6 +769,7 @@
   --avatar-size-s: var(--ni-30);
   --avatar-size-m: var(--ni-40);
   --avatar-size-l: var(--ni-72);
+  --avatar-size-cover: var(--avatar-size-l);
   --quick-icons-height: var(--ni-40);
   --quick-icons-height-sm: var(--ni-34);
   --quick-icon-width: var(--ni-35);
@@ -763,6 +788,8 @@
   --neighbour-link-glyph-offset-block: var(--ni-30);
   --neighbour-link-glyph-offset-inline: var(--ni-9);
   --icon-size-count-stat: var(--ni-18);
+  --icon-size-count-stat-lg: var(--ni-20);
+  --under-count-offset: var(--ni-neg-15);
   --progress-height-sm: var(--ni-5);
   --progress-height: var(--ni-15);
   --progress-height-lg: var(--progress-height);
@@ -816,6 +843,8 @@
   --icon-size-badge-dropped: var(--ni-46);
   --icon-size-badge-dropped-sm: var(--ni-34);
   --icon-size-navigator: var(--ni-16);
+  --icon-size-pagination: var(--ni-20);
+  --icon-size-subnav: var(--ni-20);
   --icon-size-menu-check: var(--ni-13);
   --icon-size-help-arrow: var(--ni-13);
   --icon-size-comment-watched: var(--ni-13);
@@ -836,7 +865,9 @@
   --menu-row-height: var(--ni-32);
   --menu-padding-block: var(--ni-10);
   --dropdown-min-width: var(--ni-160);
-  --dropdown-row-height: var(--ni-26);
+  --dropdown-row-height: var(--ni-24);
+  --dropdown-limit-height: var(--ni-267);
+  --subnav-panel-offset: var(--ni-40);
   --modal-width: var(--ni-360);
   --modal-padding-inline: var(--ni-30);
   --modal-padding-block-end: var(--ni-24);
@@ -875,6 +906,7 @@
     --header-gap: var(--ni-8);
     --header-padding-inline-start: var(--ni-16);
     --header-padding-inline-end: var(--ni-8);
+    --profile-tab-padding-inline: var(--ni-12);
   }
 
   @include for-tablet-lg-and-below {
@@ -889,10 +921,13 @@
     --font-size-stats-strip: var(--ni-12);
     --icon-size-stats: var(--ni-27);
     --stats-icon-width: var(--ni-34);
+    --profile-tab-padding-inline: var(--ni-8);
   }
 
   @include for-mobile {
     --header-height: var(--header-height-mobile);
+    --font-size-subnav-stat: var(--ni-12);
+    --icon-size-sort-direction: var(--ni-19);
     --menu-min-width: var(--ni-140);
     --header-padding-inline-end: 0;
     --font-size-h1: var(--ni-18);
@@ -907,13 +942,28 @@
     --font-size-greeting: var(--ni-26);
     --font-size-h2: var(--ni-18);
     --icon-size-heading: var(--ni-18);
+    --font-size-title-bar: var(--ni-16);
     --heading-icon-width: var(--ni-22);
     --line-height-see-more: 1.6;
+    --font-size-pagination: var(--ni-14);
 
     @media (orientation: portrait) {
       --modal-width: 90%;
       --modal-padding-inline: var(--ni-15);
       --modal-padding-block-end: var(--ni-15);
+      --font-size-private-label: var(--ni-14);
+      --private-label-padding-block: var(--ni-3);
+      --private-label-padding-inline: var(--ni-5);
+      --private-label-margin-block-end: var(--ni-3);
+      --private-label-margin-inline-start: var(--ni-7);
+      --cover-height-slim: calc(var(--ni-120) + var(--header-height));
+      --cover-content-offset: var(--ni-60);
+      --cover-avatar-inset: calc(var(--ni-20) - var(--gutter-half));
+      --color-cover-tint: var(--color-overlay-dark-40);
+      --avatar-size-cover: var(--ni-50);
+      --cover-avatar-gap: var(--ni-10);
+      --font-size-cover-title: var(--ni-24);
+      --cover-title-padding-block-start: var(--ni-4);
     }
   }
 }

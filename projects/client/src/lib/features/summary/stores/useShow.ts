@@ -79,7 +79,6 @@ export function useShow(slug$: Observable<string>) {
           .filter(({ number }) => number > SPECIALS).length
       ),
     ),
-    progress: progress.pipe(map(($progress) => $progress.data)),
     progressStatus: progress.pipe(
       map((result) => toSectionStatus({ result, isEmpty: hasNoPlays })),
     ),

@@ -7,8 +7,10 @@
   --layer-base: 1;
   /* slightly elevated content */
   --layer-raised: 2;
+  /* panels that open over the page, under the header */
+  --layer-panel: 3;
   /* floating elements like sticky headers */
-  --layer-floating: 3;
+  --layer-floating: 4;
 
   /* Interactive Layers (100-800) */
   /* modal dialogs */

@@ -18,6 +18,8 @@ export type SortableBlockProps<T, K extends string> = {
   };
   // Drives the watched filter's fade and hide.
   isWatched: (item: T) => boolean;
+  // The status of what `isWatched` reads: under a filter, the block waits until it is known.
+  watchedStatus: SectionStatus<unknown>;
   grid: Pick<
     PosterGridProps<T>,
     'key' | 'columns' | 'phoneDivider' | 'phoneGaps'

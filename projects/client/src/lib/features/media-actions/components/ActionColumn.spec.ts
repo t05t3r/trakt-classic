@@ -2,6 +2,7 @@ import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.t
 import { time } from '$lib/utils/timing/time.ts';
 import { AIRED } from '$mocks/data/media-actions/AIRED.ts';
 import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
+import { DEVS_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_ACTIONS_TARGET.ts';
 import { HERETIC_ACTIONS_TARGET } from '$mocks/data/media-actions/HERETIC_ACTIONS_TARGET.ts';
 import { MATRIX_ACTIONS_TARGET } from '$mocks/data/media-actions/MATRIX_ACTIONS_TARGET.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
@@ -23,6 +24,7 @@ import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
+import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
 import { bodyUnlocked } from '$test/beds/scroll-lock/bodyUnlocked.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -52,15 +54,6 @@ const DEVS_SPECIALS_TARGET: QuickActionsTarget = {
   episodes: { count: 1, aired: 1 },
   airDate: AIRED,
   show: { id: DEVS.id, title: 'Devs' },
-};
-
-// On the dropped shows.
-const DEVS_TARGET: QuickActionsTarget = {
-  ...DEVS,
-  title: 'Devs',
-  slug: 'devs',
-  airDate: AIRED,
-  episode: { count: 8 },
 };
 
 const mainOf = (container: HTMLElement, index: number) => {
@@ -237,7 +230,7 @@ describe('component: ActionColumn', () => {
 
     it('should stay inert on a dropped show before progress is in', async () => {
       const { container } = renderComponent(ActionColumn, {
-        props: { target: DEVS_TARGET, progress: LOADING },
+        props: { target: DEVS_ACTIONS_TARGET, progress: LOADING },
       });
       await settledMain(container, 1);
       await settledSide('Restore');
@@ -419,7 +412,7 @@ describe('component: ActionColumn', () => {
 
     it('should offer Restore on a dropped show with no episode watched', async () => {
       renderComponent(ActionColumn, {
-        props: { target: DEVS_TARGET, progress: progressOf(0, 8) },
+        props: { target: DEVS_ACTIONS_TARGET, progress: progressOf(0, 8) },
       });
 
       expect(await settledSide('Restore')).toBeVisible();
@@ -427,7 +420,7 @@ describe('component: ActionColumn', () => {
 
     it('should read Add to history, unselected, on a dropped show with every episode watched', async () => {
       const { container } = renderComponent(ActionColumn, {
-        props: { target: DEVS_TARGET, progress: progressOf(8, 8) },
+        props: { target: DEVS_ACTIONS_TARGET, progress: progressOf(8, 8) },
       });
 
       await waitFor(() =>
@@ -448,7 +441,7 @@ describe('component: ActionColumn', () => {
         }),
       );
       const { container } = renderComponent(ActionColumn, {
-        props: { target: DEVS_TARGET, progress: progressOf(3, 8) },
+        props: { target: DEVS_ACTIONS_TARGET, progress: progressOf(3, 8) },
       });
 
       await waitFor(() =>
@@ -635,6 +628,55 @@ describe('component: ActionColumn', () => {
     expect(readButtons(container).at(2)).toMatchObject({
       label: 'Add to Favorites',
       selected: false,
+    });
+  });
+
+  describe("the favourite's Play gate", () => {
+    const BLOCKED_REASON = 'Watch it first to favorite it';
+
+    it('should block adding a movie with no Play, describing why, and send nothing on a click', async () => {
+      const writes = recordWrites();
+      const { container } = renderComponent(ActionColumn, {
+        props: { target: MATRIX_ACTIONS_TARGET, favorite: true },
+      });
+      await waitFor(() =>
+        expect(mainOf(container, 2)).toHaveAttribute('title', BLOCKED_REASON)
+      );
+
+      await userEvent.click(mainOf(container, 2));
+
+      await waitNegativeClaim();
+      expect(writes).toEqual([]);
+      expect(mainOf(container, 2)).toHaveFocus();
+      expect(mainOf(container, 2)).toHaveAttribute('aria-disabled', 'true');
+      expect(mainOf(container, 2)).toHaveAccessibleName('Add to Favorites');
+      expect(mainOf(container, 2).parentElement).toHaveClass('is-blocked');
+    });
+
+    it.each([
+      {
+        action: 'add a movie once it has a Play',
+        target: MATRIX_ACTIONS_TARGET,
+        plays: [MATRIX_ACTIONS_TARGET.id],
+        write: 'POST /sync/favorites',
+      },
+      {
+        action: 'remove a favourite with no Play',
+        target: HERETIC_ACTIONS_TARGET,
+        plays: [],
+        write: 'POST /sync/favorites/remove',
+      },
+    ])('should $action', async ({ target, plays, write }) => {
+      serveMoviePlays(plays);
+      const writes = recordWrites();
+      const { container } = renderComponent(ActionColumn, {
+        props: { target, favorite: true },
+      });
+
+      await userEvent.click(await settledMain(container, 2));
+
+      await waitFor(() => expect(writes).toEqual([write]));
+      expect(mainOf(container, 2)).not.toHaveAttribute('title');
     });
   });
 });

@@ -979,6 +979,14 @@
         }
       }
     },
+    "tooltip_text_watch_first_to_favorite": {
+      "default": "Watch it first to favorite it",
+      "description": "Tooltip and accessible description of a blocked Add to Favorites control, on a detail page or a card, whose title the user has not watched yet."
+    },
+    "tooltip_text_watch_first_to_rate": {
+      "default": "Watch it first to rate it",
+      "description": "Tooltip and accessible description of the blocked rating slot on a detail page, whose title the user has neither watched nor rated yet."
+    },
     "tooltip_text_watched_episodes": {
       "default": "Watched {completed} of {total} episodes",
       "description": "Tooltip on the watched context tag of a review, showing how many episodes of the show or season the reviewer has watched.",
@@ -1825,6 +1833,14 @@
     "button_label_next_season": {
       "default": "Next season",
       "description": "Accessible name of the chevron link over a season page's hero that opens the season numbered just above it; the specials link on to season 1."
+    },
+    "button_label_previous_page": {
+      "default": "Previous page",
+      "description": "Accessible name of the arrow link before a paged list's page links that opens the page before the current one; announced as disabled on the first page."
+    },
+    "button_label_next_page": {
+      "default": "Next page",
+      "description": "Accessible name of the arrow link after a paged list's page links that opens the page after the current one; announced as disabled on the last page."
     },
     "label_switcher_season": {
       "default": "Season",
@@ -2746,9 +2762,9 @@
       "default": "System",
       "description": "Text for the system theme option in the theme selection dropdown."
     },
-    "button_label_filters": {
-      "default": "Filters",
-      "description": "Aria-label for the button that opens the filters panel."
+    "button_label_list_options": {
+      "default": "List options",
+      "description": "Aria-label for the list title bar's gear button that opens the list options panel."
     },
     "button_label_reset_filter": {
       "default": "Reset",
@@ -3723,7 +3739,7 @@
     },
     "button_text_shows": {
       "default": "Shows",
-      "description": "Text for the button that allows users to toggle shows in the watchlist."
+      "description": "Text for the button that allows users to toggle shows in the watchlist, and the Shows row of a list toolbar's type menu, which shows only the List's shows."
     },
     "button_label_shows": {
       "default": "Shows",
@@ -3731,7 +3747,7 @@
     },
     "button_text_movies": {
       "default": "Movies",
-      "description": "Text for the button that allows users to toggle movies in the watchlist."
+      "description": "Text for the button that allows users to toggle movies in the watchlist, and the Movies row of a list toolbar's type menu, which shows only the List's movies."
     },
     "button_label_movies": {
       "default": "Movies",
@@ -5074,7 +5090,7 @@
       "description": "Aria-label for the button that allows users to sort lists alphabetically by name."
     },
     "button_text_sort_added_date": {
-      "default": "Date Added",
+      "default": "Added Date",
       "description": "Text for the button that allows users to sort items by the date they were added."
     },
     "button_label_sort_added_date": {
@@ -11132,6 +11148,18 @@
       "default": "Main",
       "description": "Accessible label of the navbar's top links."
     },
+    "label_pagination_navigation": {
+      "default": "Pagination",
+      "description": "Default accessible label of a page links nav, used when its caller passes no label of its own."
+    },
+    "label_pagination_navigation_top": {
+      "default": "Pagination, top",
+      "description": "Accessible label of the page links above a paged list's grid, told apart from the ones below it."
+    },
+    "label_pagination_navigation_bottom": {
+      "default": "Pagination, bottom",
+      "description": "Accessible label of the page links below a paged list's grid, told apart from the ones above it."
+    },
     "text_nav_history": {
       "default": "History",
       "description": "Profile menu row to the signed-in user's history; shared with the profile tabs."
@@ -11147,6 +11175,10 @@
     "text_nav_lists": {
       "default": "Lists",
       "description": "Profile menu row to the signed-in user's lists; shared with the profile tabs."
+    },
+    "label_profile_navigation": {
+      "default": "Profile",
+      "description": "Accessible label of the profile tabs under the user cover."
     },
     "button_label_profile_menu": {
       "default": "{username}'s menu",
@@ -11859,11 +11891,11 @@
     },
     "label_sort_by": {
       "default": "Sort by",
-      "description": "Accessible name of the sort menu on a show page's seasons block, which lists Number, Rating and Air date, or on a season page's episodes block, which lists Number, Air date, Rating and Votes."
+      "description": "Accessible name of the sort menu on a show page's seasons block, which lists Number, Rating and Air date, on a season page's episodes block, which lists Number, Air date, Rating and Votes, or on a list toolbar, which lists Rank, Added Date, Title, Release Date, Runtime, Popularity, Rating, Votes and My Rating."
     },
     "button_label_sort_by": {
       "default": "Sort by: {sort}",
-      "description": "Accessible name of the button that opens the sort menu on a show page's seasons block or a season page's episodes block; sort is the selected sort's visible label, as in 'Sort by: Number'.",
+      "description": "Accessible name of the button that opens the sort menu on a show page's seasons block, a season page's episodes block or a list toolbar; sort is the selected sort's visible label, as in 'Sort by: Number'.",
       "variables": {
         "sort": {
           "type": "string"
@@ -11876,7 +11908,11 @@
     },
     "button_text_sort_votes": {
       "default": "Votes",
-      "description": "Row of the sort menu on a season page's episodes block that orders the episodes by how many votes their rating has."
+      "description": "Row of the sort menu on a season page's episodes block, which orders the episodes, or of a list toolbar's sort menu, which orders the List's items, by how many votes their rating has."
+    },
+    "button_text_sort_popularity": {
+      "default": "Popularity",
+      "description": "Row of a list toolbar's sort menu that orders the List's items by how popular they are on Trakt."
     },
     "text_episodes_empty": {
       "default": "No episodes yet.",
@@ -12036,6 +12072,88 @@
     "text_lists_items": {
       "default": "Items",
       "description": "Label of a list's item count, read after the number and shown as its tooltip."
+    },
+    "text_lists_watched": {
+      "default": "Watched",
+      "description": "Label of a list toolbar's watched percentage, the share of the List's items the user has watched, read after the percentage and shown as its tooltip."
+    },
+    "text_lists_watched_count": {
+      "default": "{watched} / {count} items",
+      "description": "Shown under a list toolbar's watched percentage while the pointer rests on it; watched is how many of the List's items the user has watched and count how many items the List holds, as in '3 / 69 items'.",
+      "variables": {
+        "watched": {
+          "type": "string"
+        },
+        "count": {
+          "type": "string"
+        }
+      }
+    },
+    "text_lists_runtime": {
+      "default": "Runtime",
+      "description": "Label of a list toolbar's total runtime, the summed runtime of the List's items, read after the time and shown as its tooltip."
+    },
+    "label_list_type": {
+      "default": "Type",
+      "description": "Accessible name of a list toolbar's type menu, which lists All Types, Movies, Shows, Seasons and Episodes."
+    },
+    "button_label_list_type": {
+      "default": "Type: {type}",
+      "description": "Accessible name of the button that opens a list toolbar's type menu; type is the selected type's visible label, as in 'Type: All Types'.",
+      "variables": {
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "button_text_type_all": {
+      "default": "All Types",
+      "description": "Row of a list toolbar's type menu, and its button's text while it is selected, that shows the List's items of every type."
+    },
+    "button_text_type_seasons": {
+      "default": "Seasons",
+      "description": "Row of a list toolbar's type menu that shows only the List's seasons."
+    },
+    "button_text_type_episodes": {
+      "default": "Episodes",
+      "description": "Row of a list toolbar's type menu that shows only the List's episodes."
+    },
+    "label_list_genre": {
+      "default": "Genre",
+      "description": "Accessible name of a list toolbar's genre menu, which lists All Genres and then each genre."
+    },
+    "button_label_list_genre": {
+      "default": "Genre: {genre}",
+      "description": "Accessible name of the button that opens a list toolbar's genre menu; genre is the selected genre's visible label, as in 'Genre: All Genres'.",
+      "variables": {
+        "genre": {
+          "type": "string"
+        }
+      }
+    },
+    "button_text_genre_all": {
+      "default": "All Genres",
+      "description": "Row of a list toolbar's genre menu, and its button's text while it is selected, that shows the List's items of every genre."
+    },
+    "text_lists_description_watchlist": {
+      "default": "Movies, shows, seasons, and episodes I plan to watch.",
+      "description": "Description strip under the watchlist's title bar, which has no description of its own to read."
+    },
+    "text_lists_description_favorites": {
+      "default": "My favorite TV shows and movies.",
+      "description": "Description strip under the favorites list's title bar, which has no description of its own to read."
+    },
+    "text_lists_empty_watchlist": {
+      "default": "Your watchlist is empty.",
+      "description": "Shown in place of the watchlist's grid when the watchlist holds no items."
+    },
+    "text_lists_empty_favorites": {
+      "default": "You have no favorites yet.",
+      "description": "Shown in place of the favorites list's grid when the user has no favorites."
+    },
+    "text_lists_empty_filtered": {
+      "default": "Nothing matches these filters.",
+      "description": "Shown in place of a list's grid when its type or genre filter, or hiding watched items, leaves no items to show."
     },
     "text_lists_block_empty": {
       "default": "Not on any lists yet.",

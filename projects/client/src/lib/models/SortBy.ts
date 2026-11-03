@@ -5,4 +5,6 @@ export type SortBy =
   | 'percentage'
   | 'my_rating'
   | 'released'
-  | 'title';
+  | 'title'
+  | 'popularity'
+  | 'votes';

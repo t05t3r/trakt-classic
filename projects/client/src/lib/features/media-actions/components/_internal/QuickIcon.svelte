@@ -9,12 +9,15 @@
     isSelected,
     isPending = false,
     isInert = false,
+    blockedReason,
     onclick,
     ...rest
   }: QuickIconProps = $props();
 
+  const isIgnoringClicks = $derived(isInert || blockedReason !== undefined);
+
   const handleClick: QuickIconProps['onclick'] = (event) => {
-    if (isInert) return;
+    if (isIgnoringClicks) return;
 
     onclick?.(event);
   };
@@ -27,9 +30,11 @@
   class="trakt-quick-icon"
   data-action={action}
   class:is-selected={isSelected}
+  class:is-blocked={blockedReason !== undefined}
   aria-label={label}
   aria-busy={isPending}
-  aria-disabled={isInert}
+  aria-disabled={isIgnoringClicks}
+  title={blockedReason}
   onclick={handleClick}
 >
   {#if isPending}
@@ -79,8 +84,12 @@
       color: var(--color-text-primary);
     }
 
+    &.is-blocked {
+      @include blocked-control;
+    }
+
     @include for-mouse {
-      &:hover {
+      &:not(.is-blocked):hover {
         background: var(--quick-icon-color);
         color: var(--color-text-primary);
       }

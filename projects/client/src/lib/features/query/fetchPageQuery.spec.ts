@@ -25,6 +25,13 @@ describe('fetchPageQuery', () => {
       .toEqual(MovieHereticMappedMock);
   });
 
+  it('should resolve to the fetched data', async () => {
+    const queryClient = createQueryClient();
+
+    expect(await fetchPageQuery({ queryClient, query: QUERY() }))
+      .toEqual(MovieHereticMappedMock);
+  });
+
   it.each([404, 401, 503])(
     'should raise the %d the request failed with',
     async (status) => {

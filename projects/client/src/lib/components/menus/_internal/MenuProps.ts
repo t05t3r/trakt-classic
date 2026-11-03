@@ -6,6 +6,8 @@ export type MenuProps = {
   trigger: Snippet<[{ props: Record<string, unknown> }]>;
   children: Snippet;
   align?: 'start' | 'end';
-  // Keeps the menu shut while its trigger stays focusable and announced.
+  // Keeps a closed menu shut while its trigger stays focusable and announced.
   isInert?: boolean;
+  // Caps the menu at a fixed height, below the available one, and scrolls.
+  isLimited?: boolean;
 };

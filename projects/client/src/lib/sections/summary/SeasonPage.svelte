@@ -174,7 +174,7 @@
   <ListsBlock status={$listsStatus} />
 {/snippet}
 
-{#if $season && $show}
+{#if $season && $show && media}
   <div class="trakt-season-page">
     <SummaryHero
       backdrop={$show.cover.url.full}
@@ -195,8 +195,7 @@
       {/snippet}
       {#snippet ratings()}
         <SummaryRatings
-          type="season"
-          id={$season.id}
+          target={media}
           rating={$seasonRatings}
           stats={$stats}
           earliestReleaseDate={$season.airDate}

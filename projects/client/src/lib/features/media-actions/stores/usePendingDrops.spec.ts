@@ -7,10 +7,11 @@ import { RESTORE_URL } from '$mocks/data/users/RESTORE_URL.ts';
 import { server } from '$mocks/server.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
+import { collectStates } from '$test/beds/store/collectStates.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http, HttpResponse } from 'msw';
 import { filter, firstValueFrom } from 'rxjs';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useDrop } from './useDrop.ts';
 import { useFavorite } from './useFavorite.ts';
 import { usePendingDrops } from './usePendingDrops.ts';
@@ -83,9 +84,7 @@ describe('store: usePendingDrops', () => {
       favorite: useFavorite(DEVS),
       isPendingDrop: usePendingDrops(),
     }));
-    const seen: Array<(showId: number) => boolean> = [];
-    const subscription = isPendingDrop.subscribe((value) => seen.push(value));
-    onTestFinished(() => subscription.unsubscribe());
+    const seen = collectStates(isPendingDrop);
 
     void silo.drop();
     void devs.restore();

@@ -1,17 +1,14 @@
+import { collectStates } from '$test/beds/store/collectStates.ts';
 import { firstValueFrom } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type ToastEntry, useToasts } from './useToasts.ts';
+import { useToasts } from './useToasts.ts';
 
 const current = () => firstValueFrom(useToasts().toasts);
 
 const emissionsDuring = (act: () => void) => {
-  const emissions: Array<ReadonlyArray<ToastEntry>> = [];
-  const subscription = useToasts().toasts.subscribe((toasts) =>
-    emissions.push(toasts)
-  );
+  const emissions = collectStates(useToasts().toasts);
 
   act();
-  subscription.unsubscribe();
 
   return emissions.slice(1);
 };

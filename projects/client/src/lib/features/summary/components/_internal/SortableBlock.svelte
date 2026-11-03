@@ -1,17 +1,14 @@
 <script lang="ts" generics="T, K extends string">
-  import DropdownButton from '$lib/components/buttons/DropdownButton.svelte';
-  import IconToggle from '$lib/components/buttons/IconToggle.svelte';
+  import SortDirectionToggle from '$lib/components/buttons/SortDirectionToggle.svelte';
   import SectionState from '$lib/components/feedback/SectionState.svelte';
   import PosterGrid from '$lib/components/media/PosterGrid.svelte';
-  import Menu from '$lib/components/menus/Menu.svelte';
-  import MenuItem from '$lib/components/menus/MenuItem.svelte';
-  import MenuRadioGroup from '$lib/components/menus/MenuRadioGroup.svelte';
+  import ChoiceMenu from '$lib/components/menus/ChoiceMenu.svelte';
+  import { applyWatchedFilter } from '$lib/features/filters/applyWatchedFilter.ts';
   import { useWatchedFilter } from '$lib/features/filters/stores/useWatchedFilter.ts';
   import WatchedFilterMenu from '$lib/features/filters/WatchedFilterMenu.svelte';
+  import { withWatchedKnown } from '$lib/features/filters/withWatchedKnown.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import { useSortParam } from '$lib/features/view-params/stores/useSortParam.ts';
-  import IconArrowDown from '@tabler/icons-svelte/icons/arrow-down';
-  import IconArrowUp from '@tabler/icons-svelte/icons/arrow-up';
   import type { SortableBlockProps } from './SortableBlockProps.ts';
 
   const {
@@ -20,6 +17,7 @@
     emptyText,
     sort: spec,
     isWatched,
+    watchedStatus,
     grid,
     item: cell,
   }: SortableBlockProps<T, K> = $props();
@@ -29,71 +27,60 @@
   const { sort, isReversed, select, reverse } = useSortParam(spec);
   const { filter, set: setFilter } = useWatchedFilter();
 
-  const shownItems = $derived.by(() => {
-    if (status.kind !== 'ready') return [];
-    const sorted = spec.apply({ items: status.data, sort: $sort });
-    if ($filter !== 'hide') return sorted;
-    return sorted.filter((entry) => !isWatched(entry));
+  const shownStatus = $derived(
+    withWatchedKnown({ status, filter: $filter, known: watchedStatus }),
+  );
+
+  const shownRows = $derived.by(() => {
+    if (shownStatus.kind !== 'ready') return [];
+    const sorted = spec.apply({ items: shownStatus.data, sort: $sort });
+    return applyWatchedFilter({ items: sorted, filter: $filter, isWatched });
   });
 
-  const sortLabel = $derived(spec.labels[$sort.by]());
+  const sortChoices = $derived(
+    spec.sorts.map(({ by }) => ({ value: by, label: spec.labels[by]() })),
+  );
 
-  // Choosing the checked row reports null, which keeps the sort as it is.
-  const selectSort = (next: string | null) => {
-    const by = spec.sorts.find((entry) => entry.by === next)?.by;
-    if (!by) return;
+  // Without an All row, the menu never reports null.
+  const selectSort = (by: K | null) => {
+    if (by === null) return;
     select(by);
   };
 </script>
 
 {#snippet tools()}
   <div class="sort-wrapper">
-    <Menu label={m.label_sort_by()}>
-      {#snippet trigger({ props })}
-        <DropdownButton
-          {...props}
-          label={m.button_label_sort_by({ sort: sortLabel })}
-          font="heading"
-        >
-          {sortLabel}
-        </DropdownButton>
-      {/snippet}
-
-      <MenuRadioGroup value={$sort.by} onValueChange={selectSort}>
-        {#each spec.sorts as { by } (by)}
-          <MenuItem radio={by}>{spec.labels[by]()}</MenuItem>
-        {/each}
-      </MenuRadioGroup>
-    </Menu>
+    <ChoiceMenu
+      label={m.label_sort_by()}
+      triggerLabel={(sort) => m.button_label_sort_by({ sort })}
+      value={$sort.by}
+      choices={sortChoices}
+      onChange={selectSort}
+      font="heading"
+    />
     <span class="sort-direction">
-      <IconToggle
-        label={m.button_label_sort_direction()}
+      <SortDirectionToggle
         pressed={$isReversed}
         onToggle={reverse}
         size="heading"
-      >
-        {#if $isReversed}
-          <IconArrowUp aria-hidden="true" />
-        {:else}
-          <IconArrowDown aria-hidden="true" />
-        {/if}
-      </IconToggle>
+      />
     </span>
     <WatchedFilterMenu value={$filter} onValueChange={setFilter} />
   </div>
 {/snippet}
 
 <div class="trakt-sortable-block">
-  <SectionState header={{ title, tools }} {status} {emptyText}>
+  <SectionState header={{ title, tools }} status={shownStatus} {emptyText}>
     <!-- Classic kept the header alone, with no empty text, when the filter hid every item. -->
-    {#if shownItems.length > 0}
-      <PosterGrid items={shownItems} {...grid}>
-        {#snippet item(entry)}
-          <div
-            class="sortable-item"
-            class:is-faded={$filter === 'fade' && isWatched(entry)}
-          >
-            {@render cell(entry)}
+    {#if shownRows.length > 0}
+      <PosterGrid
+        items={shownRows}
+        {...grid}
+        key={(row) => grid.key(row.item)}
+      >
+        {#snippet item(row)}
+          <div class="sortable-item" class:is-faded={row.isFaded}>
+            {@render cell(row.item)}
           </div>
         {/snippet}
       </PosterGrid>
@@ -118,17 +105,7 @@
     }
 
     .sortable-item.is-faded {
-      opacity: var(--watched-fade-opacity);
-
-      &:focus-within {
-        opacity: 1;
-      }
-
-      @include for-mouse {
-        &:hover {
-          opacity: 1;
-        }
-      }
+      @include watched-fade;
     }
   }
 </style>

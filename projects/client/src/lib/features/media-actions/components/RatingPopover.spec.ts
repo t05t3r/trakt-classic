@@ -4,6 +4,7 @@ import { SYNC_RATINGS_REMOVE_URL } from '$mocks/data/sync/SYNC_RATINGS_REMOVE_UR
 import { SYNC_RATINGS_URL } from '$mocks/data/sync/SYNC_RATINGS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { setDocumentDirection } from '$test/beds/direction/setDocumentDirection.ts';
 import { emulateFocusVisible } from '$test/beds/focus/emulateFocusVisible.ts';
 import RatingPopoverHost from '$test/beds/media-actions/RatingPopoverHost.svelte';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
@@ -248,6 +249,24 @@ describe('component: RatingPopover', () => {
         kind: 'preview',
       });
     });
+
+    it.each(
+      [
+        ['ArrowLeft', 2],
+        ['ArrowRight', 10],
+      ] as const,
+    )(
+      'should move %s from heart 1 to heart %i in a right-to-left document',
+      async (key, to) => {
+        setDocumentDirection('rtl');
+        renderComponent(RatingPopoverHost, { props: { target: MATRIX } });
+        await openFromKeyboard(1);
+
+        await userEvent.keyboard(`{${key}}`);
+
+        expect(heart(to)).toHaveFocus();
+      },
+    );
 
     it.each(
       [

@@ -3,6 +3,7 @@
   import { useFavorite } from '$lib/features/media-actions/stores/useFavorite.ts';
   import { useWatched } from '$lib/features/media-actions/stores/useWatched.ts';
   import { useWatchlist } from '$lib/features/media-actions/stores/useWatchlist.ts';
+  import { toPlayGate } from '$lib/features/media-actions/toPlayGate.ts';
   import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
   import IconAlignLeft from '@tabler/icons-svelte/icons/align-left';
   import IconCheck from '@tabler/icons-svelte/icons/check';
@@ -25,7 +26,12 @@
   // A new Target needs a new strip, so these stores serve the strip's whole life.
   // svelte-ignore state_referenced_locally
   const watched = useWatched(toWatchedProps(target));
-  const { isWatched, isWatchedKnown, isUpdating: isWatchUpdating } = watched;
+  const {
+    isWatched,
+    isWatchedKnown,
+    isUpdating: isWatchUpdating,
+    hasShowPlay,
+  } = watched;
   // svelte-ignore state_referenced_locally
   const { isWatchlisted } = useWatchlist({ type: target.type, id: target.id });
   // Classic favourites an episode or season card's show, not the card's own media.
@@ -45,6 +51,10 @@
   const isFavorite = favoriteStore?.isFavorite;
 
   const isAired = $derived(hasTargetAired(target));
+  // The favourite's Target is the card's show for an episode or a season, as `hasShowPlay` reads.
+  const favoriteGate = $derived(
+    toPlayGate({ isSet: $isFavorite, hasPlay: $hasShowPlay }),
+  );
 
   const toggleWatched = () => ($isWatched ? watched.remove() : watched.add());
   const toggleFavorite = () =>
@@ -85,7 +95,10 @@
         ? m.button_label_remove_from_favorites({ title: favoriteTarget.title })
         : m.button_label_add_to_favorites({ title: favoriteTarget.title })}
         isSelected={$isFavorite === true}
-        isInert={$isFavorite === undefined}
+        isInert={favoriteGate === 'unknown'}
+        blockedReason={favoriteGate === 'blocked'
+        ? m.tooltip_text_watch_first_to_favorite()
+        : undefined}
         onclick={toggleFavorite}
       />
     {/if}

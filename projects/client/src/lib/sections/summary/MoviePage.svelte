@@ -121,7 +121,7 @@
   <ListsBlock status={$listsStatus} />
 {/snippet}
 
-{#if $movie}
+{#if $movie && media}
   <div class="trakt-movie-page">
     <SummaryHero
       backdrop={$movie.cover.url.full}
@@ -139,8 +139,7 @@
       {/snippet}
       {#snippet ratings()}
         <SummaryRatings
-          type="movie"
-          id={$movie.id}
+          target={media}
           rating={$movieRatings}
           stats={$stats}
           earliestReleaseDate={$earliestReleaseDate}

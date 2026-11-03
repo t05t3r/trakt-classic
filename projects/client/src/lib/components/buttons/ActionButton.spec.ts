@@ -10,6 +10,7 @@ function renderActionButton(
     selected?: boolean;
     isUpdating?: boolean;
     isInert?: boolean;
+    blockedReason?: string;
     underInfo?: string;
   } = {},
 ) {
@@ -96,6 +97,34 @@ describe('component: ActionButton', () => {
     const { root } = renderActionButton({ selected: true, isInert: true });
 
     expect(root).toHaveClass('is-selected');
+  });
+
+  describe('while blocked', () => {
+    const REASON = 'Watch it first to favorite it';
+
+    it('should ignore a click and keep the focus, described by its reason under its own name', async () => {
+      const { onclick, root } = renderActionButton({
+        selected: false,
+        blockedReason: REASON,
+      });
+
+      await userEvent.click(mainButton());
+
+      expect(onclick).not.toHaveBeenCalled();
+      expect(mainButton()).toHaveFocus();
+      expect(mainButton()).toHaveAttribute('aria-disabled', 'true');
+      expect(mainButton()).toHaveAttribute('title', REASON);
+      expect(mainButton()).toHaveAccessibleName('Add to history');
+      expect(mainButton()).toHaveAccessibleDescription(REASON);
+      expect(root).toHaveClass('is-blocked');
+    });
+
+    it('should carry no reason and no blocked look otherwise', () => {
+      const { root } = renderActionButton({ selected: false, isInert: true });
+
+      expect(mainButton()).not.toHaveAttribute('title');
+      expect(root).not.toHaveClass('is-blocked');
+    });
   });
 
   it('should show its glyph when idle', () => {

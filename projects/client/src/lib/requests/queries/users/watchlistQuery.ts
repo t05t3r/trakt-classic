@@ -1,91 +1,95 @@
+import type { ListTypeSegment } from '$lib/features/lists/toListTypeSegment.ts';
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
 import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
 import { mapToListItem } from '$lib/requests/_internal/mapToListItem.ts';
+import { WATCHLIST_INVALIDATIONS } from '$lib/requests/_internal/WATCHLIST_INVALIDATIONS.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import type { FilterParams } from '$lib/requests/models/FilterParams.ts';
-import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
-import type { MediaType } from '$lib/requests/models/MediaType.ts';
 import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
+import { LIST_PAGE_SIZE } from '$lib/utils/LIST_PAGE_SIZE.ts';
 import { time } from '$lib/utils/timing/time.ts';
+import { listedAllResponseSchema } from '@trakt/api';
 import { z } from 'zod';
 import type { SortBy } from '$lib/models/SortBy.ts';
 import type { SortDirection } from '$lib/models/SortDirection.ts';
-import { ListItemSchema } from '$lib/requests/models/ListItem.ts';
+import {
+  type ListItem,
+  ListItemSchema,
+} from '$lib/requests/models/ListItem.ts';
+
+export type WatchlistType = ListTypeSegment<'watchlist'>;
 
 type WatchlistParams =
   & {
     sortBy: SortBy;
-    sortHow?: SortDirection | Nil;
-    type?: MediaType;
-    hide?: 'unreleased';
+    sortHow: SortDirection;
+    type?: WatchlistType;
   }
-  & PaginationParams
+  & Pick<PaginationParams, 'page'>
   & ApiParams
   & FilterParams;
 
-export type WatchlistedItem = z.infer<typeof ListItemSchema>;
+// Trakt sends a season it has no date for as `null`, which the SDK refuses.
+const NullAiredSeasonRowSchema = z.object({
+  season: z.object({ first_aired: z.null() }).passthrough(),
+}).passthrough();
 
-function typeToWatchlistMethod(type?: MediaType) {
-  if (!type) {
-    return 'all' as const;
-  }
+function withoutNullSeasonAirDate(row: unknown): unknown {
+  const parsed = NullAiredSeasonRowSchema.safeParse(row);
+  if (!parsed.success) return row;
 
-  switch (type) {
-    case 'movie':
-      return 'movies' as const;
-    case 'show':
-      return 'shows' as const;
-  }
+  const { season } = parsed.data;
+  return { ...parsed.data, season: { ...season, first_aired: undefined } };
+}
+
+const ListedRowSchema = z.preprocess(
+  withoutNullSeasonAirDate,
+  listedAllResponseSchema,
+);
+
+// The SDK types the watchlist routes' items loosely, so they are parsed here.
+export function mapToListItems(body: unknown): ListItem[] {
+  return ListedRowSchema.array().parse(body).map(mapToListItem);
 }
 
 const watchlistRequest = (
-  { fetch, sortBy, sortHow, type, limit, page, filter, hide }: WatchlistParams,
-) => {
-  const method = typeToWatchlistMethod(type);
-
-  return api({ fetch })
+  { fetch, sortBy, sortHow, type = 'all', page, filter }: WatchlistParams,
+) =>
+  api({ fetch })
     .users
-    .watchlist[method]({
+    .watchlist
+    .typedSorted({
       params: {
         id: 'me',
+        type,
+        sort_by: sortBy,
+        sort_how: sortHow,
       },
       query: {
         extended: 'full,images,colors',
         page,
-        limit,
-        sort_by: sortBy,
-        sort_how: sortHow,
-        hide,
+        limit: LIST_PAGE_SIZE,
         ...filter,
       },
     });
-};
 
 export const watchlistQuery = defineInfiniteQuery({
   key: 'watchlist',
-  invalidations: [
-    InvalidateAction.Watchlisted('movie'),
-    InvalidateAction.Watchlisted('show'),
-    InvalidateAction.MarkAsWatched('movie'),
-    InvalidateAction.MarkAsWatched('show'),
-    InvalidateAction.MarkAsWatched('episode'),
-  ],
+  invalidations: WATCHLIST_INVALIDATIONS,
   dependencies: (
     params: WatchlistParams,
   ) => [
     params.type,
     params.sortBy,
     params.sortHow,
-    params.limit,
     params.page,
-    params.hide,
     ...getGlobalFilterDependencies(params.filter),
   ],
   request: watchlistRequest,
   mapper: (response) => ({
-    entries: response.body.map(mapToListItem),
+    entries: mapToListItems(response.body),
     page: extractPageMeta(response.headers),
   }),
   schema: PaginatableSchemaFactory(ListItemSchema),

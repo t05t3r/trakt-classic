@@ -12,6 +12,10 @@ const badges = createRawSnippet(() => ({
   render: () => '<div class="ribbon">Season Premiere</div>',
 }));
 
+const rank = createRawSnippet(() => ({
+  render: () => '<span class="pill">4</span>',
+}));
+
 const progress = createRawSnippet(() => ({
   render: () => '<div class="bar">progress</div>',
 }));
@@ -266,6 +270,24 @@ describe('component: PosterCard', () => {
       expect(posterLink?.querySelector('.ribbon')).toHaveTextContent(
         'Season Premiere',
       );
+    });
+
+    it('should set the rank before the poster link, outside its clip', () => {
+      const { root, posterLink } = renderCard({ rank });
+
+      const pill = screen.getByText('4');
+      expect(posterLink).not.toContainElement(pill);
+      expect(root).toContainElement(pill);
+      expect(
+        pill.compareDocumentPosition(posterLink ?? root) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).not.toBe(0);
+    });
+
+    it('should leave out the rank slot by default', () => {
+      const { root } = renderCard();
+
+      expect(root.querySelector('.poster-rank')).toBeNull();
     });
 
     it('should stack the progress, the title and the subtitle row', () => {

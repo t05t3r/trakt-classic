@@ -7,12 +7,13 @@
     onSelect: (key: string) => void;
     checked?: ComponentProps<typeof MenuItem>['checked'];
     isInert?: ComponentProps<typeof Menu>['isInert'];
+    isLimited?: ComponentProps<typeof Menu>['isLimited'];
   };
 
-  const { onSelect, checked, isInert }: MenuHostProps = $props();
+  const { onSelect, checked, isInert, isLimited }: MenuHostProps = $props();
 </script>
 
-<Menu label="Sort by" {isInert}>
+<Menu label="Sort by" {isInert} {isLimited}>
   {#snippet trigger({ props })}
     <button type="button" {...props}>Rank</button>
   {/snippet}

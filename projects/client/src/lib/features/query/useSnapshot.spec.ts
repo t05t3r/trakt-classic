@@ -15,11 +15,13 @@ import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
 import { useWaitForUnobserved } from '$test/beds/query/useWaitForUnobserved.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { collectStates } from '$test/beds/store/collectStates.ts';
 import { idsOf } from '$test/beds/store/idsOf.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http } from 'msw';
-import { filter, firstValueFrom, type Observable } from 'rxjs';
+import { filter, firstValueFrom, map, type Observable } from 'rxjs';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { useQueryClient } from './_internal/queryClientContext.ts';
 import { useInvalidator } from './useInvalidator.ts';
@@ -65,13 +67,6 @@ function snapshotStore(whileUnsettled: 'hold' | 'unknown' = 'hold') {
   }));
 }
 
-function record<T>(snapshot: Observable<T>): ReadonlyArray<T> {
-  const reads: T[] = [];
-  const subscription = snapshot.subscribe((value) => reads.push(value));
-  onTestFinished(() => subscription.unsubscribe());
-  return reads;
-}
-
 function readGrown(snapshot: Observable<ReadonlyArray<number> | undefined>) {
   return firstValueFrom(
     snapshot.pipe(filter((ids) => ids?.length === 2)),
@@ -82,13 +77,13 @@ describe('useSnapshot', () => {
   it('should read the hold of another call when it starts while a further page loads', async () => {
     serveOnePage([481]);
     const { invalidate, first, second } = await snapshotStore();
-    record(first);
+    collectStates(first);
     await readKnown(first);
     const { requested, release } = serveGrownList();
 
     const invalidation = invalidate(ACTION);
     await requested;
-    const reads = record(second);
+    const reads = collectStates(second);
     release();
     await readGrown(second);
     await invalidation;
@@ -107,7 +102,7 @@ describe('useSnapshot', () => {
 
     subscription.unsubscribe();
     await waitForUnobserved({ queryKey: QUERY_KEY });
-    const reads = record(first);
+    const reads = collectStates(first);
     release();
     await readGrown(first);
     await invalidation;
@@ -139,12 +134,12 @@ describe('useSnapshot', () => {
     });
     serveOnePage([481]);
     const { invalidate, first, second } = await snapshotStore();
-    const reads = record(first);
+    const reads = collectStates(first);
     await readKnown(first);
 
     await invalidate(InvalidateAction.Auth);
     serveOnePage([482]);
-    record(second);
+    collectStates(second);
     await readKnown(second);
     expect(reads.at(-1)).toEqual([481]);
     vi.runOnlyPendingTimers();
@@ -155,7 +150,7 @@ describe('useSnapshot', () => {
   it("should read a reset Query's next settle", async () => {
     serveOnePage([481]);
     const { invalidate, client, first } = await snapshotStore();
-    const reads = record(first);
+    const reads = collectStates(first);
     await readKnown(first);
     serveOnePage([482]);
     await invalidate(ACTION);
@@ -172,7 +167,7 @@ describe('useSnapshot', () => {
     it('should read as not known while a loaded page refetches', async () => {
       serveOnePage([481]);
       const { invalidate, first } = await snapshotStore('unknown');
-      const reads = record(first);
+      const reads = collectStates(first);
       await readKnown(first);
       const { release } = holdRequest({
         method: 'get',
@@ -212,7 +207,31 @@ function statusStore(select = idsOf) {
       userListItemIdsQuery({ userId: 'me', listId: LIST_ID }),
       { select, isEmpty: (ids) => ids.length === 0 },
     ),
+    second: useSnapshotStatus(
+      userListItemIdsQuery({ userId: 'me', listId: LIST_ID }),
+      { select, isEmpty: (ids) => ids.length === 0 },
+    ),
   }));
+}
+
+function serveFailedNextPage(
+  second: () => Response | Promise<Response> = notFound,
+) {
+  serveTwoPages({ url: ITEMS_URL, first: [movieListItem(481)], second });
+}
+
+// The retry's first page and then its second wait for the spec, so a read can be taken during each.
+function holdRetry() {
+  const secondPage = serveGrownList();
+
+  return {
+    firstPage: holdRequest({ method: 'get', url: ITEMS_URL }),
+    secondPage,
+  };
+}
+
+function kindsAll(status: Observable<IdsStatus>) {
+  return collectStates(status.pipe(map(({ kind }) => kind)));
 }
 
 function nextOfLength(status: Observable<IdsStatus>, length: number) {
@@ -267,35 +286,91 @@ describe('useSnapshotStatus', () => {
     expect(kinds).toEqual(['loading', 'error', 'loading', 'ready']);
   });
 
-  it('should read error when a next page fails on the first load, then ready once a retry lands', async () => {
-    serveTwoPages({
-      url: ITEMS_URL,
-      first: [movieListItem(481)],
-      second: notFound,
-    });
-    const { status } = await statusStore();
-    const kinds = kindsOf(status);
-    const failed = await nextOf(status, 'error');
-    serveTwoPages({
-      url: ITEMS_URL,
-      first: [movieListItem(481)],
-      second: () =>
-        pagedResponse({ body: [movieListItem(482)], page: 2, pageCount: 2 }),
+  describe('when a retry after a failed next page runs', () => {
+    it('should read error on the first load, then loading until every page lands, then ready', async () => {
+      serveFailedNextPage();
+      const { status } = await statusStore();
+      const kinds = kindsAll(status);
+      const failed = await nextOf(status, 'error');
+      const { firstPage, secondPage } = holdRetry();
+      const failedKinds = [...kinds];
+
+      failed.retry();
+      await firstPage.requested;
+      await waitNegativeClaim();
+      firstPage.release();
+      await secondPage.requested;
+      await waitNegativeClaim();
+      const retryKinds = kinds.slice(failedKinds.length);
+      secondPage.release();
+      const landed = await nextOfLength(status, 2);
+
+      expect(failedKinds.at(0)).toBe('loading');
+      expect(failedKinds.filter((kind) => kind !== 'loading')).toEqual([
+        'error',
+      ]);
+      expect(failedKinds.at(-1)).toBe('error');
+      expect(retryKinds).not.toHaveLength(0);
+      expect(retryKinds.filter((kind) => kind !== 'loading')).toEqual([]);
+      expect(kinds.slice(failedKinds.length + retryKinds.length)).toEqual([
+        'ready',
+      ]);
+      expect(landed).toEqual({ kind: 'ready', data: [481, 482] });
     });
 
-    failed.retry();
+    it('should read loading in a call that starts during it', async () => {
+      serveFailedNextPage();
+      const { status, second } = await statusStore();
+      collectStates(status);
+      const failed = await nextOf(status, 'error');
+      const { firstPage, secondPage } = holdRetry();
 
-    expect(await nextOfLength(status, 2)).toEqual({
-      kind: 'ready',
-      data: [481, 482],
+      failed.retry();
+      await firstPage.requested;
+      const kinds = kindsAll(second);
+      await waitNegativeClaim();
+      firstPage.release();
+      await secondPage.requested;
+      await waitNegativeClaim();
+      const retryKinds = [...kinds];
+      secondPage.release();
+      await nextOfLength(second, 2);
+
+      expect(retryKinds).not.toHaveLength(0);
+      expect(retryKinds.filter((kind) => kind !== 'loading')).toEqual([]);
+      expect(kinds.slice(retryKinds.length)).toEqual(['ready']);
     });
-    expect(kinds.slice(0, 2)).toEqual(['loading', 'error']);
+
+    it('should read error with a retry when the next page fails again', async () => {
+      serveFailedNextPage();
+      const { waitForQueriesIdle, status } = await statusStore();
+      const reads = collectStates(status);
+      const failed = await nextOf(status, 'error');
+      const secondPage = holdResponse(notFound);
+      serveFailedNextPage(secondPage.answer);
+      const failedReads = reads.length;
+
+      failed.retry();
+      await secondPage.requested;
+      secondPage.release();
+      await waitForQueriesIdle({ queryKey: QUERY_KEY });
+      const retryReads = reads.slice(failedReads);
+
+      expect(retryReads.slice(0, -1)).not.toHaveLength(0);
+      expect(
+        retryReads.slice(0, -1).filter(({ kind }) => kind !== 'loading'),
+      ).toEqual([]);
+      expect(retryReads.at(-1)).toEqual({
+        kind: 'error',
+        retry: expect.any(Function),
+      });
+    });
   });
 
   it('should keep reading ready when a refetch after a settled read fails', async () => {
     serveOnePage([481]);
     const { invalidate, waitForQueriesIdle, status } = await statusStore();
-    const reads = record(status);
+    const reads = collectStates(status);
     const kinds = kindsOf(status);
     await nextOf(status, 'ready');
     const requests = failItems();
@@ -314,7 +389,7 @@ describe('useSnapshotStatus', () => {
     const { invalidate, waitForQueriesIdle, status } = await statusStore(
       select,
     );
-    const reads = record(status);
+    const reads = collectStates(status);
     await nextOf(status, 'ready');
 
     await invalidate(ACTION);

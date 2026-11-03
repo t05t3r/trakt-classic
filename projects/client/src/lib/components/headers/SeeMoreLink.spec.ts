@@ -1,3 +1,4 @@
+import { expectDirectionalIcon } from '$test/beds/direction/expectDirectionalIcon.ts';
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import SeeMoreLink from './SeeMoreLink.svelte';
@@ -20,8 +21,7 @@ describe('component: SeeMoreLink', () => {
 
     const chevron = container.querySelector('svg');
     expect(chevron).toHaveClass('tabler-icon-circle-chevron-right');
-    expect(chevron).toHaveClass('trakt-icon-directional');
-    expect(chevron).toHaveAttribute('aria-hidden', 'true');
+    expectDirectionalIcon(chevron);
   });
 
   it('should keep its label as the accessible name when the text hides', () => {

@@ -1,17 +1,15 @@
-import { useSnapshot } from '$lib/features/query/useSnapshot.ts';
 import { WatchedShowsMappedMock } from '$mocks/data/users/mapped/WatchedShowsMappedMock.ts';
 import { WatchedShowsMinimalResponseMock } from '$mocks/data/users/response/WatchedShowsMinimalResponseMock.ts';
 import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
+import { renderSnapshot } from '$test/beds/query/renderSnapshot.ts';
 import { runQuery } from '$test/beds/query/runQuery.ts';
-import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
 import { serveHeaderlessPages } from '$test/beds/request/serveHeaderlessPages.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
-import { renderStore } from '$test/beds/store/renderStore.ts';
 import { mapToEntries } from '$test/utils/mapToEntries.ts';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   currentUserWatchedShowsQuery,
   mapWatchedShowResponse,
@@ -21,21 +19,14 @@ const SHOW_COUNT = Object.keys(WatchedShowsMinimalResponseMock).length;
 
 function readAllPages(limit: number) {
   return captureRequests(async () => {
-    const { shows, waitForLateRequests } = await renderStore(() => ({
-      shows: useSnapshot(currentUserWatchedShowsQuery({ limit }), {
-        select: (entries) => entries,
-        whileUnsettled: 'hold',
-      }),
-      waitForLateRequests: useWaitForLateRequests(),
-    }));
-    const subscription = shows.subscribe();
-    onTestFinished(() => subscription.unsubscribe());
+    const { snapshot, waitForLateRequests } = await renderSnapshot(
+      currentUserWatchedShowsQuery({ limit }),
+      (entries) => entries,
+    );
 
-    await readKnown(shows);
+    await readKnown(snapshot);
     await waitForLateRequests();
-  }).then((requests) =>
-    requests.filter((request) => request.endsWith('/watched/shows'))
-  );
+  }, { pathIncludes: '/watched/shows' });
 }
 
 describe('currentUserWatchedShowsQuery', () => {

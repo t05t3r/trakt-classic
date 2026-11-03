@@ -26,7 +26,7 @@
     position: relative;
     display: block;
     min-height: var(--dropdown-row-height);
-    padding-block: var(--ni-3);
+    padding-block: var(--ni-2);
     padding-inline: var(--ni-20);
     box-sizing: border-box;
     font-family: var(--font-family-body);

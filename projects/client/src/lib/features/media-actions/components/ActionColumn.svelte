@@ -6,6 +6,7 @@
   import { useFavorite } from '$lib/features/media-actions/stores/useFavorite.ts';
   import { useWatched } from '$lib/features/media-actions/stores/useWatched.ts';
   import { useWatchlist } from '$lib/features/media-actions/stores/useWatchlist.ts';
+  import { toPlayGate } from '$lib/features/media-actions/toPlayGate.ts';
   import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
   import { isProgressComplete } from '$lib/utils/media/isProgressComplete.ts';
   import IconAlignLeft from '@tabler/icons-svelte/icons/align-left';
@@ -40,8 +41,14 @@
     ? useFavorite({ type: target.type, id: target.id })
     : undefined;
 
-  const { isWatched, isWatchedKnown, pendingWatched, plays, lastWatchedAt } =
-    watched;
+  const {
+    isWatched,
+    isWatchedKnown,
+    pendingWatched,
+    plays,
+    lastWatchedAt,
+    hasPlay,
+  } = watched;
   const isWatchUpdating = watched.isUpdating;
   const { isWatchlisted, listedAt } = watchlist;
   const isListUpdating = watchlist.isUpdating;
@@ -50,6 +57,9 @@
   const favoritedAt = favoriteStore?.favoritedAt;
 
   const isAired = $derived(hasTargetAired(target));
+  const favoriteGate = $derived(
+    toPlayGate({ isSet: $isFavorite, hasPlay: $hasPlay }),
+  );
 
   const hasProgress = $derived(
     target.type === 'show' || target.type === 'season',
@@ -182,6 +192,10 @@
       : undefined}
       selected={$isFavorite}
       isUpdating={$isFavoriteUpdating}
+      isInert={favoriteGate === 'unknown'}
+      blockedReason={favoriteGate === 'blocked'
+      ? m.tooltip_text_watch_first_to_favorite()
+      : undefined}
       onclick={toggleFavorite}
     />
   {/if}

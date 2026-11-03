@@ -32,7 +32,6 @@
     studios,
     seasonsStatus,
     seasonCount,
-    progress,
     progressStatus,
     ratings: showRatings,
     earliestReleaseDate,
@@ -134,7 +133,7 @@
     <SeasonsBlock
       show={$show}
       status={$seasonsStatus}
-      progress={$progress}
+      progress={$progressStatus}
       count={$seasonCount}
     />
   {/if}
@@ -155,7 +154,7 @@
   <ListsBlock status={$listsStatus} />
 {/snippet}
 
-{#if $show}
+{#if $show && media}
   <div class="trakt-show-page">
     <SummaryHero
       backdrop={$show.cover.url.full}
@@ -172,8 +171,7 @@
       {/snippet}
       {#snippet ratings()}
         <SummaryRatings
-          type="show"
-          id={$show.id}
+          target={media}
           rating={$showRatings}
           stats={$stats}
           earliestReleaseDate={$earliestReleaseDate}

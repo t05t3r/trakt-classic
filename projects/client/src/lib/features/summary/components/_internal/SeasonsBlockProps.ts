@@ -6,7 +6,8 @@ import type { ShowProgressDetail } from '$lib/requests/models/ShowProgressDetail
 export type SeasonsBlockProps = {
   show: ShowEntry;
   status: SectionStatus<ReadonlyArray<Season>>;
-  progress: ShowProgressDetail | Nil;
+  // Under a watched filter, the seasons wait until it is known.
+  progress: SectionStatus<ShowProgressDetail>;
   // The regular seasons, numbered above SPECIALS; undefined while unknown.
   count: number | undefined;
 };

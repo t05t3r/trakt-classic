@@ -1,0 +1,28 @@
+import type { Genre } from '@trakt/api';
+
+export const GENRES: ReadonlyArray<Genre> = [
+  'action',
+  'adventure',
+  'animation',
+  'anime',
+  'biography',
+  'children',
+  'comedy',
+  'crime',
+  'documentary',
+  'drama',
+  'family',
+  'fantasy',
+  'history',
+  'holiday',
+  'horror',
+  'musical',
+  'mystery',
+  'romance',
+  'science-fiction',
+  'superhero',
+  'suspense',
+  'thriller',
+  'war',
+  'western',
+] as const;

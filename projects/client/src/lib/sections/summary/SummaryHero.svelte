@@ -1,9 +1,8 @@
 <script lang="ts">
   import Certification from '$lib/components/badges/Certification.svelte';
-  import { isPlaceholder } from '$lib/features/image/isPlaceholder.ts';
+  import HeroBackdrop from '$lib/features/image/components/HeroBackdrop.svelte';
   import ContainerPage from '$lib/sections/layout/ContainerPage.svelte';
   import { useHydrated } from '$lib/utils/hydration/hydration.ts';
-  import HeroBackdrop from './_internal/HeroBackdrop.svelte';
   import type { SummaryHeroProps } from './_internal/SummaryHeroProps.ts';
 
   const {
@@ -24,12 +23,7 @@
 </script>
 
 <section class="trakt-summary-hero">
-  {#if backdrop && !isPlaceholder(backdrop)}
-    <!-- A new backdrop fades in from black, as the first one did. -->
-    {#key backdrop}
-      <HeroBackdrop src={backdrop} />
-    {/key}
-  {/if}
+  <HeroBackdrop src={backdrop} position="hero" />
   <div class="hero-shade"></div>
   {#if neighbours}
     <div class="hero-neighbours">{@render neighbours()}</div>

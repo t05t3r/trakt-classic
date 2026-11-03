@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setDocumentDirection } from '$test/beds/direction/setDocumentDirection.ts';
 import MenuHost from '$test/beds/menus/MenuHost.svelte';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
@@ -149,6 +150,29 @@ describe('component: Menu', () => {
     expect(item).toHaveAttribute('aria-checked', 'false');
   });
 
+  it.each(['ltr', 'rtl'])(
+    'should lay its menu out in a %s document',
+    async (dir) => {
+      setDocumentDirection(dir);
+      render(MenuHost, { props: { onSelect: vi.fn() } });
+
+      expect((await openMenu()).matches(`:dir(${dir})`)).toBe(true);
+    },
+  );
+
+  it.each([
+    { isLimited: true, limited: true },
+    { isLimited: false, limited: false },
+    { isLimited: undefined, limited: false },
+  ])(
+    'should mark the limit on its menu at isLimited $isLimited',
+    async ({ isLimited, limited }) => {
+      render(MenuHost, { props: { onSelect: vi.fn(), isLimited } });
+
+      expect((await openMenu()).hasAttribute('data-limited')).toBe(limited);
+    },
+  );
+
   describe('from the keyboard', () => {
     it.each([['Enter', '{Enter}'], ['Space', ' ']])(
       'should select a checkbox item with %s and stay open',
@@ -234,6 +258,27 @@ describe('component: Menu', () => {
 
       expect(trigger()).not.toHaveAttribute('aria-disabled');
       expect(await openMenu()).toBeVisible();
+    });
+
+    it('should keep its open trigger live and close from it', async () => {
+      const onSelect = vi.fn();
+      const { rerender } = render(MenuHost, { props: { onSelect } });
+      await openMenu();
+
+      await rerender({ onSelect, isInert: true });
+
+      expect(trigger()).not.toHaveAttribute('aria-disabled');
+      // VoiceOver activates with a click of no detail; the scroll lock keeps a press off the trigger.
+      await fireEvent.click(trigger(), { detail: 0 });
+
+      await waitFor(() => expect(menu()).not.toBeInTheDocument());
+      expect(trigger()).toHaveAttribute('aria-expanded', 'false');
+      expect(trigger()).toHaveAttribute('aria-disabled', 'true');
+
+      await fireEvent.click(trigger(), { detail: 0 });
+      await waitNegativeClaim();
+
+      expect(menu()).not.toBeInTheDocument();
     });
   });
 });

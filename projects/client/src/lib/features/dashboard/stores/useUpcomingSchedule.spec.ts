@@ -29,10 +29,12 @@ function serveCalendar(answer: () => Response) {
   server.use(http.get(CALENDAR_URL, answer));
 }
 
-function requestedWindow(requests: ReadonlyArray<string>) {
-  return requests
-    .filter((request) => request.includes('/calendars/'))
-    .map((request) => request.split('/').slice(-2).join('/'));
+async function requestWindow() {
+  const requests = await captureRequests(readSchedule, {
+    pathIncludes: '/calendars/',
+  });
+
+  return requests.map((request) => request.split('/').slice(-2).join('/'));
 }
 
 function readSchedule() {
@@ -53,18 +55,14 @@ describe('store: useUpcomingSchedule', () => {
   });
 
   it("should read the calendar over 21 days from yesterday's date", async () => {
-    const requests = await captureRequests(readSchedule);
-
-    expect(requestedWindow(requests)).toEqual(['2023-05-03/21']);
+    expect(await requestWindow()).toEqual(['2023-05-03/21']);
   });
 
   it("should start from yesterday's local date east of UTC", async () => {
     setTimeZone('Asia/Tokyo');
     vi.setSystemTime(new Date('2023-05-04T20:00:00.000Z'));
 
-    const requests = await captureRequests(readSchedule);
-
-    expect(requestedWindow(requests)).toEqual(['2023-05-04/21']);
+    expect(await requestWindow()).toEqual(['2023-05-04/21']);
   });
 
   it('should read the dates with entries from today', async () => {

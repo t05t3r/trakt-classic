@@ -51,6 +51,7 @@ const PROPS: SortableBlockProps<Thing, ThingSort> = {
     apply,
   },
   isWatched: (thing) => thing.isWatched,
+  watchedStatus: { kind: 'ready', data: THINGS },
   grid: {
     key: (thing) => thing.key,
     columns: { desktop: 1, tabletLarge: 1, tabletSmall: 1, mobile: 1 },

@@ -82,9 +82,11 @@ describe('component: Popover', () => {
     await openPopover();
 
     // bits-ui counts a press within the box's rect as inside, and jsdom puts that rect at 0,0.
-    fireEvent.pointerDown(document.body, { clientX: 1, clientY: 1 });
-
-    await waitFor(() => expect(dialog()).not.toBeInTheDocument());
+    // It also drops a press made before it re-attaches its listener, just after the open.
+    await waitFor(() => {
+      fireEvent.pointerDown(document.body, { clientX: 1, clientY: 1 });
+      expect(dialog()).not.toBeInTheDocument();
+    });
     expect(trigger()).toHaveFocus();
   });
 

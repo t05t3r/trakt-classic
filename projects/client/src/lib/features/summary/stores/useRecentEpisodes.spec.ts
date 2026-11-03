@@ -77,8 +77,8 @@ function serveNothingWatched() {
   );
 }
 
-const seasonListsOf = (requests: ReadonlyArray<string>) =>
-  requests.filter((request) => /\/seasons\/\d+$/.test(request));
+// Of the block's reads, only a season's episode list has a path under `/seasons/`.
+const SEASON_LISTS = { pathIncludes: '/seasons/' };
 
 const DEVS_SLUG = ShowDevsMappedMock.slug;
 
@@ -131,12 +131,10 @@ async function readSeasonLists() {
     status: useRecentEpisodes(valueObservable(SLUG)),
     waitForLateRequests: useWaitForLateRequests(),
   }));
-  const requests = await captureRequests(async () => {
+  return captureRequests(async () => {
     await nextOf(status, 'ready');
     await waitForLateRequests();
-  });
-
-  return seasonListsOf(requests);
+  }, SEASON_LISTS);
 }
 
 function renderRecentEpisodes() {
@@ -194,9 +192,9 @@ describe('store: useRecentEpisodes', () => {
     const requests = await captureRequests(async () => {
       expect(await nextOf(status, 'empty')).toEqual({ kind: 'empty' });
       await waitForLateRequests();
-    });
+    }, SEASON_LISTS);
 
-    expect(seasonListsOf(requests)).toEqual([]);
+    expect(requests).toEqual([]);
   });
 
   it('should read the error when the last episode fails', async () => {
@@ -577,9 +575,9 @@ describe('store: useRecentEpisodes', () => {
     const requests = await captureRequests(async () => {
       slug$.next(DEVS_SLUG);
       await waitForLateRequests();
-    });
+    }, SEASON_LISTS);
 
-    expect(seasonListsOf(requests)).toEqual([]);
+    expect(requests).toEqual([]);
   });
 
   it('should read ready in the same call when the slug returns to a show it has read', async () => {
@@ -618,10 +616,10 @@ describe('store: useRecentEpisodes', () => {
       await waitForLateRequests();
       slug$.next(SLUG);
       await waitForLateRequests();
-    });
+    }, SEASON_LISTS);
     const back = await nextOf(status, 'ready');
 
-    expect(seasonListsOf(requests)).toEqual(['GET /shows/devs/seasons/1']);
+    expect(requests).toEqual(['GET /shows/devs/seasons/1']);
     expect(back.data.recentlyAired).toEqual([
       ShowSiloLastEpisodeMappedMock,
       episode(9),

@@ -1,4 +1,3 @@
-import { goto } from '$app/navigation';
 import { REPLIED_COMMENT_ID } from '$mocks/data/comments/REPLIED_COMMENT_ID.ts';
 import { REPLIED_COMMENT_REPLIES_URL } from '$mocks/data/comments/REPLIED_COMMENT_REPLIES_URL.ts';
 import { SILO_COMMENTS_TARGET } from '$mocks/data/comments/SILO_COMMENTS_TARGET.ts';
@@ -23,11 +22,13 @@ import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { commentResponse } from '$test/beds/request/commentResponse.ts';
 import { commentPage } from '$test/beds/request/commentPage.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
+import { expectOneReplace } from '$test/beds/url/expectOneReplace.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
@@ -71,10 +72,6 @@ function serveHiddenCommentSpoilers() {
       () => HttpResponse.json(HideCommentSpoilersUserSettingsResponseMock),
     ),
   );
-}
-
-function serveNoWatchedMovies() {
-  server.use(http.get(WATCHED_MOVIES_URL, () => HttpResponse.json([])));
 }
 
 function serveLikes() {
@@ -157,10 +154,7 @@ describe('component: CommentsBlock', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Recent' }));
 
     expect(await shown(3)).toEqual(ids(21, 23));
-    expect(goto).toHaveBeenCalledExactlyOnceWith(
-      expect.any(URL),
-      expect.objectContaining({ replaceState: true }),
-    );
+    expectOneReplace();
     expect(lastReplace()).toBe(`${MOVIE_PATH}?comments=recent`);
     expect(screen.getByRole('tab', { selected: true }))
       .toHaveTextContent('Recent');
@@ -408,17 +402,21 @@ describe('component: CommentsBlock', () => {
     it('should treat every comment as a spoiler when the viewer hides comment spoilers', async () => {
       openAt(MOVIE_PATH);
       serveHiddenCommentSpoilers();
-      serveNoWatchedMovies();
+      serveMoviePlays([]);
+      const history = holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
       recordSearches(LIKES_URL, [
         commentResponse({ id: 1 }),
         commentResponse({ id: 2, variant: 'spoiler' }),
       ]);
       const { userLoaded } = renderBlock();
       await userLoaded;
+      await history.requested;
+      history.release();
 
-      await waitFor(async () =>
-        expect(await statesOf(2)).toEqual(['concealed', 'concealed'])
-      );
+      await screen.findAllByRole('article');
+      await waitNegativeClaim();
+
+      expect(await statesOf(2)).toEqual(['concealed', 'concealed']);
     });
 
     it('should reveal every comment on a watched Target, hidden comment spoilers or not', async () => {
@@ -439,7 +437,8 @@ describe('component: CommentsBlock', () => {
     it('should treat a reply as a spoiler when the viewer hides comment spoilers', async () => {
       openAt(MOVIE_PATH);
       serveHiddenCommentSpoilers();
-      serveNoWatchedMovies();
+      serveMoviePlays([]);
+      const history = holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
       recordSearches(LIKES_URL, [{
         ...commentResponse({ id: REPLIED_COMMENT_ID }),
         replies: 1,
@@ -449,14 +448,18 @@ describe('component: CommentsBlock', () => {
       ]);
       const { userLoaded } = renderBlock();
       await userLoaded;
+      await history.requested;
+      history.release();
 
       await userEvent.click(
         await screen.findByRole('button', { name: '1 reply' }),
       );
-
-      await waitFor(async () =>
-        expect(await statesOf(2)).toEqual(['concealed', 'concealed'])
+      await waitFor(() =>
+        expect(screen.getAllByRole('article')).toHaveLength(2)
       );
+      await waitNegativeClaim();
+
+      expect(await statesOf(2)).toEqual(['concealed', 'concealed']);
     });
 
     it('should reveal a spoiler reply on a watched Target', async () => {

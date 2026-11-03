@@ -1,11 +1,19 @@
 import { server } from '$mocks/server.ts';
 
+type CaptureRequestsOptions = {
+  pathIncludes?: string;
+};
+
 export async function captureRequests(
   run: () => Promise<unknown>,
+  { pathIncludes = '' }: CaptureRequestsOptions = {},
 ): Promise<string[]> {
   const requests: string[] = [];
   const record = ({ request }: { request: Request }) => {
-    requests.push(`${request.method} ${new URL(request.url).pathname}`);
+    const { pathname } = new URL(request.url);
+    if (!pathname.includes(pathIncludes)) return;
+
+    requests.push(`${request.method} ${pathname}`);
   };
 
   server.events.on('request:start', record);

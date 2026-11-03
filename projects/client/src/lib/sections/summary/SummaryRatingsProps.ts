@@ -1,3 +1,4 @@
+import type { QuickActionsTarget } from '$lib/features/media-actions/components/QuickActionsProps.ts';
 import type { EpisodeStats } from '$lib/requests/models/EpisodeStats.ts';
 import type {
   MediaRating,
@@ -11,8 +12,8 @@ export type SummaryRating = Omit<MediaRating, 'trakt'> & {
 };
 
 export type SummaryRatingsProps = {
-  type: 'movie' | 'show' | 'season' | 'episode';
-  id: number;
+  // Read once per id: the rating slot is remade for a new Target.
+  target: QuickActionsTarget;
   rating: SummaryRating | Nil;
   stats: EpisodeStats | MediaStats | Nil;
   earliestReleaseDate: Date | Nil;

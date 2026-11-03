@@ -1,7 +1,7 @@
 import { isPlaceholder } from '$lib/features/image/isPlaceholder.ts';
+import { toListItemPoster } from '$lib/features/media-card/toListItemPoster.ts';
 import type { ListItem } from '$lib/requests/models/ListItem.ts';
 import type { UpNextEntry } from '$lib/requests/models/UpNextEntry.ts';
-import { toListItemPoster } from './toListItemPoster.ts';
 
 // The wall's cell count; Up Next fills at most half, the Watchlist the rest.
 const POSTER_MAX = 24;

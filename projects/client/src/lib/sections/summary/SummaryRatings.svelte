@@ -1,17 +1,20 @@
 <script lang="ts">
   import CommunityRating from '$lib/components/badges/CommunityRating.svelte';
+  import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
   import { useDisplayEarlyRatings } from '$lib/features/auth/stores/useDisplayEarlyRatings.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import RatingPopover from '$lib/features/media-actions/components/RatingPopover.svelte';
+  import { toPlayGate } from '$lib/features/media-actions/toPlayGate.ts';
   import ContainerPage from '$lib/sections/layout/ContainerPage.svelte';
   import IconHeart from '@tabler/icons-svelte/icons/heart';
   import IconHeartFilled from '@tabler/icons-svelte/icons/heart-filled';
   import ExternalRating from './_internal/ExternalRating.svelte';
+  import HasPlay from './_internal/HasPlay.svelte';
   import { toCommunityCounters } from './_internal/toCommunityCounters.ts';
   import { toExternalRatings } from './_internal/toExternalRatings.ts';
   import type { SummaryRatingsProps } from './SummaryRatingsProps.ts';
 
-  const { type, id, rating, stats, earliestReleaseDate }: SummaryRatingsProps =
+  const { target, rating, stats, earliestReleaseDate }: SummaryRatingsProps =
     $props();
 
   const RATE_THIS = {
@@ -21,7 +24,7 @@
     episode: m.text_rate_this_episode,
   };
 
-  const rateThis = $derived(RATE_THIS[type]());
+  const rateThis = $derived(RATE_THIS[target.type]());
 
   const yourRatingId = $props.id();
 
@@ -48,48 +51,59 @@
             {/if}
           </li>
           <li class="ratings-item">
-            {#key id}
-              <RatingPopover target={{ type, id }} label={rateThis}>
-                {#snippet trigger({ props, shown })}
-                  {@const isRated = shown !== null && shown.kind !== 'unrate'}
-                  {@const isStored = shown?.kind === 'stored'}
-                  <button
-                    type="button"
-                    class="ratings-user"
-                    class:is-rated={isRated}
-                    aria-describedby={isStored ? yourRatingId : undefined}
-                    {...props}
-                  >
-                    {#if isRated}
-                      <IconHeartFilled
-                        class="ratings-user-heart"
-                        aria-hidden="true"
-                        data-rating={shown.value}
-                      />
-                    {:else}
-                      <IconHeart class="ratings-user-heart" aria-hidden="true" />
-                    {/if}
-                    <span class="ratings-number">
-                      {#if shown?.kind === 'unrate'}
-                        <span class="ratings-user-question">{m.text_rating_unrate()}</span>
-                        <span class="ratings-caption tag">{shown.label}</span>
-                      {:else if shown}
-                        <span class="ratings-value">{shown.value}</span>
-                        <span class="ratings-caption tag">{shown.label}</span>
-                      {:else}
-                        <span class="ratings-user-question">{rateThis}</span>
-                        <span class="ratings-caption tag">{m.text_rating_prompt()}</span>
+            {#key target.id}
+              <HasPlay {target}>
+                {#snippet children(hasPlay)}
+                  <RatingPopover {target} label={rateThis}>
+                    {#snippet trigger({ props, shown, isOpen })}
+                      {@const isRated = shown !== null && shown.kind !== 'unrate'}
+                      {@const isStored = shown?.kind === 'stored'}
+                      <!-- A stored rating or the open picker, opened past the gate, is set: only a first rating needs a Play. -->
+                      {@const gate = toPlayGate({ isSet: shown !== null || isOpen, hasPlay })}
+                      <button
+                        type="button"
+                        class="ratings-user"
+                        class:is-rated={isRated}
+                        class:is-blocked={gate === 'blocked'}
+                        aria-describedby={isStored ? yourRatingId : undefined}
+                        title={gate === 'blocked'
+                        ? m.tooltip_text_watch_first_to_rate()
+                        : undefined}
+                        {...props}
+                        {...gate === 'open' ? {} : INERT_TRIGGER_PROPS}
+                      >
+                        {#if isRated}
+                          <IconHeartFilled
+                            class="ratings-user-heart"
+                            aria-hidden="true"
+                            data-rating={shown.value}
+                          />
+                        {:else}
+                          <IconHeart class="ratings-user-heart" aria-hidden="true" />
+                        {/if}
+                        <span class="ratings-number">
+                          {#if shown?.kind === 'unrate'}
+                            <span class="ratings-user-question">{m.text_rating_unrate()}</span>
+                            <span class="ratings-caption tag">{shown.label}</span>
+                          {:else if shown}
+                            <span class="ratings-value">{shown.value}</span>
+                            <span class="ratings-caption tag">{shown.label}</span>
+                          {:else}
+                            <span class="ratings-user-question">{rateThis}</span>
+                            <span class="ratings-caption tag">{m.text_rating_prompt()}</span>
+                          {/if}
+                        </span>
+                      </button>
+                      <!-- Outside the button, so its name stays the visible text. -->
+                      {#if isStored}
+                        <span id={yourRatingId} class="ratings-user-description">
+                          {m.label_your_rating_description()}
+                        </span>
                       {/if}
-                    </span>
-                  </button>
-                  <!-- Outside the button, so its name stays the visible text. -->
-                  {#if isStored}
-                    <span id={yourRatingId} class="ratings-user-description">
-                      {m.label_your_rating_description()}
-                    </span>
-                  {/if}
+                    {/snippet}
+                  </RatingPopover>
                 {/snippet}
-              </RatingPopover>
+              </HasPlay>
             {/key}
           </li>
         </ul>
@@ -196,6 +210,10 @@
 
       &.is-rated .ratings-caption {
         color: var(--color-text-primary);
+      }
+
+      &.is-blocked {
+        @include blocked-control;
       }
     }
 

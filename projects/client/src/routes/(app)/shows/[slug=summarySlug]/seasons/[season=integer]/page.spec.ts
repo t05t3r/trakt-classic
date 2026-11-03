@@ -1,4 +1,3 @@
-import { createQueryClient } from '$lib/features/query/createQueryClient.ts';
 import { showSeasonSummaryQuery } from '$lib/requests/queries/shows/showSeasonSummaryQuery.ts';
 import { showSummaryQuery } from '$lib/requests/queries/shows/showSummaryQuery.ts';
 import { SILO_MISSING_SEASON } from '$mocks/data/shows/SILO_MISSING_SEASON.ts';
@@ -8,22 +7,19 @@ import { SeasonSiloMappedMock } from '$mocks/data/summary/seasons/silo/mapped/Se
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { server } from '$mocks/server.ts';
 import { httpErrorStatus } from '$test/beds/request/httpErrorStatus.ts';
+import { mockLoadEvent } from '$test/beds/request/mockLoadEvent.ts';
 import { http, HttpResponse, type HttpResponseResolver } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { load } from './+page.ts';
-
-type LoadEvent = Parameters<typeof load>[0];
 
 const SLUG = ShowSiloMappedMock.slug;
 const SEASON = SeasonSiloMappedMock.number;
 
 const runLoad = async (season = SEASON) => {
-  const queryClient = createQueryClient({ retryDelay: 0 });
-  const event = {
+  const { event, queryClient } = mockLoadEvent({
+    load,
     params: { slug: SLUG, season: String(season) },
-    parent: () => Promise.resolve({ queryClient }),
-    fetch: globalThis.fetch,
-  } as unknown as LoadEvent;
+  });
 
   await load(event);
 

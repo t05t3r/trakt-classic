@@ -1,3 +1,4 @@
+import { expectDirectionalIcon } from '$test/beds/direction/expectDirectionalIcon.ts';
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import NeighbourLinks from './NeighbourLinks.svelte';
@@ -54,9 +55,6 @@ describe('component: NeighbourLinks', () => {
     const [previous, next] = container.querySelectorAll('svg');
     expect(previous).toHaveClass('tabler-icon-chevron-left');
     expect(next).toHaveClass('tabler-icon-chevron-right');
-    [previous, next].forEach((chevron) => {
-      expect(chevron).toHaveClass('trakt-icon-directional');
-      expect(chevron).toHaveAttribute('aria-hidden', 'true');
-    });
+    [previous, next].forEach(expectDirectionalIcon);
   });
 });

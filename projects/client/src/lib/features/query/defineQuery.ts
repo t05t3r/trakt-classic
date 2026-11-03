@@ -19,7 +19,7 @@ import { zodToHash } from './_internal/zodToHash.ts';
 import type { DefineQueryProps } from './models/DefineQueryProps.ts';
 
 function markerChecksum(
-  invalidations: InvalidateActionOptions[],
+  invalidations: ReadonlyArray<InvalidateActionOptions>,
 ): string | null {
   if (invalidations.length === 0) return null;
 
@@ -33,10 +33,10 @@ function resolveInvalidations<TRequestParams extends ApiParams>(
     TRequestParams
   >['invalidations'],
   requestParams: TRequestParams,
-): InvalidateActionOptions[] {
-  return Array.isArray(invalidations)
-    ? invalidations
-    : invalidations(requestParams);
+): ReadonlyArray<InvalidateActionOptions> {
+  return typeof invalidations === 'function'
+    ? invalidations(requestParams)
+    : invalidations;
 }
 
 export function defineQuery<

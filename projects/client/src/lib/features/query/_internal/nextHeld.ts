@@ -18,6 +18,8 @@ export type Held<T> = {
   data?: PagedQuery<T>['data'];
   pages: ReadonlyArray<T> | undefined;
   count: number;
+  // A next page failed after these pages; kept with them, so every reader of the hold sees it.
+  isFailed: boolean;
 };
 
 type NextHeldParams<T> = {
@@ -31,31 +33,41 @@ function isSettled<T>(query: PagedQuery<T>): boolean {
   return !query.isPending && !query.isFetchingNextPage && !query.hasNextPage;
 }
 
-type ReadPagesParams<T> = Omit<NextHeldParams<T>, 'whileUnsettled'>;
+type ReadPagesParams<T> = Omit<NextHeldParams<T>, 'whileUnsettled'> & {
+  isFailed: boolean;
+};
 
-function readPages<T>({ held, query, count }: ReadPagesParams<T>): Held<T> {
+function notKnown<T>(count: number): Held<T> {
+  return { pages: undefined, count, isFailed: false };
+}
+
+function readPages<T>(
+  { held, query, count, isFailed }: ReadPagesParams<T>,
+): Held<T> {
   if (held === undefined || held.data !== query.data) {
     const pages = query.data?.pages.flatMap((page) => page.entries) ?? [];
-    return { data: query.data, pages, count };
+    return { data: query.data, pages, count, isFailed };
   }
-  if (held.count === count) return held;
+  if (held.count === count && held.isFailed === isFailed) return held;
 
-  return { ...held, count };
+  return { ...held, count, isFailed };
 }
 
 export function nextHeld<T>(
   { held, query, count, whileUnsettled }: NextHeldParams<T>,
 ): Held<T> {
-  if (query.data === undefined) return { pages: undefined, count };
+  if (query.data === undefined) return notKnown(count);
   // A caller asking for unknown reads only a clean settle, never a held, refetching or failed one.
   if (whileUnsettled === 'unknown') {
     return isSettled(query) && !query.isFetching && !query.isError
-      ? readPages({ held, query, count })
-      : { pages: undefined, count };
+      ? readPages({ held, query, count, isFailed: false })
+      : notKnown(count);
   }
-  if (isSettled(query)) return readPages({ held, query, count });
+  if (isSettled(query)) {
+    return readPages({ held, query, count, isFailed: false });
+  }
   // Growth past one page must not turn every known read back to unknown.
-  if (!query.isFetchNextPageError) return held ?? { pages: undefined, count };
+  if (!query.isFetchNextPageError) return held ?? notKnown(count);
 
-  return readPages({ held, query, count });
+  return readPages({ held, query, count, isFailed: true });
 }

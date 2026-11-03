@@ -56,9 +56,10 @@ describe('episodeSummaryQuery', () => {
       ),
     );
 
-    const requests = await captureRequests(() => runSiloEpisode(0));
+    const requests = await captureRequests(() => runSiloEpisode(0), {
+      pathIncludes: '/shows/',
+    });
 
-    expect(requests.filter((request) => request.startsWith('GET /shows/')))
-      .toEqual([`GET ${EPISODE_ZERO_PATH}`]);
+    expect(requests).toEqual([`GET ${EPISODE_ZERO_PATH}`]);
   });
 });

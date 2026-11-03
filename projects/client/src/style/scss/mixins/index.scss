@@ -119,6 +119,18 @@
   }
 }
 
+// A link in its surrounding text's colour that underlines only under a mouse hover.
+@mixin inherited-link-style {
+  color: inherit;
+  text-decoration: none;
+
+  @include for-mouse {
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 $_episode-type-colors: (
   'series_premiere': '--color-episode-series-premiere',
   'season_premiere': '--color-episode-season-premiere',
@@ -214,17 +226,74 @@ $_episode-type-colors: (
   }
 }
 
-// A round avatar ring over the avatar ring's shade, in its colour by default.
-@mixin ringed-avatar($ring-color: var(--color-avatar-ring)) {
+// A round avatar ring over a fill, both the avatar ring's shade and width by default.
+@mixin ringed-avatar(
+  $ring-color: var(--color-avatar-ring),
+  $ring-width: var(--avatar-ring),
+  $fill: var(--color-avatar-ring)
+) {
   box-sizing: border-box;
   overflow: hidden;
-  border: var(--avatar-ring) solid $ring-color;
+  border: $ring-width solid $ring-color;
   border-radius: var(--border-radius-round);
-  background: var(--color-avatar-ring);
+  background: $fill;
+}
+
+// A watched item the watched filter fades, shown in full under the focus or a mouse hover.
+@mixin watched-fade {
+  opacity: var(--watched-fade-opacity);
+
+  &:focus-within {
+    opacity: 1;
+  }
+
+  @include for-mouse {
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// A control that refuses input until a precondition holds, its reason given elsewhere.
+// It keeps focus, so it shows in full under keyboard focus to keep the ring at full contrast.
+@mixin blocked-control {
+  opacity: var(--action-blocked-opacity);
+  cursor: not-allowed;
+
+  &:focus-visible {
+    opacity: 1;
+  }
 }
 
 @mixin spoiler-blur() {
   filter: blur(var(--blur-spoiler));
+}
+
+// For a horizontal scroller: the WebKit bar sets only its height.
+@mixin thin-scrollbar {
+  &::-webkit-scrollbar {
+    height: var(--ni-6);
+  }
+
+  &::-webkit-scrollbar-track {
+    border-radius: var(--border-radius-xs);
+    background: var(--color-scrollbar-track);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: var(--border-radius-xs);
+    background: var(--color-scrollbar-thumb);
+
+    &:hover {
+      background: var(--color-scrollbar-thumb-hover);
+    }
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar-thumb-standard)
+      var(--color-scrollbar-track);
+  }
 }
 
 @mixin adaptive-gap($property: gap) {

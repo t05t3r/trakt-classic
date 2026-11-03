@@ -42,6 +42,45 @@ describe('component: CountStat', () => {
     expect(container.querySelector('time')).toHaveTextContent('4h 12m');
   });
 
+  it('should draw the default glyph without a size', () => {
+    const { container } = render(CountStat, {
+      props: { icon: IconFile, value: '250', label: 'Items' },
+    });
+
+    expect(container.querySelector('.trakt-count-stat'))
+      .not.toHaveAttribute('data-size');
+  });
+
+  it('should draw the large glyph at size lg', () => {
+    const { container } = render(CountStat, {
+      props: { icon: IconFile, value: '69%', label: 'Watched', size: 'lg' },
+    });
+
+    expect(container.querySelector('.trakt-count-stat'))
+      .toHaveAttribute('data-size', 'lg');
+  });
+
+  it('should read the under-count after the label', () => {
+    const { container } = render(CountStat, {
+      props: {
+        icon: IconFile,
+        value: '69%',
+        label: 'Watched',
+        underCount: '545 / 783 items',
+      },
+    });
+
+    expect(container).toHaveTextContent(/^69% Watched 545 \/ 783 items$/);
+  });
+
+  it('should leave the under-count out without one', () => {
+    const { container } = render(CountStat, {
+      props: { icon: IconFile, value: '250', label: 'Items' },
+    });
+
+    expect(container.querySelector('.count-stat-under-count')).toBeNull();
+  });
+
   it('should hide the glyph from assistive technology', () => {
     const { container } = render(CountStat, {
       props: { icon: IconFile, value: '250', label: 'Items' },

@@ -127,46 +127,45 @@ describe('store: useShow', () => {
       expect(result).to.deep.equal(ShowSiloPeopleMappedMock);
     });
 
-    it('should return the progress', async () => {
-      const result = await runQuery({
-        factory: () =>
-          useShow(valueObservable(ShowSiloMappedMock.slug)).progress,
-      });
-
-      expect(result).toEqual(ShowSiloProgressMappedMock);
-    });
-
-    it("should refetch the progress once an episode is marked watched, so its season's entry counts the play", async () => {
-      const written = { value: false };
+    it("should hold the progress as ready while a watch refetches it, then count the play in its season's entry", async () => {
       server.use(
-        http.post(SYNC_HISTORY_URL, () => {
-          written.value = true;
-          return new HttpResponse(null, { status: 201 });
-        }),
+        http.post(
+          SYNC_HISTORY_URL,
+          () => new HttpResponse(null, { status: 201 }),
+        ),
       );
-      serveProgress(() =>
-        HttpResponse.json(
-          written.value ? ORDER_WATCHED : ShowSiloProgressResponseMock,
-        )
-      );
-      const { progress, episode, waitForQueriesIdle } =
+      const { progressStatus, episode, waitForQueriesIdle } =
         await renderSettledHistory(() => ({
-          progress: useShow(valueObservable(ShowSiloMappedMock.slug)).progress,
+          progressStatus: useShow(valueObservable(ShowSiloMappedMock.slug))
+            .progressStatus,
           episode: useWatched(SILO_ORDER),
           waitForQueriesIdle: useWaitForQueriesIdle(),
         }));
-      const before = await readKnown(progress);
+      const before = await nextOf(progressStatus, 'ready');
+      const kinds = kindsOf(progressStatus);
+      const refetch = holdRequest({
+        method: 'get',
+        url: SILO_PROGRESS_URL,
+        answer: () => HttpResponse.json(ORDER_WATCHED),
+      });
 
-      await episode.add();
+      const adding = episode.add();
+      await refetch.requested;
+      const during = await nextOf(progressStatus, 'ready');
+      refetch.release();
+      await adding;
       await waitForQueriesIdle();
+      const after = await nextOf(progressStatus, 'ready');
 
-      expect(before.seasons.at(1)).toEqual({
+      expect(during.data).toEqual(before.data);
+      expect(kinds).toEqual(['ready']);
+      expect(before.data.seasons.at(1)).toEqual({
         number: 2,
         total: 7,
         completed: 1,
         lastWatchedAt: new Date('2024-12-27T19:40:28.000Z'),
       });
-      expect((await readKnown(progress)).seasons.at(1)).toEqual({
+      expect(after.data.seasons.at(1)).toEqual({
         number: 2,
         total: 7,
         completed: 2,
