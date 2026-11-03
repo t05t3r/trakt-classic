@@ -4,9 +4,8 @@
   import LazyImage from '$lib/features/image/components/LazyImage.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import { toDisplayableName } from '$lib/utils/profile/toDisplayableName.ts';
-  import { map } from 'rxjs';
 
-  const user = useUser().user.pipe(map(($query) => $query.data));
+  const user = useUser().settings;
 </script>
 
 {#if $user}

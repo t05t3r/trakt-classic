@@ -112,4 +112,13 @@ export default ts.config(
       }],
     },
   },
+  {
+    files: ['src/lib/components/pagination/Pagination.svelte'],
+    'rules': {
+      // Page links copy the url prop, already resolved; resolve() takes a route ID.
+      'svelte/no-navigation-without-resolve': ['error', {
+        'ignoreLinks': true,
+      }],
+    },
+  },
 );

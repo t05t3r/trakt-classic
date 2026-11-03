@@ -34,7 +34,6 @@ const USE_USER_CONTEXT_KEY = Symbol('use-user');
 
 type UseUserInstance = ReturnType<typeof createUseUserInstance>;
 
-type IdSet = ReadonlySet<number>;
 type ListedDates = ReadonlyMap<number, Date>;
 type UserWatchlist = {
   movies: ListedDates;
@@ -42,7 +41,7 @@ type UserWatchlist = {
   seasons: ListedDates;
   episodes: ListedDates;
 };
-type UserDropped = { shows: IdSet };
+export type UserDropped = Readonly<{ shows: ListedDates }>;
 
 function toWatchlistSnapshot(
   entries: ReadonlyArray<WatchlistedTarget>,
@@ -73,11 +72,13 @@ function createUseUserInstance() {
   const likesQuerySignal = useQuery(currentUserLikesQuery());
   const rewatchingQuerySignal = useQuery(currentUserRewatchingQuery());
   const blockedQuerySignal = useQuery(blockedUsersQuery());
-  const { history } = useCurrentUserHistory();
+  const { history, historyStatus } = useCurrentUserHistory();
 
   return {
     user: userQuerySignal,
+    settings: userQuerySignal.pipe(map((query) => query.data)),
     history,
+    historyStatus,
     ratings: ratingsQuerySignal.pipe(map((query) => query.data)),
     reactions: reactionsQuerySignal.pipe(
       map((query): UserReactions | undefined => query.data),
@@ -89,7 +90,9 @@ function createUseUserInstance() {
     }),
     dropped: useSnapshot(droppedShowsQuery({ limit: MAX_PAGE_LIMIT }), {
       select: (entries): UserDropped => ({
-        shows: new Set(entries.map((entry) => entry.show.id)),
+        shows: new Map(
+          entries.map((entry) => [entry.show.id, entry.hiddenAt]),
+        ),
       }),
       whileUnsettled: 'hold',
     }),

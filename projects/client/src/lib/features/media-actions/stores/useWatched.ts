@@ -27,6 +27,8 @@ import {
   filter,
   firstValueFrom,
   map,
+  type Observable,
+  of,
   scan,
   shareReplay,
 } from 'rxjs';
@@ -72,6 +74,11 @@ function toSeasonHistory(
   return { plays: sum(episodes.map(({ plays }) => plays)), watchedAt };
 }
 
+function countShowPlays($history: UserHistory, showId: number): number {
+  const episodes = $history.shows.get(showId)?.episodes ?? [];
+  return sum(episodes.map(({ plays }) => plays));
+}
+
 function historyPerItem(
   { props, ids, seasons, $history }: ReadHistoryParams,
 ): ReadonlyArray<PlayHistory | undefined> {
@@ -83,8 +90,10 @@ function historyPerItem(
         const show = $history.shows.get(id);
         if (!show) return undefined;
 
-        const plays = sum(show.episodes.map(({ plays }) => plays));
-        return { plays, watchedAt: show.watchedAt };
+        return {
+          plays: countShowPlays($history, id),
+          watchedAt: show.watchedAt,
+        };
       });
     case 'episode':
       return ids.map((episodeId) =>
@@ -174,6 +183,36 @@ export function useWatched(props: WatchedStoreProps) {
   );
   const plays = knownHistory.pipe(map(countPlays));
   const lastWatchedAt = knownHistory.pipe(map(readLastWatchedAt));
+  // A refetch reads not known, so a no-Play read before the Target's own write never blocks it after.
+  const readKnownPlay = (count: ($history: UserHistory) => number) =>
+    history.pipe(
+      map(($history) => $history === null ? undefined : count($history) > 0),
+    );
+  // The history lags the Target's own write, so its pending value wins.
+  const readHasPlay = ({ count, afterRemove }: {
+    count: ($history: UserHistory) => number;
+    afterRemove: Observable<boolean | undefined>;
+  }) =>
+    combineLatest([readKnownPlay(count), afterRemove, pendingWatched]).pipe(
+      map(([$known, $afterRemove, $pending]) => {
+        if ($pending === true) return true;
+        if ($pending === false) return $afterRemove;
+
+        return $known;
+      }),
+      distinctUntilChanged(),
+    );
+  // A remove takes every Play of its own Targets and none of their show's others.
+  const hasPlay = readHasPlay({ count: countPlays, afterRemove: of(false) });
+  // An episode or season reads its show's; a movie or show is its own.
+  const hasShowPlay = props.type === 'episode' || props.type === 'season'
+    ? readHasPlay({
+      count: ($history) => countShowPlays($history, props.show.id),
+      afterRemove: readKnownPlay(($history) =>
+        countShowPlays($history, props.show.id) - countPlays($history)
+      ),
+    })
+    : hasPlay;
 
   const countEpisodesToMark = async (): Promise<number | null> => {
     try {
@@ -334,6 +373,8 @@ export function useWatched(props: WatchedStoreProps) {
     pendingWatched,
     plays,
     lastWatchedAt,
+    hasPlay,
+    hasShowPlay,
     isUpdating,
     add,
     remove,

@@ -40,7 +40,11 @@
   const { show, status, progress, count }: SeasonsBlockProps = $props();
 
   const progressByNumber = $derived(
-    new Map(progress?.seasons.map((season) => [season.number, season])),
+    new Map(
+      progress.kind === 'ready'
+        ? progress.data.seasons.map((season) => [season.number, season])
+        : [],
+    ),
   );
 
   const progressOf = (season: Season) => progressByNumber.get(season.number);
@@ -63,6 +67,7 @@
   emptyText={m.text_seasons_empty()}
   sort={SORT}
   {isWatched}
+  watchedStatus={progress}
   grid={GRID}
 >
   {#snippet item(season)}

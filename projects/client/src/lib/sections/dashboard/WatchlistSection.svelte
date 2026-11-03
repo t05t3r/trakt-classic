@@ -5,6 +5,7 @@
   import RowRevealGrid from '$lib/components/pagination/RowRevealGrid.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import MediaPosterCard from '$lib/features/media-card/components/MediaPosterCard.svelte';
+  import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
   import { toSectionStatus } from '$lib/features/query/toSectionStatus.ts';
   import { useQuery } from '$lib/features/query/useQuery.ts';
   import { watchlistPreviewQuery } from '$lib/requests/queries/sync/watchlistPreviewQuery.ts';
@@ -14,7 +15,6 @@
   import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
   import IconArrowDown from '@tabler/icons-svelte/icons/arrow-down';
   import IconListCheck from '@tabler/icons-svelte/icons/list-check';
-  import { toWatchlistCard } from './_internal/toWatchlistCard.ts';
 
   const ROW_MAX = 3;
   const DEFAULT_ROW_COUNT = 2;
@@ -83,7 +83,7 @@
         bottomGap="none"
       >
         {#snippet item(item)}
-          {@const card = toWatchlistCard(item)}
+          {@const card = toListItemCard(item)}
           <MediaPosterCard
             {card}
             poster={card.poster}

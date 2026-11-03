@@ -8,6 +8,7 @@ export type SectionHeaderProps = {
   loading?: boolean;
   tools?: Snippet;
   helpText?: Snippet;
-  spacing?: 'default' | 'wide';
+  size?: 'default' | 'compact';
+  spacing?: 'default' | 'wide' | 'compact';
   helpTextGap?: 'default' | 'compact' | 'none';
 };

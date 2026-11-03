@@ -36,9 +36,9 @@ async function queryOrFail<TOutput, TError extends Error>(
 
 export async function fetchPageQuery<TOutput, TError extends Error>(
   params: FetchPageQueryParams<TOutput, TError>,
-): Promise<void> {
+): Promise<NonNullable<TOutput>> {
   const data = await queryOrFail(params);
-  if (data != null) return;
+  if (data != null) return data;
 
   // An answer with no body leaves nothing to render, and a cached one would 404 the next load.
   params.queryClient.removeQueries({

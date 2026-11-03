@@ -45,6 +45,12 @@ const NEXT_PAGE_FAILED: PagedQuery<number> = {
   isError: true,
   isFetchNextPageError: true,
 };
+// A refetch clears the next page's error at once, while the query keeps its own.
+const RETRYING: PagedQuery<number> = {
+  ...NEXT_PAGE_FAILED,
+  isFetching: true,
+  isFetchNextPageError: false,
+};
 const REFETCHING: PagedQuery<number> = { ...SETTLED, isFetching: true };
 const REFETCH_FAILED: PagedQuery<number> = { ...SETTLED, isError: true };
 const ALL_PAGES: PagedQuery<number> = { ...IDLE, data: TWO_PAGES };
@@ -66,6 +72,9 @@ function readAll(
 
 const pagesOf = (helds: ReadonlyArray<Held<number>>) =>
   helds.map((held) => held.pages);
+
+const isFailedOf = (helds: ReadonlyArray<Held<number>>) =>
+  helds.map((held) => held.isFailed);
 
 describe('nextHeld', () => {
   it('should read a query with no data as not known', () => {
@@ -143,6 +152,44 @@ describe('nextHeld', () => {
           { query: NEXT_PAGE_FAILED, count: 1 },
         ], 'unknown')),
       ).toEqual([[1, 2], undefined]);
+    });
+
+    it('should not mark the read as failed when asked for unknown while unsettled', () => {
+      expect(
+        isFailedOf(readAll([
+          { query: LOADING, count: 0 },
+          { query: NEXT_PAGE_FAILED, count: 1 },
+        ], 'unknown')),
+      ).toEqual([false, false]);
+    });
+
+    it('should mark the pages it has as failed', () => {
+      expect(
+        isFailedOf(readAll([
+          { query: LOADING, count: 0 },
+          { query: NEXT_PAGE_FAILED, count: 1 },
+        ])),
+      ).toEqual([false, true]);
+    });
+
+    it('should keep the mark while a retry refetches over the pages', () => {
+      const helds = readAll([
+        { query: NEXT_PAGE_FAILED, count: 1 },
+        { query: RETRYING, count: 1 },
+      ]);
+
+      expect(helds.at(1)).toBe(helds.at(0));
+      expect(isFailedOf(helds)).toEqual([true, true]);
+    });
+
+    it('should clear the mark once a read settles', () => {
+      expect(
+        isFailedOf(readAll([
+          { query: NEXT_PAGE_FAILED, count: 1 },
+          { query: RETRYING, count: 1 },
+          { query: ALL_PAGES, count: 2 },
+        ])),
+      ).toEqual([true, true, false]);
     });
   });
 

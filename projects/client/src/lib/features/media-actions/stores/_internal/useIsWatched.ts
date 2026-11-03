@@ -1,16 +1,17 @@
-import type { UserHistory } from '$lib/features/auth/stores/useCurrentUserHistory.ts';
 import { useUser } from '$lib/features/auth/stores/useUser.ts';
 import {
   type PendingOverride,
   pendingOverrides,
 } from '$lib/features/media-actions/_internal/pendingOverrides.ts';
 import { toTargetKey } from '$lib/features/media-actions/_internal/toTargetKey.ts';
-import { findWatchedEpisode } from '$lib/features/media-actions/findWatchedEpisode.ts';
+import {
+  isWatchedInHistory,
+  type WatchedInHistoryTarget,
+} from '$lib/features/media-actions/isWatchedInHistory.ts';
 import type {
   ExtendedMediaStoreProps,
   SeasonMedia,
 } from '$lib/models/MediaStoreProps.ts';
-import { getShowWatchState } from '$lib/utils/media/getShowWatchState.ts';
 import {
   combineLatest,
   distinctUntilChanged,
@@ -25,42 +26,29 @@ type WatchedItem = { id: number; episode?: { count: number } };
 
 type WatchedState = boolean | undefined;
 
-type SnapshotParams = {
+type TargetsParams = {
   props: IsWatchedProps;
   media: ReadonlyArray<WatchedItem>;
   seasons: ReadonlyArray<SeasonMedia>;
-  $history: UserHistory;
 };
 
-function toSnapshotStates(
-  { props, media, seasons, $history }: SnapshotParams,
-): ReadonlyArray<boolean> {
+function toWatchedTargets(
+  { props, media, seasons }: TargetsParams,
+): ReadonlyArray<WatchedInHistoryTarget> {
   switch (props.type) {
     case 'movie':
-      return media.map(({ id }) => $history.movies.has(id));
+      return media.map(({ id }) => ({ type: 'movie', id }));
     case 'episode':
-      return media.map(({ id }) =>
-        findWatchedEpisode({
-          history: $history,
-          showId: props.show.id,
-          episodeId: id,
-        }) !== undefined
-      );
-    case 'season': {
-      const countBySeason = $history.shows.get(props.show.id)?.playsPerSeason;
-
-      return seasons.map(({ number, episodes }) =>
-        episodes.aired > 0 &&
-        (countBySeason?.get(number) ?? 0) >= episodes.aired
-      );
-    }
+      return media.map(({ id }) => ({ type: 'episode', id, show: props.show }));
+    case 'season':
+      return seasons.map(({ number, episodes }) => ({
+        type: 'season',
+        number,
+        episodes,
+        show: props.show,
+      }));
     case 'show':
-      return media.map((show) =>
-        getShowWatchState({
-          watchedShow: $history.shows.get(show.id),
-          episodeCount: show.episode?.count,
-        }).isWatched
-      );
+      return media.map(({ id, episode }) => ({ type: 'show', id, episode }));
   }
 }
 
@@ -95,6 +83,7 @@ export function useIsWatched(props: IsWatchedProps) {
   }
 
   const { history } = useUser();
+  const targets = toWatchedTargets({ props, media, seasons });
 
   const overrides = combineLatest(
     media.map((item) =>
@@ -108,7 +97,9 @@ export function useIsWatched(props: IsWatchedProps) {
   const isWatched = combineLatest([history, overrides]).pipe(
     map(([$history, $overrides]) => {
       const snapshot = $history
-        ? toSnapshotStates({ props, media, seasons, $history })
+        ? targets.map((target) =>
+          isWatchedInHistory({ target, history: $history })
+        )
         : [];
 
       return combineStates(

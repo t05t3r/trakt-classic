@@ -1,5 +1,7 @@
+export type FailedStatus = { kind: 'error'; retry: () => void };
+
 export type SectionStatus<T> =
   | { kind: 'loading' }
   | { kind: 'empty' }
-  | { kind: 'error'; retry: () => void }
+  | FailedStatus
   | { kind: 'ready'; data: T };

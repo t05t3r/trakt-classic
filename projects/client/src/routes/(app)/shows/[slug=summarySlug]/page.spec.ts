@@ -1,24 +1,20 @@
-import { createQueryClient } from '$lib/features/query/createQueryClient.ts';
 import { showSummaryQuery } from '$lib/requests/queries/shows/showSummaryQuery.ts';
 import { SILO_SUMMARY_URL } from '$mocks/data/shows/SILO_SUMMARY_URL.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { server } from '$mocks/server.ts';
 import { http, HttpResponse, type HttpResponseResolver } from 'msw';
 import { httpErrorStatus } from '$test/beds/request/httpErrorStatus.ts';
+import { mockLoadEvent } from '$test/beds/request/mockLoadEvent.ts';
 import { describe, expect, it } from 'vitest';
 import { load } from './+page.ts';
-
-type LoadEvent = Parameters<typeof load>[0];
 
 const SLUG = ShowSiloMappedMock.slug;
 
 const runLoad = async () => {
-  const queryClient = createQueryClient({ retryDelay: 0 });
-  const event = {
+  const { event, queryClient } = mockLoadEvent({
+    load,
     params: { slug: SLUG },
-    parent: () => Promise.resolve({ queryClient }),
-    fetch: globalThis.fetch,
-  } as unknown as LoadEvent;
+  });
 
   await load(event);
 

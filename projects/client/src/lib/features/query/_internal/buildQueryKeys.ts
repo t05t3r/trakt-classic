@@ -13,7 +13,7 @@ type BuildQueryKeyParams<
   & {
     requestParams: TRequestParams;
     hash: string;
-    invalidations: InvalidateActionOptions[];
+    invalidations: ReadonlyArray<InvalidateActionOptions>;
   }
   & Pick<
     DefineQueryProps<TInput, TOutput, TRequestParams>,

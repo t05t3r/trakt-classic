@@ -1,6 +1,14 @@
+import {
+  InvalidateAction,
+  type InvalidateActionOptions,
+} from '$lib/requests/models/InvalidateAction.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
-import { HERETIC } from '$mocks/data/media-actions/HERETIC.ts';
-import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
+import { DEVS_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_ACTIONS_TARGET.ts';
+import { DEVS_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_SEASON_ACTIONS_TARGET.ts';
+import { HERETIC_ACTIONS_TARGET } from '$mocks/data/media-actions/HERETIC_ACTIONS_TARGET.ts';
+import { MATRIX_ACTIONS_TARGET } from '$mocks/data/media-actions/MATRIX_ACTIONS_TARGET.ts';
+import { SILO_EPISODE_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_EPISODE_ACTIONS_TARGET.ts';
+import { SILO_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_SEASON_ACTIONS_TARGET.ts';
 import { EpisodeSiloStatsMappedMock } from '$mocks/data/summary/episodes/silo/mapped/EpisodeSiloStatsMappedMock.ts';
 import { MovieHereticRatingsMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticRatingsMappedMock.ts';
 import { MovieHereticStatsMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticStatsMappedMock.ts';
@@ -8,17 +16,21 @@ import { SeasonSiloMappedMock } from '$mocks/data/summary/seasons/silo/mapped/Se
 import { SeasonSiloStatsMappedMock } from '$mocks/data/summary/seasons/silo/mapped/SeasonSiloStatsMappedMock.ts';
 import { SYNC_RATINGS_URL } from '$mocks/data/sync/SYNC_RATINGS_URL.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
+import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
 import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { emulateFocusVisible } from '$test/beds/focus/emulateFocusVisible.ts';
+import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import SummaryRatingsHost from '$test/beds/summary/SummaryRatingsHost.svelte';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import SummaryRatings from './SummaryRatings.svelte';
 import type { SummaryRatingsProps } from './SummaryRatingsProps.ts';
 
@@ -26,16 +38,14 @@ const RELEASED = new Date('2024-10-31');
 const UNRELEASED = new Date('2999-05-01');
 
 const MOVIE: SummaryRatingsProps = {
-  type: 'movie',
-  id: MATRIX.id,
+  target: MATRIX_ACTIONS_TARGET,
   rating: MovieHereticRatingsMappedMock,
   stats: MovieHereticStatsMappedMock,
   earliestReleaseDate: RELEASED,
 };
 
 const SEASON: Partial<SummaryRatingsProps> = {
-  type: 'season',
-  id: SeasonSiloMappedMock.id,
+  target: SILO_SEASON_ACTIONS_TARGET,
   rating: {
     trakt: {
       rating: assertDefined(SeasonSiloMappedMock.rating),
@@ -63,6 +73,13 @@ const PROMPT = 'Rate this movie What did you think?';
 
 function slot(name: string) {
   return screen.findByRole('button', { name });
+}
+
+// The slot ignores a press until the history is known.
+async function settledSlot(name: string) {
+  const button = await slot(name);
+  await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled'));
+  return button;
 }
 
 function heartSlot(container: HTMLElement) {
@@ -131,6 +148,11 @@ describe('component: SummaryRatings', () => {
   });
 
   describe('the user rating', () => {
+    // The Matrix needs a Play for a first rating.
+    beforeEach(() => {
+      serveMoviePlays([MATRIX_ACTIONS_TARGET.id, HERETIC_ACTIONS_TARGET.id]);
+    });
+
     it("should name the slot's button after the movie's prompt while unrated", async () => {
       renderRatings();
 
@@ -138,13 +160,16 @@ describe('component: SummaryRatings', () => {
     });
 
     it("should name the slot's button after the show's prompt on a show", async () => {
-      renderRatings({ type: 'show' });
+      renderRatings({ target: DEVS_ACTIONS_TARGET });
 
       expect(await slot('Rate this show What did you think?')).toBeVisible();
     });
 
     it("should name the slot's button after the episode's prompt on an episode", async () => {
-      renderRatings({ type: 'episode', stats: EpisodeSiloStatsMappedMock });
+      renderRatings({
+        target: SILO_EPISODE_ACTIONS_TARGET,
+        stats: EpisodeSiloStatsMappedMock,
+      });
 
       expect(await slot('Rate this episode What did you think?'))
         .toBeVisible();
@@ -158,7 +183,7 @@ describe('component: SummaryRatings', () => {
     });
 
     it('should show the stored rating in its colour, its label in white', async () => {
-      const { container } = renderRatings({ id: HERETIC.id });
+      const { container } = renderRatings({ target: HERETIC_ACTIONS_TARGET });
 
       expect(await slot('10 Totally Ninja!')).toHaveClass('is-rated');
       expect(container.querySelector('.ratings-user-heart'))
@@ -166,7 +191,7 @@ describe('component: SummaryRatings', () => {
     });
 
     it("should describe the stored rating as the user's, named by its visible text alone", async () => {
-      renderRatings({ id: HERETIC.id });
+      renderRatings({ target: HERETIC_ACTIONS_TARGET });
 
       expect(await slot('10 Totally Ninja!'))
         .toHaveAccessibleDescription('Your rating');
@@ -176,7 +201,7 @@ describe('component: SummaryRatings', () => {
       stubClientRects();
       emulateFocusVisible();
       renderRatings();
-      (await slot(PROMPT)).focus();
+      (await settledSlot(PROMPT)).focus();
 
       await userEvent.keyboard('{Enter}');
 
@@ -186,7 +211,7 @@ describe('component: SummaryRatings', () => {
     it('should leave a preview of another heart undescribed while rated', async () => {
       stubClientRects();
       emulateFocusVisible();
-      renderRatings({ id: HERETIC.id });
+      renderRatings({ target: HERETIC_ACTIONS_TARGET });
       (await slot('10 Totally Ninja!')).focus();
 
       await userEvent.keyboard('{Enter}');
@@ -205,7 +230,7 @@ describe('component: SummaryRatings', () => {
     it('should leave the Unrate preview undescribed', async () => {
       stubClientRects();
       emulateFocusVisible();
-      renderRatings({ id: HERETIC.id });
+      renderRatings({ target: HERETIC_ACTIONS_TARGET });
       (await slot('10 Totally Ninja!')).focus();
 
       await userEvent.keyboard('{Enter}');
@@ -216,17 +241,17 @@ describe('component: SummaryRatings', () => {
 
     it.each(
       [
-        ['movie', 'Rate this movie What did you think?', 'Rate this movie'],
-        ['show', 'Rate this show What did you think?', 'Rate this show'],
-        ['season', 'Rate this season What did you think?', 'Rate this season'],
+        ['movie', MATRIX_ACTIONS_TARGET, 'Rate this movie'],
+        ['show', DEVS_ACTIONS_TARGET, 'Rate this show'],
+        ['season', DEVS_SEASON_ACTIONS_TARGET, 'Rate this season'],
       ] as const,
     )(
       "should name the picker after a %s's prompt",
-      async (type, prompt, name) => {
+      async (_, target, name) => {
         stubClientRects();
-        renderRatings({ type });
+        renderRatings({ target });
 
-        await userEvent.click(await slot(prompt));
+        await userEvent.click(await settledSlot(`${name} What did you think?`));
 
         expect(await screen.findByRole('dialog')).toHaveAccessibleName(name);
       },
@@ -236,7 +261,7 @@ describe('component: SummaryRatings', () => {
       stubClientRects();
       renderRatings();
 
-      await userEvent.click(await slot(PROMPT));
+      await userEvent.click(await settledSlot(PROMPT));
 
       expect(await screen.findByRole('dialog')).toBeVisible();
       expect(screen.getByRole('button', { name: PROMPT }))
@@ -246,7 +271,7 @@ describe('component: SummaryRatings', () => {
     it('should show Unrate as a question and the label in grey while keyboard focus is on the current heart', async () => {
       stubClientRects();
       emulateFocusVisible();
-      const { container } = renderRatings({ id: HERETIC.id });
+      const { container } = renderRatings({ target: HERETIC_ACTIONS_TARGET });
       (await slot('10 Totally Ninja!')).focus();
 
       await userEvent.keyboard('{Enter}');
@@ -268,7 +293,7 @@ describe('component: SummaryRatings', () => {
       const write = holdResponse(() => new HttpResponse(null, { status: 201 }));
       server.use(http.post(SYNC_RATINGS_URL, write.answer));
       renderRatings();
-      await userEvent.click(await slot(PROMPT));
+      await userEvent.click(await settledSlot(PROMPT));
 
       await userEvent.click(
         await screen.findByRole('button', { name: '8 hearts, Great' }),
@@ -280,14 +305,94 @@ describe('component: SummaryRatings', () => {
     });
 
     it("should show the new title's own rating once the id changes", async () => {
-      const { rerender } = renderRatings({ id: HERETIC.id });
+      const { rerender } = renderRatings({ target: HERETIC_ACTIONS_TARGET });
       await slot('10 Totally Ninja!');
 
-      await rerender({ ...MOVIE, id: MATRIX.id });
+      await rerender(MOVIE);
 
       expect(await slot(PROMPT)).toBeVisible();
       expect(screen.queryByRole('button', { name: '10 Totally Ninja!' }))
         .toBeNull();
+    });
+  });
+
+  describe("the user rating's Play gate", () => {
+    const BLOCKED_REASON = 'Watch it first to rate it';
+
+    it('should open nothing on a press or a key, describing why, while an unrated title has no Play', async () => {
+      stubClientRects();
+      renderRatings();
+      const trigger = await slot(PROMPT);
+      await waitFor(() =>
+        expect(trigger).toHaveAttribute('title', BLOCKED_REASON)
+      );
+
+      await userEvent.click(trigger);
+      await userEvent.keyboard('{Enter}');
+
+      await waitNegativeClaim();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(trigger).toHaveFocus();
+      expect(trigger).toHaveAttribute('aria-disabled', 'true');
+      expect(trigger).toHaveClass('is-blocked');
+      expect(trigger).toHaveAccessibleDescription(BLOCKED_REASON);
+    });
+
+    it('should open the picker on a stored rating with no Play', async () => {
+      stubClientRects();
+      serveMoviePlays([]);
+      renderRatings({ target: HERETIC_ACTIONS_TARGET });
+
+      await userEvent.click(await slot('10 Totally Ninja!'));
+
+      expect(await screen.findByRole('dialog')).toBeVisible();
+    });
+
+    it('should open nothing, with no reason, while the history is not known', async () => {
+      stubClientRects();
+      holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+      const { userLoaded } = renderRatings();
+      await userLoaded;
+      const trigger = await slot(PROMPT);
+
+      await userEvent.click(trigger);
+
+      await waitNegativeClaim();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(trigger).toHaveAttribute('aria-disabled', 'true');
+      expect(trigger).not.toHaveAttribute('title');
+      expect(trigger).not.toHaveClass('is-blocked');
+    });
+
+    it("should keep the open picker's trigger live, closing the picker on a press, while the history refetches", async () => {
+      stubClientRects();
+      serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
+      const invalidator = Promise.withResolvers<
+        (action: InvalidateActionOptions) => Promise<void>
+      >();
+      renderComponent(SummaryRatingsHost, {
+        props: { ...MOVIE, output: invalidator.resolve },
+      });
+      const trigger = await settledSlot(PROMPT);
+      await userEvent.click(trigger);
+      await screen.findByRole('dialog');
+      const refetch = holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+
+      const invalidation = (await invalidator.promise)(
+        InvalidateAction.MarkAsWatched('movie'),
+      );
+      await refetch.requested;
+      await waitNegativeClaim();
+      const disabledWhileRefetching = trigger.getAttribute('aria-disabled');
+      await userEvent.click(trigger);
+
+      expect(disabledWhileRefetching).toBeNull();
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(trigger).toHaveAttribute('aria-disabled', 'true');
+      expect(trigger).not.toHaveAttribute('title');
+      expect(trigger).not.toHaveClass('is-blocked');
+      refetch.release();
+      await invalidation;
     });
   });
 

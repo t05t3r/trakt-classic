@@ -1,13 +1,12 @@
-import { useSnapshot } from '$lib/features/query/useSnapshot.ts';
 import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { DroppedShowsResponseMock } from '$mocks/data/users/response/DroppedShowsResponseMock.ts';
 import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
 import { server } from '$mocks/server.ts';
+import { renderSnapshot } from '$test/beds/query/renderSnapshot.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
-import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { droppedShowsQuery } from './droppedShowsQuery.ts';
 
 const LAST_PAGE_WITH_ENTRIES = 2;
@@ -33,14 +32,10 @@ describe('droppedShowsQuery', () => {
         );
       }),
     );
-    const snapshot = await renderStore(() =>
-      useSnapshot(droppedShowsQuery({ limit: MAX_PAGE_LIMIT }), {
-        select: (entries) => entries,
-        whileUnsettled: 'hold',
-      })
+    const { snapshot } = await renderSnapshot(
+      droppedShowsQuery({ limit: MAX_PAGE_LIMIT }),
+      (entries) => entries,
     );
-    const subscription = snapshot.subscribe();
-    onTestFinished(() => subscription.unsubscribe());
 
     await readKnown(snapshot);
 

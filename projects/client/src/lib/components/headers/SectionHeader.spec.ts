@@ -116,6 +116,7 @@ describe('component: SectionHeader', () => {
       [undefined, 'default'],
       ['default', 'default'],
       ['wide', 'wide'],
+      ['compact', 'compact'],
     ] as const,
   )(
     'should mark spacing %s on its root as %s',
@@ -126,6 +127,24 @@ describe('component: SectionHeader', () => {
 
       expect(container.querySelector('.trakt-section-header'))
         .toHaveAttribute('data-spacing', marked);
+    },
+  );
+
+  it.each(
+    [
+      [undefined, 'default'],
+      ['default', 'default'],
+      ['compact', 'compact'],
+    ] as const,
+  )(
+    'should mark size %s on its root as %s',
+    (size, marked) => {
+      const { container } = render(SectionHeader, {
+        props: { title: 'Watchlist', size },
+      });
+
+      expect(container.querySelector('.trakt-section-header'))
+        .toHaveAttribute('data-size', marked);
     },
   );
 

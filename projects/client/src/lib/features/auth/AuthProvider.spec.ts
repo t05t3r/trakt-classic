@@ -3,6 +3,7 @@ import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { server } from '$mocks/server.ts';
 import SignedInPage from '$test/beds/auth/SignedInPage.svelte';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { failOnce } from '$test/beds/request/failOnce.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { fireEvent, screen } from '@testing-library/svelte';
@@ -56,7 +57,7 @@ describe('component: AuthProvider', () => {
   });
 
   it('should restore its children once a retry loads the user', async () => {
-    server.use(http.get(USER_SETTINGS_URL, notFound, { once: true }));
+    failOnce(USER_SETTINGS_URL);
     renderSignedIn();
 
     await fireEvent.click(

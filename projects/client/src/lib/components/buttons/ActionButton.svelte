@@ -10,11 +10,14 @@
     selected,
     isUpdating = false,
     isInert = false,
+    blockedReason,
     onclick,
     side,
   }: ActionButtonProps = $props();
 
-  const isIgnoringClicks = $derived(selected === undefined || isInert);
+  const isIgnoringClicks = $derived(
+    selected === undefined || isInert || blockedReason !== undefined,
+  );
 
   const handleClick = () => {
     if (isIgnoringClicks) return;
@@ -27,12 +30,14 @@
   class="trakt-action-button"
   data-color={color}
   class:is-selected={selected === true}
+  class:is-blocked={blockedReason !== undefined}
 >
   <button
     type="button"
     class="action-button-main"
     aria-busy={isUpdating}
     aria-disabled={isIgnoringClicks}
+    title={blockedReason}
     onclick={handleClick}
   >
     <span class="action-button-glyph" aria-hidden="true">
@@ -92,8 +97,17 @@
       color: var(--color-text-primary);
     }
 
+    &.is-blocked {
+      opacity: var(--action-blocked-opacity);
+
+      // Shown in full under keyboard focus, so the ring keeps its full contrast.
+      &:has(.action-button-main:focus-visible) {
+        opacity: 1;
+      }
+    }
+
     @include for-mouse {
-      &:hover {
+      &:not(.is-blocked):hover {
         --action-side-background: var(
           --color-action-side-background-active
         );
@@ -118,6 +132,10 @@
       color: inherit;
       text-align: start;
       cursor: pointer;
+    }
+
+    &.is-blocked .action-button-main {
+      cursor: not-allowed;
     }
 
     .action-button-glyph {

@@ -690,16 +690,20 @@ describe('store: useEpisode', () => {
     it("should read no season list from the left show's seasons once the params name another", async () => {
       serveDevsSeasonOne();
 
-      const requests = await captureRequests(() =>
-        readsAfterChange({
-          to: DEVS_EPISODE_EIGHT,
-          settled: DEVS_EPISODE_EIGHT_LINKS,
-          pick: ({ neighbours }) => neighbours,
-        })
+      const requests = await captureRequests(
+        () =>
+          readsAfterChange({
+            to: DEVS_EPISODE_EIGHT,
+            settled: DEVS_EPISODE_EIGHT_LINKS,
+            pick: ({ neighbours }) => neighbours,
+          }),
+        { pathIncludes: '/devs/seasons' },
       );
 
-      expect(requests.filter((request) => request.includes('/devs/seasons')))
-        .toEqual(['GET /shows/devs/seasons', 'GET /shows/devs/seasons/1']);
+      expect(requests).toEqual([
+        'GET /shows/devs/seasons',
+        'GET /shows/devs/seasons/1',
+      ]);
     });
 
     it.each([

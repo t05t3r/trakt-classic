@@ -13,7 +13,12 @@ export type RatingPopoverProps = {
   target: RatingStoreProps;
   label: string;
   // Spread `props` on the slot's own button; `shown` is null while unrated and nothing is previewed.
+  // `isOpen` lets a caller treat an open picker as already past its gate.
   trigger: Snippet<
-    [{ props: Record<string, unknown>; shown: ShownRating | null }]
+    [{
+      props: Record<string, unknown>;
+      shown: ShownRating | null;
+      isOpen: boolean;
+    }]
   >;
 };

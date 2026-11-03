@@ -44,12 +44,10 @@ function runUntilError(query: ReturnType<typeof testQuery>) {
   });
 }
 
-async function requestsFor(query: TestQueryProps) {
-  const requests = await captureRequests(async () => {
+function requestsFor(query: TestQueryProps) {
+  return captureRequests(async () => {
     await runUntilError(testQuery(query));
-  });
-
-  return requests.filter((request) => request === `GET ${query.path}`);
+  }, { pathIncludes: query.path });
 }
 
 function failWith(path: string, status: number) {

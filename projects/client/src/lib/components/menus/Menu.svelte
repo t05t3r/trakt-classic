@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getDocumentDirection } from '$lib/utils/intl/getDocumentDirection.ts';
   import { DropdownMenu } from 'bits-ui';
   import type { MenuProps } from './_internal/MenuProps.ts';
   import { INERT_TRIGGER_PROPS } from './INERT_TRIGGER_PROPS.ts';
@@ -10,10 +11,12 @@
     children,
     align = 'start',
     isInert = false,
+    isLimited = false,
   }: MenuProps = $props();
   // The content drops its own id, so the menu element carries the one the
   // trigger's aria-controls names.
   const id = $props.id();
+  const dir = getDocumentDirection();
 
   let open = $state(false);
   let triggerRef = $state<HTMLElement | null>(null);
@@ -40,11 +43,11 @@
   };
 </script>
 
-<DropdownMenu.Root bind:open>
+<DropdownMenu.Root bind:open {dir}>
   <DropdownMenu.Trigger bind:ref={triggerRef}>
     {#snippet child({ props })}
       {@render trigger({
-        props: isInert ? { ...props, ...INERT_TRIGGER_PROPS } : props,
+        props: isInert && !open ? { ...props, ...INERT_TRIGGER_PROPS } : props,
       })}
     {/snippet}
   </DropdownMenu.Trigger>
@@ -55,6 +58,8 @@
       class="trakt-menu"
       aria-label={label}
       {align}
+      {dir}
+      data-limited={isLimited || undefined}
       onInteractOutside={() => (closedOutside = true)}
       onCloseAutoFocus={returnFocusAfterOutsideClose}
     >
@@ -71,12 +76,14 @@
 
 <style lang="scss">
   :global(.trakt-menu) {
-    box-sizing: border-box;
-    min-width: var(--dropdown-min-width);
     // The available height leaves out the gap margin toward the trigger.
-    max-height: calc(
+    --menu-available-height: calc(
       var(--bits-dropdown-menu-content-available-height) - var(--ni-2)
     );
+
+    box-sizing: border-box;
+    min-width: var(--dropdown-min-width);
+    max-height: var(--menu-available-height);
     overflow-y: auto;
     padding-block: var(--ni-5);
     z-index: var(--layer-menu);
@@ -85,6 +92,13 @@
     background: var(--color-surface-menu);
     color: var(--color-text-tertiary);
     box-shadow: var(--shadow-dropdown);
+  }
+
+  :global(.trakt-menu[data-limited]) {
+    max-height: min(
+      var(--menu-available-height),
+      var(--dropdown-limit-height)
+    );
   }
 
   :global(.trakt-menu[data-side='bottom']) {

@@ -261,10 +261,6 @@ export const UrlBuilder = {
   profile: {
     user: (username: string) => `/profile/${username}`,
     me: () => UrlBuilder.profile.user('me'),
-    favorites: (username: string, params: Record<string, string> = {}) =>
-      `/profile/${username}/favorites${
-        buildParamString(sanitizeParams(params))
-      }`,
     history: (username: string) => `/profile/${username}/history`,
     social: (username: string) => `/profile/${username}/social`,
     progress: (username: string, params: Record<string, string> = {}) =>
@@ -300,6 +296,8 @@ export const UrlBuilder = {
     home: (): '/users/me/lists' => '/users/me/lists',
     watchlist: (user: string): `/users/${string}/watchlist` =>
       `/users/${user}/watchlist`,
+    favorites: (user: string): `/users/${string}/favorites` =>
+      `/users/${user}/favorites`,
     all: (
       user: string,
       type: PersonalListType,

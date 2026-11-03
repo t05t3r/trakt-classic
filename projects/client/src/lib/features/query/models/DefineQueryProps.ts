@@ -12,8 +12,8 @@ export type DefineQueryProps<
 > = {
   key: string | ((params: TRequestParams) => string);
   invalidations:
-    | InvalidateActionOptions[]
-    | ((params: TRequestParams) => InvalidateActionOptions[]);
+    | ReadonlyArray<InvalidateActionOptions>
+    | ((params: TRequestParams) => ReadonlyArray<InvalidateActionOptions>);
   dependencies: Dependency[] | ((params: TRequestParams) => Dependency[]);
   request: RequestDefinition<TInput, TRequestParams>;
   mapper: MapperDefinition<TInput, TOutput, TRequestParams>;

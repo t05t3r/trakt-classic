@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getDocumentDirection } from '$lib/utils/intl/getDocumentDirection.ts';
   import { Popover } from 'bits-ui';
   import type { PopoverProps } from './_internal/PopoverProps.ts';
 
@@ -21,7 +22,12 @@
   </Popover.Trigger>
   <Popover.Portal>
     <!-- The arrow's base sits on the box's border, so its height overshoots the gap by that border. -->
-    <Popover.Content {id} {side} sideOffset={-1}>
+    <Popover.Content
+      {id}
+      {side}
+      sideOffset={-1}
+      dir={getDocumentDirection()}
+    >
       {#snippet child({ wrapperProps, props })}
         <div {...wrapperProps}>
           <div

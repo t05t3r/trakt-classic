@@ -1,12 +1,11 @@
-import { PLACEHOLDERS } from '$lib/features/image/placeholders.ts';
+import { MovieMatrixMappedMock } from '$mocks/data/summary/movies/matrix/MovieMatrixMappedMock.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
-import { markImageLoaded } from '$test/beds/image/markImageLoaded.ts';
 import SummaryHero from './SummaryHero.svelte';
 
-const BACKDROP = '/img/movies/000/297/485/fanarts/full/1a2b3c4d5e.jpg.webp';
+const BACKDROP = MovieMatrixMappedMock.cover.url.full;
 
 const breadcrumb = createRawSnippet(() => ({
   render: () =>
@@ -264,67 +263,13 @@ describe('component: SummaryHero', () => {
     expect(container.querySelector('.hero-neighbours')).toBeNull();
   });
 
-  it('should keep the backdrop the page arrived with shown while it loads', () => {
+  it('should render the backdrop at the hero position', () => {
     const { container } = render(SummaryHero, {
       props: { backdrop: BACKDROP, title: 'FROM', year: 2022 },
     });
     const backdrop = container.querySelector('img');
 
     expect(backdrop).toHaveAttribute('src', BACKDROP);
-    expect(backdrop).not.toHaveClass('is-pending');
-  });
-
-  it('should hide a backdrop mounted after hydration until it loads', async () => {
-    emulateHydrated();
-    const { container } = render(SummaryHero, {
-      props: { backdrop: BACKDROP, title: 'FROM', year: 2022 },
-    });
-    const backdrop = container.querySelector('img');
-    expect(backdrop).toHaveClass('is-pending');
-
-    await markImageLoaded(backdrop);
-
-    expect(backdrop).not.toHaveClass('is-pending');
-  });
-
-  it('should hide a backdrop that broke before hydration', () => {
-    const complete = vi
-      .spyOn(HTMLImageElement.prototype, 'complete', 'get')
-      .mockReturnValue(true);
-    const naturalWidth = vi
-      .spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get')
-      .mockReturnValue(0);
-
-    try {
-      const { container } = render(SummaryHero, {
-        props: { backdrop: BACKDROP, title: 'FROM', year: 2022 },
-      });
-
-      expect(container.querySelector('img')).toHaveClass('is-failed');
-    } finally {
-      complete.mockRestore();
-      naturalWidth.mockRestore();
-    }
-  });
-
-  it('should size the backdrop to a fanart', () => {
-    const { container } = render(SummaryHero, {
-      props: { backdrop: BACKDROP, title: 'FROM', year: 2022 },
-    });
-    const backdrop = container.querySelector('img');
-
-    expect(backdrop).toHaveAttribute('width', '853');
-    expect(backdrop).toHaveAttribute('height', '480');
-  });
-
-  it.each([
-    ['a Placeholder', PLACEHOLDERS.fanart],
-    ['no image', null],
-  ])('should draw no backdrop for %s', (_case, backdrop) => {
-    const { container } = render(SummaryHero, {
-      props: { backdrop, title: 'FROM', year: 2022 },
-    });
-
-    expect(container.querySelector('img')).toBeNull();
+    expect(backdrop).toHaveAttribute('data-position', 'hero');
   });
 });

@@ -320,6 +320,22 @@ describe('util: UrlBuilder', () => {
     });
   });
 
+  describe('lists.favorites', () => {
+    it("should point at the user's favorites page", () => {
+      expect(UrlBuilder.lists.favorites('me')).to.equal('/users/me/favorites');
+    });
+
+    it('should keep the path literal in its type', () => {
+      expectTypeOf(UrlBuilder.lists.favorites).returns
+        .toEqualTypeOf<`/users/${string}/favorites`>();
+    });
+
+    it('should take the user only', () => {
+      expectTypeOf(UrlBuilder.lists.favorites).parameters
+        .toEqualTypeOf<[string]>();
+    });
+  });
+
   describe('lists.official', () => {
     it('should point at the official list page', () => {
       expect(UrlBuilder.lists.official('top-gun-collection')).to.equal(

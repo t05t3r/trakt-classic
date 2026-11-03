@@ -5,12 +5,12 @@ import type { Season } from '$lib/requests/models/Season.ts';
 import type { ShowEntry } from '$lib/requests/models/ShowEntry.ts';
 import { showProgressQuery } from '$lib/requests/queries/shows/showProgressQuery.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { DEVS_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_SEASON_ACTIONS_TARGET.ts';
+import { OTHER_UNWATCHED_MOVIE } from '$mocks/data/media-actions/OTHER_UNWATCHED_MOVIE.ts';
 import { SILO_EPISODE } from '$mocks/data/media-actions/SILO_EPISODE.ts';
+import { UNPLAYED_SHOW } from '$mocks/data/media-actions/UNPLAYED_SHOW.ts';
 import { UNWATCHED_MOVIE } from '$mocks/data/media-actions/UNWATCHED_MOVIE.ts';
 import { SILO_PROGRESS_URL } from '$mocks/data/shows/SILO_PROGRESS_URL.ts';
-import { ShowDevsMappedMock } from '$mocks/data/summary/shows/devs/ShowDevsMappedMock.ts';
-import { ShowDevsProgressMappedMock } from '$mocks/data/summary/shows/devs/mapped/ShowDevsProgressMappedMock.ts';
-import { ShowDevsSeasonEpisodesMappedMock } from '$mocks/data/summary/shows/devs/mapped/ShowDevsSeasonEpisodesMappedMock.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { ShowSiloSeasonsMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonsMappedMock.ts';
 import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressResponseMock.ts';
@@ -38,6 +38,7 @@ import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
+import { collectStates } from '$test/beds/store/collectStates.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
@@ -77,6 +78,12 @@ const SILO_HISTORY = assertDefined(
   WatchedShowsMappedMock.find(({ id }) => id === SILO.media.id),
 );
 const NO_MOVIES: WatchedStoreProps = { type: 'movie', media: [] };
+const UNPLAYED_SILO_EPISODE = {
+  id: 99,
+  title: 'Silo 2x01',
+  season: 2,
+  number: 1,
+};
 const SILO_FIRST_SEASON = seasonTarget(
   ShowSiloMappedMock,
   assertDefined(ShowSiloSeasonsMappedMock.at(0)),
@@ -85,17 +92,16 @@ const SILO_SECOND_SEASON = seasonTarget(
   ShowSiloMappedMock,
   assertDefined(ShowSiloSeasonsMappedMock.at(1)),
 );
-const DEVS_PROGRESS_SEASON = assertDefined(
-  ShowDevsProgressMappedMock.seasons.at(0),
+const DEVS_FIRST_SEASON = seasonTarget(
+  DEVS_SEASON_ACTIONS_TARGET.show,
+  DEVS_SEASON_ACTIONS_TARGET,
 );
-const DEVS_FIRST_SEASON = seasonTarget(ShowDevsMappedMock, {
-  id: 1001,
-  number: DEVS_PROGRESS_SEASON.number,
-  episodes: {
-    count: ShowDevsSeasonEpisodesMappedMock.length,
-    aired: DEVS_PROGRESS_SEASON.total,
-  },
-});
+// Its show's watched history holds plays of other episodes too.
+const DEVS_EPISODE = {
+  type: 'episode',
+  media: { id: 3, title: 'Devs 1x03', season: 1, number: 3 },
+  show: DEVS_SEASON_ACTIONS_TARGET.show,
+} satisfies WatchedStoreProps;
 const SILO_FIRST_SEASON_PROMPT =
   'Mark all 10 aired episodes of "Season 1 of Silo" as watched? Episodes already watched get another play.';
 
@@ -432,6 +438,261 @@ describe('store: useWatched', () => {
     });
   });
 
+  describe('has a Play', () => {
+    it.each(
+      [
+        { name: 'a movie with a play', props: HERETIC, expected: true },
+        { name: 'a movie with none', props: UNWATCHED_MOVIE, expected: false },
+        { name: 'a show with one episode played', props: SILO, expected: true },
+        { name: 'an episode with a play', props: SILO_EPISODE, expected: true },
+        {
+          name: 'a season with one episode played',
+          props: SILO_FIRST_SEASON,
+          expected: true,
+        },
+        {
+          name: 'a season with none, though its show has one',
+          props: SILO_SECOND_SEASON,
+          expected: false,
+        },
+      ] satisfies Array<
+        { name: string; props: WatchedStoreProps; expected: boolean }
+      >,
+    )('should read $expected for $name', async ({ props, expected }) => {
+      const { hasPlay } = await renderSettledHistory(() => useWatched(props));
+
+      expect(await firstValueFrom(hasPlay)).toBe(expected);
+    });
+
+    it.each(
+      [
+        {
+          name: 'an unplayed episode of a show with a play',
+          props: { ...SILO_EPISODE, media: UNPLAYED_SILO_EPISODE },
+          expected: [false, true],
+        },
+        {
+          name: 'an unplayed season of a show with a play',
+          props: SILO_SECOND_SEASON,
+          expected: [false, true],
+        },
+        {
+          name: 'an episode of a show with none',
+          props: { ...SILO_EPISODE, show: UNPLAYED_SHOW },
+          expected: [false, false],
+        },
+        { name: 'a movie', props: HERETIC, expected: [true, true] },
+      ] satisfies Array<
+        { name: string; props: WatchedStoreProps; expected: boolean[] }
+      >,
+    )(
+      "should read its own and its show's Play for $name",
+      async ({ props, expected }) => {
+        const { hasPlay, hasShowPlay } = await renderSettledHistory(() =>
+          useWatched(props)
+        );
+
+        expect([
+          await firstValueFrom(hasPlay),
+          await firstValueFrom(hasShowPlay),
+        ]).toEqual(expected);
+      },
+    );
+
+    it.each(
+      [
+        { name: 'a movie', props: UNWATCHED_MOVIE, read: 'hasPlay' },
+        {
+          name: "an episode's show",
+          props: { ...SILO_EPISODE, show: UNPLAYED_SHOW },
+          read: 'hasShowPlay',
+        },
+      ] as const,
+    )(
+      'should read a Play for $name while its own add writes, until the history says otherwise',
+      async ({ props, read }) => {
+        const write = holdRequest({
+          method: 'post',
+          url: SYNC_HISTORY_URL,
+          answer: () => new HttpResponse(null, { status: 201 }),
+        });
+        const store = await renderSettledHistory(() => useWatched(props));
+
+        const added = store.add();
+        await write.requested;
+        const whileWriting = await firstValueFrom(store[read]);
+        write.release();
+        await added;
+
+        expect(whileWriting).toBe(true);
+        expect(await firstValueFrom(store[read])).toBe(false);
+      },
+    );
+
+    it.each(
+      [
+        { name: 'a movie', props: HERETIC, expected: [false, false] },
+        {
+          name: "an episode holding its show's only plays",
+          props: SILO_EPISODE,
+          expected: [false, false],
+        },
+        {
+          name: 'an episode whose show has other plays',
+          props: DEVS_EPISODE,
+          expected: [false, true],
+        },
+        {
+          name: "a season holding its show's only plays",
+          props: SILO_FIRST_SEASON,
+          expected: [false, false],
+        },
+        {
+          name: 'a season whose show has other plays',
+          props: DEVS_FIRST_SEASON,
+          expected: [false, true],
+        },
+      ] satisfies Array<
+        { name: string; props: WatchedStoreProps; expected: boolean[] }
+      >,
+    )(
+      "should read its own and its show's Play for $name while its own remove writes",
+      async ({ props, expected }) => {
+        const write = holdRequest({
+          method: 'post',
+          url: SYNC_HISTORY_REMOVE_URL,
+          answer: () => new HttpResponse(null, { status: 200 }),
+        });
+        const store = await renderSettledHistory(() => useWatched(props));
+
+        const removed = store.remove();
+        await answerDialog('Remove from history?', 'Remove from History');
+        await write.requested;
+        const whileWriting = [
+          await firstValueFrom(store.hasPlay),
+          await firstValueFrom(store.hasShowPlay),
+        ];
+        write.release();
+        await removed;
+
+        expect(whileWriting).toEqual(expected);
+      },
+    );
+
+    it.each(
+      [
+        {
+          name: 'a movie',
+          props: HERETIC,
+          read: 'hasPlay',
+          url: WATCHED_MOVIES_URL,
+          type: 'movie',
+        },
+        {
+          name: "an episode's show",
+          props: SILO_EPISODE,
+          read: 'hasShowPlay',
+          url: WATCHED_SHOWS_URL,
+          type: 'episode',
+        },
+      ] as const,
+    )(
+      'should read not known for $name once its own remove fails while the history refetches',
+      async ({ props, read, url, type }) => {
+        const write = holdRequest({
+          method: 'post',
+          url: SYNC_HISTORY_REMOVE_URL,
+          answer: () => new HttpResponse(null, { status: 500 }),
+        });
+        const store = await renderSettledHistory(() => ({
+          ...useWatched(props),
+          invalidate: useInvalidator().invalidate,
+        }));
+
+        const states = collectDistinctStates(store[read]);
+
+        const removed = store.remove();
+        await answerDialog('Remove from history?', 'Remove from History');
+        await write.requested;
+        const refetch = holdRequest({ method: 'get', url });
+        void store.invalidate(InvalidateAction.MarkAsWatched(type));
+        await refetch.requested;
+        write.release();
+        await removed;
+        refetch.release();
+        await readKnown(store[read]);
+
+        expect(states).toEqual([true, false, undefined, true]);
+      },
+    );
+
+    it('should read not known while the history is not known', async () => {
+      holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+      const { hasPlay } = await renderStore(() => useWatched(HERETIC));
+
+      expect(await firstValueFrom(hasPlay)).toBeUndefined();
+    });
+
+    it('should read not known for a Play and for no Play while the history refetches', async () => {
+      const { played, unplayed, writer } = await renderSettledHistory(() => ({
+        played: useWatched(HERETIC),
+        unplayed: useWatched(UNWATCHED_MOVIE),
+        writer: useWatched(OTHER_UNWATCHED_MOVIE),
+      }));
+      const playedStates = collectDistinctStates(played.hasPlay);
+      const unplayedStates = collectDistinctStates(unplayed.hasPlay);
+      const refetch = holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+
+      const added = writer.add();
+      await refetch.requested;
+      refetch.release();
+      await added;
+
+      expect(playedStates).toEqual([true, undefined, true]);
+      expect(unplayedStates).toEqual([false, undefined, false]);
+    });
+
+    it.each(
+      [
+        {
+          name: 'a movie',
+          props: UNWATCHED_MOVIE,
+          read: 'hasPlay',
+          url: WATCHED_MOVIES_URL,
+          queries: WATCHED_MOVIES_QUERIES,
+        },
+        {
+          name: "an episode's show",
+          props: { ...SILO_EPISODE, show: UNPLAYED_SHOW },
+          read: 'hasShowPlay',
+          url: WATCHED_SHOWS_URL,
+          queries: WATCHED_SHOWS_QUERIES,
+        },
+      ] as const,
+    )(
+      'should read not known for $name once its own add lands and the history refetch fails',
+      async ({ props, read, url, queries }) => {
+        const store = await renderSettledHistory(() => ({
+          ...useWatched(props),
+          waitForQueriesIdle: useWaitForQueriesIdle(),
+        }));
+        const states = collectDistinctStates(store[read]);
+        const failed = holdRequest({
+          method: 'get',
+          url,
+          answer: () => new HttpResponse(null, { status: 500 }),
+        });
+        failed.release();
+
+        await store.add();
+        await failed.requested;
+        await store.waitForQueriesIdle(queries);
+
+        expect(states).toEqual([false, true, undefined]);
+      },
+    );
+  });
+
   describe('add', () => {
     it('should flip to watched while the request is in flight, then settle', async () => {
       const { add, isWatched, isUpdating } = await renderSettledHistory(() =>
@@ -648,13 +909,9 @@ describe('store: useWatched', () => {
         );
         await answerDialog('Mark as watched?', 'Cancel');
         await secondAdd;
-      });
+      }, { pathIncludes: '/shows/silo/progress/watched' });
 
-      expect(
-        requests.filter((request) =>
-          request === 'GET /shows/silo/progress/watched'
-        ),
-      ).toHaveLength(2);
+      expect(requests).toHaveLength(2);
     });
 
     it('should neither confirm nor write when the show has no aired episodes', async () => {
@@ -786,15 +1043,13 @@ describe('store: useWatched', () => {
       const { remove, isUpdating } = await renderSettledHistory(() =>
         useWatched(HERETIC)
       );
-      const updates: boolean[] = [];
-      const subscription = isUpdating.subscribe((value) => updates.push(value));
+      const updates = collectStates(isUpdating);
 
       const requests = await captureRequests(async () => {
         const removed = remove();
         await answerDialog('Remove from history?', 'Cancel');
         await removed;
       });
-      subscription.unsubscribe();
 
       expect(requests.filter((request) => request.startsWith('POST')))
         .toEqual([]);

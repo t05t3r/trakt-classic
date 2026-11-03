@@ -2,10 +2,18 @@ import { goto } from '$app/navigation';
 import { navigating, page } from '$app/state';
 import { fromRune } from '$lib/utils/store/fromRune.svelte.ts';
 import { isShallowEqual } from '$lib/utils/object/isShallowEqual.ts';
+import {
+  type SearchParamWrite,
+  withSearchParams,
+} from '$lib/utils/url/withSearchParams.ts';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 
+type ViewParamValuesSpec =
+  | ReadonlyArray<string>
+  | ((value: string) => boolean);
+
 type ViewParamSpec<K extends string> = Readonly<
-  Record<K, { values: ReadonlyArray<string>; fallback: string | null }>
+  Record<K, { values: ViewParamValuesSpec; fallback: string | null }>
 >;
 
 type ViewParamValues<K extends string> = Readonly<Record<K, string | null>>;
@@ -18,6 +26,10 @@ type ViewParamUpdate<K extends string> =
   | Partial<Record<K, string | null>>
   | ((values: ViewParamValues<K>) => Partial<Record<K, string | null>>);
 
+function accepts(values: ViewParamValuesSpec, value: string): boolean {
+  return typeof values === 'function' ? values(value) : values.includes(value);
+}
+
 function readValues<K extends string>(
   spec: ViewParamSpec<K>,
   url: URL,
@@ -27,29 +39,27 @@ function readValues<K extends string>(
       [key, { values, fallback }],
     ) => {
       const value = url.searchParams.get(key);
-      return [key, value !== null && values.includes(value) ? value : fallback];
+      return [key, value !== null && accepts(values, value) ? value : fallback];
     }),
   ) as ViewParamValues<K>;
 }
 
 const REPLACE = { replaceState: true, noScroll: true, keepFocus: true };
 
-// Only the keys a set gave, each fallback as null, so a merge needs no spec.
-type ParamWrite = Readonly<Record<string, string | null>>;
-
 // Built when its replace runs, so an updater reads the values earlier sets leave.
 type PendingWrite = Readonly<{
   pathname: string;
-  writeAt: (url: URL) => ParamWrite;
+  writeAt: (url: URL) => SearchParamWrite;
 }>;
 
 // page.url changes only once a replace lands, so sets made meanwhile wait.
 let lastReplace: Promise<void> = Promise.resolve();
 let pending: PendingWrite | undefined;
 
+// Only the keys a set gave, each fallback as null, so a merge needs no spec.
 function toParamWrite(
   { spec, patch }: { spec: FallbackSpec; patch: ViewParamPatch },
-): ParamWrite {
+): SearchParamWrite {
   return Object.fromEntries(
     Object.entries(patch).flatMap(([key, value]) => {
       if (value === undefined) return [];
@@ -58,22 +68,10 @@ function toParamWrite(
   );
 }
 
-function withWrite({ url, write }: { url: URL; write: ParamWrite }): URL {
-  const next = new URL(url);
-  Object.entries(write).forEach(([key, value]) => {
-    if (value === null) {
-      next.searchParams.delete(key);
-      return;
-    }
-    next.searchParams.set(key, value);
-  });
-  // searchParams escapes a comma, which reads the same left literal.
-  next.search = next.searchParams.toString().replaceAll('%2C', ',');
-  return next;
-}
-
 // A null write removes its key, which searchParams then reads as null.
-function holdsWrite({ url, write }: { url: URL; write: ParamWrite }): boolean {
+function holdsWrite(
+  { url, write }: { url: URL; write: SearchParamWrite },
+): boolean {
   return Object.entries(write).every(([key, value]) =>
     url.searchParams.get(key) === value
   );
@@ -92,7 +90,7 @@ function replacePending(): Promise<void> {
     return Promise.resolve();
   }
 
-  return goto(withWrite({ url: page.url, write }), REPLACE);
+  return goto(withSearchParams({ url: page.url, params: write }), REPLACE);
 }
 
 function afterWrite(
@@ -101,7 +99,7 @@ function afterWrite(
 ): PendingWrite['writeAt'] {
   return (url) => {
     const write = first(url);
-    return { ...write, ...second(withWrite({ url, write })) };
+    return { ...write, ...second(withSearchParams({ url, params: write })) };
   };
 }
 

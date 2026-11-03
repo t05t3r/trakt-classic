@@ -1,7 +1,6 @@
 import { HERETIC_COMMENTS_TARGET } from '$mocks/data/comments/HERETIC_COMMENTS_TARGET.ts';
 import { SILO_COMMENTS_TARGET } from '$mocks/data/comments/SILO_COMMENTS_TARGET.ts';
 import { SILO_SEASON_COMMENTS_TARGET } from '$mocks/data/comments/SILO_SEASON_COMMENTS_TARGET.ts';
-import { goto } from '$app/navigation';
 import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
 import { HERETIC_COMMENTS_URL } from '$mocks/data/movies/HERETIC_COMMENTS_URL.ts';
 import { SILO_COMMENTS_URL } from '$mocks/data/shows/SILO_COMMENTS_URL.ts';
@@ -26,6 +25,7 @@ import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
+import { expectOneReplace } from '$test/beds/url/expectOneReplace.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
@@ -174,10 +174,7 @@ describe('store: useComments', () => {
 
     await select('newest');
 
-    expect(goto).toHaveBeenCalledExactlyOnceWith(
-      expect.any(URL),
-      expect.objectContaining({ replaceState: true }),
-    );
+    expectOneReplace();
     expect(lastReplace()).toBe(
       `${MOVIE_PATH}?fade=watched&comments=recent#comments`,
     );

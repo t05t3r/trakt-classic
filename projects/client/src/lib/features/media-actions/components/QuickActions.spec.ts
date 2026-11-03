@@ -2,12 +2,15 @@ import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.t
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { AIRED } from '$mocks/data/media-actions/AIRED.ts';
+import { DEVS_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_SEASON_ACTIONS_TARGET.ts';
 import { HERETIC_ACTIONS_TARGET } from '$mocks/data/media-actions/HERETIC_ACTIONS_TARGET.ts';
 import { MATRIX_ACTIONS_TARGET } from '$mocks/data/media-actions/MATRIX_ACTIONS_TARGET.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
 import { SILO_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_ACTIONS_TARGET.ts';
 import { SILO_EPISODE_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_EPISODE_ACTIONS_TARGET.ts';
 import { SILO_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_SEASON_ACTIONS_TARGET.ts';
+import { UNPLAYED_SHOW } from '$mocks/data/media-actions/UNPLAYED_SHOW.ts';
 import { SYNC_FAVORITES_REMOVE_URL } from '$mocks/data/sync/SYNC_FAVORITES_REMOVE_URL.ts';
 import { SYNC_FAVORITES_URL } from '$mocks/data/sync/SYNC_FAVORITES_URL.ts';
 import { SYNC_HISTORY_URL } from '$mocks/data/sync/SYNC_HISTORY_URL.ts';
@@ -20,6 +23,7 @@ import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
+import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -28,6 +32,7 @@ import { createRawSnippet } from 'svelte';
 import { beforeEach, describe, expect, it } from 'vitest';
 import QuickActionsHost from '$test/beds/media-actions/QuickActionsHost.svelte';
 import QuickActions from './QuickActions.svelte';
+import type { QuickActionsTarget } from './QuickActionsProps.ts';
 
 const setLayout = fakeLayouts({ desktop: WELL_KNOWN_MEDIA_QUERY.desktop });
 
@@ -114,6 +119,8 @@ describe('component: QuickActions', () => {
   ])(
     'should show the icon unselected and send nothing on a click while the $store store is not known',
     async ({ url, name }) => {
+      // Gives the favourite a Play; the watched row's hold, made after, wins over it.
+      serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
       const known = holdRequest({
         method: 'get',
         url,
@@ -142,12 +149,6 @@ describe('component: QuickActions', () => {
       target: MATRIX_ACTIONS_TARGET,
       name: 'Mark "The Matrix" as watched',
       write: 'POST /sync/history',
-    },
-    {
-      icon: 'an unselected favourite',
-      target: MATRIX_ACTIONS_TARGET,
-      name: 'Add "The Matrix" to your Favorites',
-      write: 'POST /sync/favorites',
     },
     {
       icon: 'a selected favourite',
@@ -245,6 +246,7 @@ describe('component: QuickActions', () => {
       url: SYNC_FAVORITES_URL,
       answer: () => new HttpResponse(null, { status: 201 }),
     });
+    serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
     renderComponent(QuickActions, {
       props: { target: MATRIX_ACTIONS_TARGET, favorite: true },
     });
@@ -266,6 +268,7 @@ describe('component: QuickActions', () => {
     { airDate: new Date(Date.now() + time.weeks(1)), when: 'unaired' },
     { airDate: null, when: 'with no air date' },
   ])('should render no watch icon for a Target $when', async ({ airDate }) => {
+    serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
     renderComponent(QuickActions, {
       props: { target: { ...MATRIX_ACTIONS_TARGET, airDate }, favorite: true },
     });
@@ -391,6 +394,92 @@ describe('component: QuickActions', () => {
 
       await waitFor(() =>
         expect(bodies).toEqual([{ shows: [{ ids: { trakt: SILO.id } }] }])
+      );
+    });
+  });
+
+  describe("the favourite's Play gate", () => {
+    const BLOCKED_REASON = 'Watch it first to favorite it';
+
+    // Its show's watched history holds plays of other seasons only.
+    const DEVS_SECOND_SEASON: QuickActionsTarget = {
+      ...DEVS_SEASON_ACTIONS_TARGET,
+      id: 1002,
+      title: 'Season 2 of Devs',
+      number: 2,
+    };
+
+    const UNPLAYED_EPISODE: QuickActionsTarget = {
+      type: 'episode',
+      id: 99,
+      title: 'Pilot',
+      season: 1,
+      number: 1,
+      show: UNPLAYED_SHOW,
+      airDate: AIRED,
+    };
+
+    it.each([
+      { card: 'a movie with no Play', target: MATRIX_ACTIONS_TARGET },
+      { card: 'an episode of a show with none', target: UNPLAYED_EPISODE },
+    ])(
+      'should block adding $card, describing why, and send nothing on a click',
+      async ({ target }) => {
+        const writes = recordWrites();
+        renderComponent(QuickActions, { props: { target, favorite: true } });
+        const icon = await screen.findByRole('button', {
+          name: /to your Favorites/,
+        });
+        await waitFor(() =>
+          expect(icon).toHaveAttribute('title', BLOCKED_REASON)
+        );
+
+        await userEvent.click(icon);
+
+        await waitNegativeClaim();
+        expect(writes).toEqual([]);
+        expect(icon).toHaveFocus();
+        expect(icon).toHaveAttribute('aria-disabled', 'true');
+        expect(icon).toHaveClass('is-blocked');
+        expect(icon).toHaveAccessibleDescription(BLOCKED_REASON);
+      },
+    );
+
+    it.each([
+      {
+        card: 'a movie once it has a Play',
+        target: MATRIX_ACTIONS_TARGET,
+        name: 'Add "The Matrix" to your Favorites',
+      },
+      {
+        card: "a season's show once another of its seasons has a Play",
+        target: DEVS_SECOND_SEASON,
+        name: 'Add "Devs" to your Favorites',
+      },
+    ])('should add $card', async ({ target, name }) => {
+      serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
+      const writes = recordWrites();
+      renderComponent(QuickActions, { props: { target, favorite: true } });
+
+      await userEvent.click(await settledButton(name));
+
+      await waitFor(() => expect(writes).toEqual(['POST /sync/favorites']));
+      expect(button(name)).not.toHaveAttribute('title');
+    });
+
+    it('should remove a favourite with no Play', async () => {
+      serveMoviePlays([]);
+      const writes = recordWrites();
+      renderComponent(QuickActions, {
+        props: { target: HERETIC_ACTIONS_TARGET, favorite: true },
+      });
+
+      await userEvent.click(
+        await settledButton('Remove "Heretic" from your Favorites'),
+      );
+
+      await waitFor(() =>
+        expect(writes).toEqual(['POST /sync/favorites/remove'])
       );
     });
   });

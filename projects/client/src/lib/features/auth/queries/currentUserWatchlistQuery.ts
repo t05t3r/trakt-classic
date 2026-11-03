@@ -6,7 +6,7 @@ import {
 } from '$lib/requests/_internal/mapToTargetId.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
-import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import { WATCHLIST_INVALIDATIONS } from '$lib/requests/_internal/WATCHLIST_INVALIDATIONS.ts';
 import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
 import { TargetIdSchema } from '$lib/requests/models/TargetId.ts';
@@ -39,15 +39,7 @@ const currentUserWatchlistRequest = (
 
 export const currentUserWatchlistQuery = defineInfiniteQuery({
   key: 'currentUserWatchlist',
-  invalidations: [
-    InvalidateAction.Watchlisted('movie'),
-    InvalidateAction.Watchlisted('show'),
-    InvalidateAction.Watchlisted('season'),
-    InvalidateAction.Watchlisted('episode'),
-    InvalidateAction.MarkAsWatched('movie'),
-    InvalidateAction.MarkAsWatched('show'),
-    InvalidateAction.MarkAsWatched('episode'),
-  ],
+  invalidations: WATCHLIST_INVALIDATIONS,
   dependencies: (params) => [params.page],
   request: currentUserWatchlistRequest,
   mapper: (response) => ({

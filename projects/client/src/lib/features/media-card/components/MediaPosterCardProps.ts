@@ -9,6 +9,11 @@ export type MediaPosterCardProps =
     poster: MediaEntry['poster'];
     // A season or episode poster is named by its show.
     posterTitle: string;
+    // Badged on a show card only, and only for a date Trakt gave.
+    droppedAt?: Date;
+    rank?: number;
+    // Read once, when the strip is made, as `QuickActions` reads it.
+    favorite?: boolean;
     badges?: Snippet;
     progress?: Snippet;
   }

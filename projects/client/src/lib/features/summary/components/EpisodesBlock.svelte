@@ -59,14 +59,14 @@
 
   const { show, status, count }: EpisodesBlockProps = $props();
 
-  const { history } = useUser();
+  const { historyStatus } = useUser();
   const hydrated = useHydrated();
 
   const isWatched = (episode: EpisodeEntry) => {
-    if (!$history) return false;
+    if ($historyStatus.kind !== 'ready') return false;
 
     return findWatchedEpisode({
-      history: $history,
+      history: $historyStatus.data,
       showId: show.id,
       episodeId: episode.id,
     }) !== undefined;
@@ -84,6 +84,7 @@
     emptyText={m.text_episodes_empty()}
     sort={SORT}
     {isWatched}
+    watchedStatus={$historyStatus}
     grid={GRID}
   >
     {#snippet item(episode)}

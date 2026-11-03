@@ -126,4 +126,54 @@ describe('style: mixins', () => {
       'border:var(--avatar-ring) solid var(--ring);',
     );
   });
+
+  it('should ring an avatar at the width it is given', async () => {
+    expect(
+      await compileRule(
+        '@include ringed-avatar(var(--ring), var(--avatar-ring-l));',
+      ),
+    ).toContain('border:var(--avatar-ring-l) solid var(--ring);');
+  });
+
+  it('should fill an avatar in the colour it is given', async () => {
+    expect(
+      await compileRule(
+        '@include ringed-avatar(var(--ring), var(--avatar-ring-l), var(--fill));',
+      ),
+    ).toContain('background:var(--fill)}');
+  });
+
+  it('should fade a watched item, in full under the focus or a mouse hover', async () => {
+    expect(await compileRule('@include watched-fade;')).toBe(
+      [
+        'a{opacity:var(--watched-fade-opacity)}',
+        'a:focus-within{opacity:1}',
+        '@media(hover: hover)and (pointer: fine){a:hover{opacity:1}}',
+      ].join(''),
+    );
+  });
+
+  it('should dim a blocked control under a not-allowed cursor, in full while it has keyboard focus', async () => {
+    expect(await compileRule('@include blocked-control;')).toBe(
+      [
+        'a{opacity:var(--action-blocked-opacity);cursor:not-allowed}',
+        'a:focus-visible{opacity:1}',
+      ].join(''),
+    );
+  });
+
+  it('should draw a thin scrollbar, with the standard properties where the WebKit ones are missing', async () => {
+    expect(await compileRule('@include thin-scrollbar;')).toBe(
+      [
+        'a::-webkit-scrollbar{height:var(--ni-6)}',
+        'a::-webkit-scrollbar-track{border-radius:var(--border-radius-xs);',
+        'background:var(--color-scrollbar-track)}',
+        'a::-webkit-scrollbar-thumb{border-radius:var(--border-radius-xs);',
+        'background:var(--color-scrollbar-thumb)}',
+        'a::-webkit-scrollbar-thumb:hover{background:var(--color-scrollbar-thumb-hover)}',
+        '@supports not selector(::-webkit-scrollbar){a{scrollbar-width:thin;',
+        'scrollbar-color:var(--color-scrollbar-thumb-standard) var(--color-scrollbar-track)}}',
+      ].join(''),
+    );
+  });
 });

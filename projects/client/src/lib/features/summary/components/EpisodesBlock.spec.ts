@@ -9,6 +9,9 @@ import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { failOnce } from '$test/beds/request/failOnce.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
@@ -61,15 +64,28 @@ function rowOf(container: HTMLElement, sxe: string): HTMLElement {
   return row;
 }
 
+function siloHistory() {
+  return pagedResponse({ body: WatchedShowsSiloResponseMock });
+}
+
 // Silo's history, which marks 1x01 and 1x02 as watched.
 function serveSiloHistory() {
-  server.use(
-    http.get(
-      WATCHED_SHOWS_URL,
-      () => pagedResponse({ body: WatchedShowsSiloResponseMock }),
-    ),
-  );
+  server.use(http.get(WATCHED_SHOWS_URL, siloHistory));
 }
+
+// Under hide the two watched episodes leave; under fade the first of them fades.
+const FILTERED = [
+  {
+    filter: 'hide',
+    shown: (container: HTMLElement) =>
+      expect(rowTitles(container).at(0)).toBe('1x03 Machines'),
+  },
+  {
+    filter: 'fade',
+    shown: (container: HTMLElement) =>
+      expect(rowOf(container, '1x01')).toHaveClass('is-faded'),
+  },
+] as const;
 
 // Holston's Pick, 1x02, aired 5 May 2023 01:00 UTC and runs 48 minutes.
 const SECOND = assertDefined(ShowSiloSeasonEpisodesMappedMock.at(1));
@@ -228,6 +244,68 @@ describe('component: EpisodesBlock', () => {
     expect(rowTitles(container).at(0)).toBe('1x03 Machines');
     expect(heading()).toHaveTextContent('10 Episodes');
   });
+
+  it.each(FILTERED)(
+    'should show no episode under $filter before the history lands',
+    async ({ filter, shown }) => {
+      const history = holdRequest({
+        method: 'get',
+        url: WATCHED_SHOWS_URL,
+        answer: siloHistory,
+      });
+      openAt(`${SEASON_PATH}?${filter}=watched`);
+      const { container } = await renderBlock();
+
+      await history.requested;
+      await waitNegativeClaim();
+      const whileUnknown = rows(container).length;
+      history.release();
+
+      await waitFor(() => shown(container));
+      expect(whileUnknown).toBe(0);
+    },
+  );
+
+  it.each(FILTERED)(
+    'should keep the filter under $filter while a watch refetches the history',
+    async ({ filter, shown }) => {
+      serveSiloHistory();
+      openAt(`${SEASON_PATH}?${filter}=watched`);
+      const { container } = await renderBlock();
+      await waitFor(() => shown(container));
+      const refetch = holdRequest({
+        method: 'get',
+        url: WATCHED_SHOWS_URL,
+        answer: siloHistory,
+      });
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Mark "Machines" as watched' }),
+      );
+      await refetch.requested;
+      await waitNegativeClaim();
+
+      shown(container);
+      refetch.release();
+      await waitFor(() => shown(container));
+    },
+  );
+
+  it.each(FILTERED)(
+    'should read a failed history read under $filter as error, and retry it',
+    async ({ filter, shown }) => {
+      serveSiloHistory();
+      failOnce(WATCHED_SHOWS_URL);
+      openAt(`${SEASON_PATH}?${filter}=watched`);
+      const { container } = await renderBlock();
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Retry' }),
+      );
+
+      await waitFor(() => shown(container));
+    },
+  );
 
   it("should link the row's title to the episode's page", async () => {
     openAt(SEASON_PATH);

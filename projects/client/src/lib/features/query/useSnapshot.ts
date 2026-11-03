@@ -115,9 +115,16 @@ function selectOnce<T, S, TError>(select: (entries: ReadonlyArray<T>) => S) {
   };
 }
 
+// The pages that landed before a failed next page stay not known until a read settles past them.
+function knownPages<T>(held: Held<T> | undefined) {
+  return held?.isFailed ? undefined : held?.pages;
+}
+
+const LOADING = { kind: 'loading' } as const;
+
 /**
- * Reads every page as a section's status, held while unsettled; a failed
- * next page reads as error over the pages that landed.
+ * Reads every page as a section's status, held while unsettled; a failed next
+ * page reads as error, and its retry as loading until a read settles.
  */
 export function useSnapshotStatus<
   T,
@@ -146,23 +153,24 @@ export function useSnapshotStatus<
   >(options).pipe(
     map((result) => ({
       result,
-      entries: read({
-        query: cache.find({ queryKey: options.queryKey, exact: true }),
-        result,
-        whileUnsettled: 'hold',
-      })?.pages,
+      entries: knownPages(
+        read({
+          query: cache.find({ queryKey: options.queryKey, exact: true }),
+          result,
+          whileUnsettled: 'hold',
+        }),
+      ),
     })),
     // A fetch-state change keeps the entries, so select reruns only on new ones.
     scan<SnapshotRead<T, S, TError>, SnapshotRead<T, S, TError>, undefined>(
       selectOnce(select),
       undefined,
     ),
+    // A refetch keeps the query's error while it has data, so a fetch over none known reads as loading.
     map(({ result, data }) =>
-      readStatus({
-        data: result.isFetchNextPageError ? undefined : data,
-        result,
-        isEmpty,
-      })
+      data === undefined && result.fetchStatus !== 'idle'
+        ? LOADING
+        : readStatus({ data, result, isEmpty })
     ),
     multicast(),
   );

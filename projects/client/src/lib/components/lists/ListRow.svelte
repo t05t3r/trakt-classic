@@ -124,14 +124,7 @@
     }
 
     .list-row-name-link {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    @include for-mouse {
-      .list-row-name-link:hover {
-        text-decoration: underline;
-      }
+      @include inherited-link-style;
     }
 
     .list-row-owner {

@@ -3,6 +3,7 @@ import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/Extende
 import { ExtendedUserSettingsResponseMock } from '$mocks/data/users/response/ExtendedUserSettingsResponseMock.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { server } from '$mocks/server.ts';
+import { USER_NAV_LINKS } from '$mocks/data/navigation/USER_NAV_LINKS.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { fireEvent, screen, within } from '@testing-library/svelte';
@@ -38,13 +39,7 @@ describe('component: ProfileMenu', () => {
       within(screen.getByRole('menu', { name: MENU_NAME }))
         .getAllByRole('menuitem')
         .map((row) => [row.textContent?.trim(), row.getAttribute('href')]),
-    ).toEqual([
-      ['History', '/users/me/history'],
-      ['Progress', '/users/me/progress'],
-      ['Ratings', '/users/me/ratings'],
-      ['Lists', '/users/me/lists'],
-      ['Sign Out', null],
-    ]);
+    ).toEqual([...USER_NAV_LINKS, ['Sign Out', null]]);
   });
 
   it('should sign out through a POST form to the logout endpoint', async () => {

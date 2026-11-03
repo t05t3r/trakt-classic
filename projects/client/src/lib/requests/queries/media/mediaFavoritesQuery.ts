@@ -1,3 +1,4 @@
+import type { ListTypeSegment } from '$lib/features/lists/toListTypeSegment.ts';
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
@@ -11,38 +12,51 @@ import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
 import type { SortBy } from '$lib/models/SortBy.ts';
 import type { SortDirection } from '$lib/models/SortDirection.ts';
+import { LIST_PAGE_SIZE } from '$lib/utils/LIST_PAGE_SIZE.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import type { FavoriteMovieResponse, FavoriteShowResponse } from '@trakt/api';
 import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
 import { mapToFavoriteMovie } from '../movies/movieFavoritesQuery.ts';
 import { mapToFavoriteShow } from '../shows/showFavoritesQuery.ts';
 
+export type FavoritesType = ListTypeSegment<'favorites'>;
+
 type FavoriteMediaParams =
   & {
     slug: string;
+    type?: FavoritesType;
     sortBy?: SortBy;
     sortHow?: SortDirection;
   }
-  & PaginationParams
+  & Pick<PaginationParams, 'page'>
   & ApiParams
   & FilterParams;
 
 const favoritedMediaRequest = (
-  { fetch, slug, limit, page, filter, sortBy, sortHow }: FavoriteMediaParams,
+  {
+    fetch,
+    slug,
+    type = 'all',
+    page,
+    filter,
+    sortBy = 'rank',
+    sortHow = 'asc',
+  }: FavoriteMediaParams,
 ) =>
   api({ fetch })
     .users
     .favorites
-    .media({
+    .typedSorted({
       params: {
         id: slug,
+        type,
+        sort_by: sortBy,
+        sort_how: sortHow,
       },
       query: {
         extended: 'full,images,colors',
-        sort_by: sortBy ?? 'added',
-        sort_how: sortHow ?? 'desc',
         page,
-        limit,
+        limit: LIST_PAGE_SIZE,
         ...filter,
       },
     });
@@ -63,7 +77,7 @@ export const mediaFavoritesQuery = defineInfiniteQuery({
   ],
   dependencies: (params) => [
     params.slug,
-    params.limit,
+    params.type,
     params.page,
     params.sortBy,
     params.sortHow,

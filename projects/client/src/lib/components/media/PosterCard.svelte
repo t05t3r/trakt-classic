@@ -17,6 +17,7 @@
     droppedAt,
     strip = 'recessed',
     image,
+    rank,
     actions,
     badges,
     progress,
@@ -63,6 +64,9 @@
   class:is-dropped={droppedAt != null}
   use:whenInViewport={() => (isInView = true)}
 >
+  {#if rank}
+    <div class="poster-rank">{@render rank()}</div>
+  {/if}
   <a class="poster" href={resolve(href)} title={tooltip}>
     {@render image()}
     {@render badges?.()}
@@ -119,6 +123,17 @@
   @use '$style/scss/mixins/index' as *;
 
   .trakt-poster-card {
+    // Places the rank, which sits outside the poster's clip.
+    position: relative;
+
+    .poster-rank {
+      position: absolute;
+      inset-block-start: var(--ni-neg-11);
+      left: 50%;
+      z-index: var(--layer-raised);
+      transform: translateX(-50%);
+    }
+
     .poster {
       position: relative;
       display: block;

@@ -1,6 +1,7 @@
 import type { PosterCardSubtitles } from '$lib/components/media/PosterCardProps.ts';
 import { toMediaCard } from '$lib/features/media-card/toMediaCard.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
 import { MovieHereticMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticMappedMock.ts';
 import { itemOfType } from '$test/beds/dashboard/itemOfType.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
@@ -49,6 +50,15 @@ const DRAGON_EPISODE = {
   poster: episode.entry.show.poster,
   posterTitle: episode.entry.show.title,
 };
+
+const show = itemOfType('show');
+const SHOW = {
+  card: toMediaCard({ type: 'show', show: show.entry }),
+  poster: show.entry.poster,
+  posterTitle: show.entry.title,
+};
+
+const DROPPED_AT = new Date(2026, 2, 4, 21, 5);
 
 async function renderCard(props: MediaPosterCardProps) {
   const { container, userLoaded } = renderComponent(MediaPosterCard, {
@@ -125,6 +135,39 @@ describe('component: MediaPosterCard', () => {
     );
   });
 
+  it('should set the rank as a badge outside the poster link', async () => {
+    const root = await renderCard({ ...HERETIC, rank: 4 });
+
+    const badge = root.querySelector<HTMLElement>('.trakt-rank-badge');
+    expect(badge).toHaveTextContent(/^4$/);
+    expect(root.querySelector('a.poster')).not.toContainElement(badge);
+  });
+
+  it('should draw no rank badge without a rank', async () => {
+    const root = await renderCard(HERETIC);
+
+    expect(root.querySelector('.trakt-rank-badge')).toBeNull();
+  });
+
+  it('should add the favourite quick-icon when asked', async () => {
+    const root = await renderCard({ ...HERETIC, favorite: true });
+
+    const strip = await findPart(root, '.trakt-quick-actions');
+    expect(
+      await within(strip).findByRole('button', {
+        name: 'Remove "Heretic" from your Favorites',
+      }),
+    ).toHaveAttribute('data-action', 'favorite');
+  });
+
+  it('should leave the favourite quick-icon out by default', async () => {
+    const root = await renderCard(HERETIC);
+
+    const strip = await findPart(root, '.trakt-quick-actions');
+    await within(strip).findByText('72%');
+    expect(strip.querySelector('[data-action="favorite"]')).toBeNull();
+  });
+
   it('should set the progress in the titles', async () => {
     const root = await renderCard({ ...HERETIC, progress });
 
@@ -171,6 +214,31 @@ describe('component: MediaPosterCard', () => {
       'The Heirs of the Dragon',
     );
     expect(screen.queryAllByRole('heading', { level: 4 })).toEqual([]);
+  });
+
+  describe('dropped', () => {
+    it('should badge a show card with the date it was dropped', async () => {
+      const root = await renderCard({ ...SHOW, droppedAt: DROPPED_AT });
+
+      expect(root).toHaveClass('is-dropped');
+      expect(screen.getByRole('img', { name: /4 Mar 2026 21:05/ }))
+        .toBeInTheDocument();
+    });
+
+    it('should badge no card of another type', async () => {
+      const root = await renderCard({
+        ...DRAGON_EPISODE,
+        droppedAt: DROPPED_AT,
+      });
+
+      expect(root).not.toHaveClass('is-dropped');
+    });
+
+    it('should badge no show dropped at no known date', async () => {
+      const root = await renderCard({ ...SHOW, droppedAt: MAX_DATE });
+
+      expect(root).not.toHaveClass('is-dropped');
+    });
   });
 
   it('should keep the subtitle choices of the poster card', () => {

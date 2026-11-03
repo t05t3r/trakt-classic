@@ -1,4 +1,5 @@
 import { lookupPendingOverride } from '$test/beds/media-actions/lookupPendingOverride.ts';
+import { collectStates } from '$test/beds/store/collectStates.ts';
 import { describe, expect, it } from 'vitest';
 import { type PendingOverride, pendingOverrides } from './pendingOverrides.ts';
 
@@ -115,10 +116,7 @@ describe('pendingOverrides', () => {
 
   it('should emit each change to a looked-up key', () => {
     const key = { action: 'watched', targetKey: 'episode-live' } as const;
-    const seen: Array<boolean | number | null | undefined> = [];
-    const subscription = pendingOverrides.lookup$(key).subscribe((override) =>
-      seen.push(override?.value)
-    );
+    const seen = collectStates(pendingOverrides.lookup$(key));
 
     pendingOverrides.set({ ...key, value: true, requestId: 'live' });
     pendingOverrides.set({
@@ -128,28 +126,25 @@ describe('pendingOverrides', () => {
       requestId: 'other',
     });
     pendingOverrides.clear({ ...key, requestId: 'live' });
-    subscription.unsubscribe();
 
-    expect(seen).toEqual([undefined, true, undefined]);
+    expect(seen.map((override) => override?.value))
+      .toEqual([undefined, true, undefined]);
   });
 
   it('should emit the overrides of one action as they change', () => {
     pendingOverrides.reset();
     const drop = { action: 'drop', targetKey: 'show-by-action' } as const;
-    const seen: Array<ReadonlyArray<string>> = [];
-    const subscription = pendingOverrides.byAction$('drop').subscribe(
-      (overrides) =>
-        seen.push(
-          overrides.map(({ targetKey, value }) => `${targetKey}=${value}`),
-        ),
-    );
+    const seen = collectStates(pendingOverrides.byAction$('drop'));
 
     pendingOverrides.set({ ...drop, value: true, requestId: 'drop' });
     pendingOverrides.set({ ...drop, value: false, requestId: 'restore' });
     pendingOverrides.clear({ ...drop, requestId: 'restore' });
-    subscription.unsubscribe();
 
-    expect(seen).toEqual([
+    expect(
+      seen.map((overrides) =>
+        overrides.map(({ targetKey, value }) => `${targetKey}=${value}`)
+      ),
+    ).toEqual([
       [],
       ['show-by-action=true'],
       ['show-by-action=false'],
@@ -160,14 +155,10 @@ describe('pendingOverrides', () => {
   it('should not emit for a change to another action', () => {
     pendingOverrides.reset();
     const watched = { action: 'watched', targetKey: 'episode-quiet' } as const;
-    const seen: Array<ReadonlyArray<unknown>> = [];
-    const subscription = pendingOverrides.byAction$('drop').subscribe(
-      (overrides) => seen.push(overrides),
-    );
+    const seen = collectStates(pendingOverrides.byAction$('drop'));
 
     pendingOverrides.set({ ...watched, value: true, requestId: 'quiet' });
     pendingOverrides.clear({ ...watched, requestId: 'quiet' });
-    subscription.unsubscribe();
 
     expect(seen).toEqual([[]]);
   });

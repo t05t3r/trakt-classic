@@ -6,10 +6,9 @@
   import { userNavItems } from '$lib/features/navigation/userNavItems.ts';
   import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
   import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
-  import { map } from 'rxjs';
   import NavMenu from './_internal/NavMenu.svelte';
 
-  const profile = useUser().user.pipe(map(($query) => $query.data));
+  const profile = useUser().settings;
 
   const label = $derived(
     $profile

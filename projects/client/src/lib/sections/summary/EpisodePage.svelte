@@ -186,7 +186,7 @@
   <ListsBlock status={$listsStatus} />
 {/snippet}
 
-{#if $episode && $show}
+{#if $episode && $show && media}
   <div class="trakt-episode-page">
     <SummaryHero
       backdrop={$backdrop}
@@ -209,8 +209,7 @@
       {/snippet}
       {#snippet ratings()}
         <SummaryRatings
-          type="episode"
-          id={$episode.id}
+          target={media}
           rating={$episodeRatings}
           stats={$stats}
           earliestReleaseDate={$earliestReleaseDate}

@@ -1,7 +1,8 @@
+import { setDocumentDirection } from '$test/beds/direction/setDocumentDirection.ts';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet, type Snippet } from 'svelte';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import PillTabs from './PillTabs.svelte';
 
 const TABS = [
@@ -304,10 +305,7 @@ describe('component: PillTabs', () => {
     ])(
       'should follow a right-to-left document on $key',
       async ({ key, name, next }) => {
-        document.documentElement.dir = 'rtl';
-        onTestFinished(() => {
-          document.documentElement.removeAttribute('dir');
-        });
+        setDocumentDirection('rtl');
         const { onValueChange } = renderTabs({ value: 'guest' });
 
         screen.getByRole('tab', { name: 'Guest Stars 112' }).focus();

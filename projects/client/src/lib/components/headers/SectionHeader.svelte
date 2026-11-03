@@ -9,6 +9,7 @@
     loading = false,
     tools,
     helpText,
+    size = 'default',
     spacing = 'default',
     helpTextGap = 'default',
   }: SectionHeaderProps = $props();
@@ -16,6 +17,7 @@
 
 <div
   class="trakt-section-header"
+  data-size={size}
   data-spacing={spacing}
   data-help-text-gap={helpTextGap}
 >
@@ -56,6 +58,24 @@
       }
     }
 
+    &[data-spacing='compact'] .section-header-line {
+      margin-block: var(--ni-10);
+
+      // Tools stay at the top of a wrapped title, as Classic's floated ones did.
+      @include for-mobile {
+        align-items: flex-start;
+        margin-block: var(--ni-neg-5) var(--ni-0);
+      }
+    }
+
+    // The page gutter already gives the start inset Classic's phone title padded itself.
+    &[data-spacing='compact'] .section-title {
+      @include for-mobile {
+        padding-block: var(--ni-0) var(--ni-10);
+        padding-inline-end: var(--ni-10);
+      }
+    }
+
     .section-title {
       --pending-spinner-size: var(--icon-size-heading);
       --pending-spinner-stroke: var(--icon-stroke-chrome);
@@ -68,6 +88,19 @@
       :global(b),
       :global(strong) {
         font-weight: var(--font-weight-heading);
+      }
+    }
+
+    // Outranks the global h2 rules, which size every h2 alike.
+    &[data-size='compact'] .section-title {
+      // Sized like the title's text, the spinner fits the line and leaves the bar's height.
+      --pending-spinner-size: var(--font-size-title-bar);
+
+      font-size: var(--font-size-title-bar);
+      font-weight: var(--font-weight-heading);
+
+      @include for-mobile {
+        line-height: normal;
       }
     }
 

@@ -13,6 +13,13 @@ const SPEC = {
   comments: { values: ['likes', 'recent'], fallback: null },
 };
 
+const PREDICATE_SPEC = {
+  season: {
+    values: (value: string) => /^[1-9]$/.test(value),
+    fallback: null,
+  },
+};
+
 function renderViewParam() {
   return renderStore(() => useViewParam(SPEC));
 }
@@ -55,6 +62,29 @@ describe('store: useViewParam', () => {
     expect(await readKnown(values)).toEqual({
       actors: 'regular',
       comments: null,
+    });
+  });
+
+  describe('with a predicate for its values', () => {
+    it.each([
+      { search: '?season=3', season: '3' },
+      { search: '?season=0', season: null },
+      { search: '?season=12', season: null },
+      { search: '', season: null },
+    ])('should read $search as $season', async ({ search, season }) => {
+      openAt(`/shows/silo${search}`);
+      const { values } = await renderStore(() => useViewParam(PREDICATE_SPEC));
+
+      expect(await readKnown(values)).toEqual({ season });
+    });
+
+    it('should write a value its predicate accepts', async () => {
+      openAt('/shows/silo');
+      const { set } = await renderStore(() => useViewParam(PREDICATE_SPEC));
+
+      await set({ season: '4' });
+
+      expect(lastReplace()).toBe('/shows/silo?season=4');
     });
   });
 

@@ -1,15 +1,13 @@
+import { USER_NAV_LINKS } from '$mocks/data/navigation/USER_NAV_LINKS.ts';
 import { describe, expect, it } from 'vitest';
 import { selectedNavItem } from './selectedNavItem.ts';
 import { userNavItems } from './userNavItems.ts';
 
 describe('userNavItems', () => {
   it("should list the signed-in user's pages in menu order", () => {
-    expect(userNavItems.map((item) => [item.label(), item.route])).toEqual([
-      ['History', '/users/me/history'],
-      ['Progress', '/users/me/progress'],
-      ['Ratings', '/users/me/ratings'],
-      ['Lists', '/users/me/lists'],
-    ]);
+    expect(userNavItems.map((item) => [item.label(), item.route])).toEqual(
+      USER_NAV_LINKS,
+    );
   });
 
   it.each([

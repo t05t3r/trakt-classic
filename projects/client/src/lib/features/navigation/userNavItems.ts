@@ -2,7 +2,7 @@ import * as m from '$lib/features/i18n/messages.ts';
 import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
 import type { NavItem } from './topNavItems.ts';
 
-type UserNavKey = 'history' | 'progress' | 'ratings' | 'lists';
+export type UserNavKey = 'history' | 'progress' | 'ratings' | 'lists';
 
 export const userNavItems: ReadonlyArray<NavItem<UserNavKey>> = [
   {

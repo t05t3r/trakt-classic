@@ -134,14 +134,7 @@
     }
 
     .title-link {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    @include for-mouse {
-      .title-link:hover {
-        text-decoration: underline;
-      }
+      @include inherited-link-style;
     }
 
     .title-sxe {

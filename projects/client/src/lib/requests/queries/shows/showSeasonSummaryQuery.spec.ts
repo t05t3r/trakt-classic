@@ -73,9 +73,10 @@ describe('showSeasonSummaryQuery', () => {
       ),
     );
 
-    const requests = await captureRequests(() => readSiloSeason(SPECIALS));
+    const requests = await captureRequests(() => readSiloSeason(SPECIALS), {
+      pathIncludes: '/shows/',
+    });
 
-    expect(requests.filter((request) => request.startsWith('GET /shows/')))
-      .toEqual([`GET ${SPECIALS_PATH}`]);
+    expect(requests).toEqual([`GET ${SPECIALS_PATH}`]);
   });
 });

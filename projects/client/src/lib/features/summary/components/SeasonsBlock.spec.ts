@@ -10,7 +10,7 @@ import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SeasonsBlockProps } from './_internal/SeasonsBlockProps.ts';
 import SeasonsBlock from './SeasonsBlock.svelte';
 
@@ -24,7 +24,7 @@ async function renderBlock(props: Partial<SeasonsBlockProps> = {}) {
     props: {
       show: ShowSiloMappedMock,
       status: { kind: 'ready', data: ShowSiloSeasonsMappedMock },
-      progress: ShowSiloProgressMappedMock,
+      progress: { kind: 'ready', data: ShowSiloProgressMappedMock },
       count: 3,
       ...props,
     },
@@ -210,8 +210,16 @@ describe('component: SeasonsBlock', () => {
     openAt(SHOW_PATH);
     const { container } = await renderBlock({
       progress: {
-        ...ShowSiloProgressMappedMock,
-        seasons: [{ number: 1, total: 10, completed: 0, lastWatchedAt: null }],
+        kind: 'ready',
+        data: {
+          ...ShowSiloProgressMappedMock,
+          seasons: [{
+            number: 1,
+            total: 10,
+            completed: 0,
+            lastWatchedAt: null,
+          }],
+        },
       },
     });
 
@@ -247,8 +255,11 @@ describe('component: SeasonsBlock', () => {
     openAt(`${SHOW_PATH}?fade=watched`);
     const { container } = await renderBlock({
       progress: {
-        ...ShowSiloProgressMappedMock,
-        seasons: [{ number: 3, total: 0, completed: 0, lastWatchedAt: null }],
+        kind: 'ready',
+        data: {
+          ...ShowSiloProgressMappedMock,
+          seasons: [{ number: 3, total: 0, completed: 0, lastWatchedAt: null }],
+        },
       },
     });
 
@@ -270,21 +281,24 @@ describe('component: SeasonsBlock', () => {
         data: ShowSiloSeasonsWithSpecialsMappedMock,
       },
       progress: {
-        ...ShowSiloProgressMappedMock,
-        seasons: [
-          {
-            number: SPECIALS,
-            total: 10,
-            completed: 10,
-            lastWatchedAt: ShowSiloProgressMappedMock.lastWatchedAt,
-          },
-          {
-            number: 1,
-            total: 10,
-            completed: 10,
-            lastWatchedAt: ShowSiloProgressMappedMock.lastWatchedAt,
-          },
-        ],
+        kind: 'ready',
+        data: {
+          ...ShowSiloProgressMappedMock,
+          seasons: [
+            {
+              number: SPECIALS,
+              total: 10,
+              completed: 10,
+              lastWatchedAt: ShowSiloProgressMappedMock.lastWatchedAt,
+            },
+            {
+              number: 1,
+              total: 10,
+              completed: 10,
+              lastWatchedAt: ShowSiloProgressMappedMock.lastWatchedAt,
+            },
+          ],
+        },
       },
     };
 
@@ -301,6 +315,35 @@ describe('component: SeasonsBlock', () => {
       await renderBlock(watchedProps);
 
       expect(cardTitles()).toEqual(['Season 3', 'Season 2', 'Specials']);
+    });
+  });
+
+  describe.each(['hide', 'fade'])('under %s watched', (filter) => {
+    it('should show no season while the progress loads', async () => {
+      openAt(`${SHOW_PATH}?${filter}=watched`);
+      const { container } = await renderBlock({
+        progress: { kind: 'loading' },
+      });
+
+      expect(container.querySelectorAll('.sortable-item')).toHaveLength(0);
+    });
+
+    it('should offer Retry on a failed progress read, and retry it', async () => {
+      const retry = vi.fn();
+      openAt(`${SHOW_PATH}?${filter}=watched`);
+      await renderBlock({ progress: { kind: 'error', retry } });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+      expect(retry).toHaveBeenCalledOnce();
+    });
+
+    it('should show every season for a show with no plays', async () => {
+      openAt(`${SHOW_PATH}?${filter}=watched`);
+      const { container } = await renderBlock({ progress: { kind: 'empty' } });
+
+      expect(cardTitles()).toEqual(['Season 3', 'Season 2', 'Season 1']);
+      expect(container.querySelectorAll('.is-faded')).toHaveLength(0);
     });
   });
 

@@ -112,7 +112,7 @@
   bind:open={() => open, setOpen}
 >
   {#snippet trigger({ props })}
-    {@render face({ props, shown })}
+    {@render face({ props, shown, isOpen: open })}
   {/snippet}
 
   <div class="trakt-rating-popover">

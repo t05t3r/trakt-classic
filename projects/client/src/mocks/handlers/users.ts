@@ -2,12 +2,15 @@ import { http, HttpResponse } from 'msw';
 import { pageHeaders } from '$mocks/pageHeaders.ts';
 
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { LIST_TYPES } from '$lib/features/lists/LIST_TYPES.ts';
+import { toListTypeSegment } from '$lib/features/lists/toListTypeSegment.ts';
 import { AllListedShowsResponseMock } from '$mocks/data/lists/response/AllListedShowsResponseMock.ts';
 import { ListedMoviesResponseMock } from '$mocks/data/lists/response/ListedMoviesResponseMock.ts';
 import { ListedShowsResponseMock } from '$mocks/data/lists/response/ListedShowsResponseMock.ts';
 import { HereticListsMappedMock } from '$mocks/data/summary/movies/heretic/mapped/HereticListsMappedMock.ts';
 import { SiloListsMappedMock } from '$mocks/data/summary/shows/silo/mapped/SiloListsMappedMock.ts';
 import { SiloListsResponseMock } from '$mocks/data/summary/shows/silo/response/SiloListsResponseMock.ts';
+import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
 import { UserProfileHarryMappedMock } from '$mocks/data/users/mapped/UserProfileHarryMappedMock.ts';
 import { CollaborationListsResponseMock } from '$mocks/data/users/response/CollaborationListsResponseMock.ts';
 import { ExtendedUserProfileHarryResponseMock } from '$mocks/data/users/response/ExtendedUserProfileHarryResponseMock.ts';
@@ -20,6 +23,7 @@ import { RestoreShowResponseMock } from '$mocks/data/users/response/RestoreShowR
 import { ActivityHistoryResponseMock } from '$mocks/data/users/response/ActivityHistoryResponseMock.ts';
 import { EpisodeActivityHistoryResponseMock } from '$mocks/data/users/response/EpisodeActivityHistoryResponseMock.ts';
 import { ExtendedUserSettingsResponseMock } from '$mocks/data/users/response/ExtendedUserSettingsResponseMock.ts';
+import { FavoritedMediaResponseMock } from '$mocks/data/users/response/FavoritedMediaResponseMock.ts';
 import { FavoritedMoviesResponseMock } from '$mocks/data/users/response/FavoritedMoviesResponseMock.ts';
 import { FavoritedShowsResponseMock } from '$mocks/data/users/response/FavoritedShowsResponseMock.ts';
 import { HiddenShowProgressResponseMock } from '$mocks/data/users/response/HiddenShowProgressResponseMock.ts';
@@ -41,14 +45,14 @@ import { UserWatchingResponseMock } from '$mocks/data/users/response/UserWatchin
 import { WatchedMoviesResponseMock } from '$mocks/data/users/response/WatchedMoviesResponseMock.ts';
 import { WatchedShowsMinimalResponseMock } from '$mocks/data/users/response/WatchedShowsMinimalResponseMock.ts';
 import { WatchedShowsResponseMock } from '$mocks/data/users/response/WatchedShowsResponseMock.ts';
-import { WatchlistMoviesResponseMock } from '$mocks/data/users/response/WatchlistMoviesResponseMock.ts';
-import { WatchlistShowsResponseMock } from '$mocks/data/users/response/WatchlistShowsResponseMock.ts';
 import { DROP_URL } from '$mocks/data/users/DROP_URL.ts';
 import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
 import { LISTS_URL } from '$mocks/data/users/LISTS_URL.ts';
 import { RESTORE_URL } from '$mocks/data/users/RESTORE_URL.ts';
+import { USER_FAVORITES_URL } from '$mocks/data/users/USER_FAVORITES_URL.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
+import { USER_WATCHLIST_URL } from '$mocks/data/users/USER_WATCHLIST_URL.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
 import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 
@@ -113,17 +117,17 @@ export const users = [
 
     return HttpResponse.json(WatchedMoviesResponseMock);
   }),
-  http.get('http://localhost/users/me/watchlist/movies*', () => {
-    return HttpResponse.json(WatchlistMoviesResponseMock);
-  }),
-  http.get('http://localhost/users/me/watchlist/shows*', () => {
-    return HttpResponse.json(WatchlistShowsResponseMock);
-  }),
-  http.get('http://localhost/users/me/watchlist/movie,show*', () => {
-    return HttpResponse.json([
-      ...WatchlistMoviesResponseMock,
-      ...WatchlistShowsResponseMock,
-    ]);
+  http.get(USER_WATCHLIST_URL, ({ params }) => {
+    const listed = LIST_TYPES.watchlist.find((type) =>
+      toListTypeSegment(type) === params.type
+    );
+
+    return HttpResponse.json(
+      WatchlistPreviewResponseMock.filter((item) =>
+        params.type === 'all' || item.type === listed
+      ),
+      { headers: pageHeaders() },
+    );
   }),
   http.get('http://localhost/users/me/ratings/movies', () => {
     return HttpResponse.json(RatedMoviesResponseMock);
@@ -136,6 +140,14 @@ export const users = [
   }),
   http.get('http://localhost/users/me/ratings/episodes', () => {
     return HttpResponse.json(RatedEpisodesResponseMock);
+  }),
+  // Before the movies and shows globs below, which would answer it too.
+  http.get(USER_FAVORITES_URL, ({ params }) => {
+    const favorites = FavoritedMediaResponseMock.filter(({ type }) =>
+      params.type === 'all' || params.type === `${type}s`
+    );
+
+    return HttpResponse.json(favorites, { headers: pageHeaders() });
   }),
   http.get('http://localhost/users/me/favorites/movies*', () => {
     return HttpResponse.json(FavoritedMoviesResponseMock);

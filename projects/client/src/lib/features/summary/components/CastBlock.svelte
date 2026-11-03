@@ -111,29 +111,7 @@
       overflow-x: auto;
       list-style: none;
 
-      &::-webkit-scrollbar {
-        height: var(--ni-6);
-      }
-
-      &::-webkit-scrollbar-track {
-        border-radius: var(--border-radius-xs);
-        background: var(--color-scrollbar-track);
-      }
-
-      &::-webkit-scrollbar-thumb {
-        border-radius: var(--border-radius-xs);
-        background: var(--color-scrollbar-thumb);
-
-        &:hover {
-          background: var(--color-scrollbar-thumb-hover);
-        }
-      }
-
-      @supports not selector(::-webkit-scrollbar) {
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-scrollbar-thumb-standard)
-          var(--color-scrollbar-track);
-      }
+      @include thin-scrollbar;
 
       // The phone row runs to the screen's edges.
       @include for-mobile {
