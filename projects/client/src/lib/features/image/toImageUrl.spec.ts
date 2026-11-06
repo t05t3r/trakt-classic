@@ -32,4 +32,13 @@ describe('toImageUrl', () => {
       }),
     ).toBe(placeholder);
   });
+
+  it('should use the placeholder for an avatar path under images/', () => {
+    expect(
+      toImageUrl({
+        url: 'https://media.trakt.tv/images/users/1/avatar.webp?v=1754435517',
+        placeholder,
+      }),
+    ).toBe(placeholder);
+  });
 });

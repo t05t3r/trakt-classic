@@ -1,5 +1,6 @@
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
+import { hasDateTime } from '$lib/requests/_internal/hasDateTime.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
@@ -7,18 +8,18 @@ import { mapToEpisodeActivityHistory } from '$lib/requests/_internal/mapToEpisod
 import { EpisodeActivityHistorySchema } from '$lib/requests/queries/users/episodeActivityHistoryQuery.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
+import type { DateRangeParams } from '$lib/requests/models/DateRangeParams.ts';
 import type { FilterParams } from '$lib/requests/models/FilterParams.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
 
-type ShowActivityHistoryParams =
+export type ShowActivityHistoryParams =
   & {
     slug: string;
-    startDate?: Date;
-    endDate?: Date;
     id?: number;
     syncId?: number;
   }
   & ApiParams
+  & DateRangeParams
   & PaginationParams
   & FilterParams;
 
@@ -65,9 +66,11 @@ export const showActivityHistoryQuery = defineInfiniteQuery({
   ],
   request: showHistoryRequest,
   mapper: (response) => ({
-    entries: response.body.map(mapToEpisodeActivityHistory),
+    entries: response.body
+      .filter(hasDateTime('watched_at'))
+      .map(mapToEpisodeActivityHistory),
     page: extractPageMeta(response.headers),
   }),
   schema: PaginatableSchemaFactory(EpisodeActivityHistorySchema),
-  ttl: time.hours(6),
+  ttl: time.minutes(15),
 });

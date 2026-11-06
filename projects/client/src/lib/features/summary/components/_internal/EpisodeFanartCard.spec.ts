@@ -6,8 +6,10 @@ import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSi
 import { ShowSiloSeasonEpisodesMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonEpisodesMappedMock.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
-import { screen, waitFor } from '@testing-library/svelte';
+import { screen, waitFor, within } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import EpisodeFanartCard from './EpisodeFanartCard.svelte';
 import type { EpisodeFanartCardProps } from './EpisodeFanartCardProps.ts';
@@ -39,6 +41,23 @@ function captionTags(card: HTMLElement) {
 
 describe('component: EpisodeFanartCard', () => {
   beforeEach(() => setLayout('desktop'));
+
+  it("should rate the card's own episode from its percentage", async () => {
+    stubClientRects();
+    const card = await renderCard({ episode: RATED_EPISODE });
+    const button = await within(card).findByRole('button', {
+      name: /^\d+%/,
+    });
+
+    await userEvent.hover(button);
+    await waitFor(() =>
+      expect(button).toHaveAccessibleDescription('Change your rating')
+    );
+    await userEvent.click(button);
+
+    expect(await screen.findByRole('dialog', { name: 'Rate this episode' }))
+      .toHaveAttribute('data-side', 'bottom');
+  });
 
   it('should title the card with the episode, linked to its page, and no show line', async () => {
     const card = await renderCard();

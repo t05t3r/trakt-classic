@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import { useFavorite } from '$lib/features/media-actions/stores/useFavorite.ts';
   import { useWatched } from '$lib/features/media-actions/stores/useWatched.ts';
@@ -11,6 +12,8 @@
   import ListMenu from './ListMenu.svelte';
   import QuickIcon from './_internal/QuickIcon.svelte';
   import { hasTargetAired } from './_internal/hasTargetAired.ts';
+  import { toWatchHover } from './_internal/toWatchHover.ts';
+  import WatchHover from './_internal/WatchHover.svelte';
   import type {
     QuickActionsProps,
     QuickActionsTarget,
@@ -20,6 +23,9 @@
     target,
     size = 'full',
     favorite = false,
+    historyId,
+    playedAt,
+    hasPlay,
     metadata,
   }: QuickActionsProps = $props();
 
@@ -27,10 +33,12 @@
   // svelte-ignore state_referenced_locally
   const watched = useWatched(toWatchedProps(target));
   const {
-    isWatched,
+    hasPlayHeld,
     isWatchedKnown,
     isUpdating: isWatchUpdating,
     hasShowPlay,
+    plays,
+    watchedEpisodes,
   } = watched;
   // svelte-ignore state_referenced_locally
   const { isWatchlisted } = useWatchlist({ type: target.type, id: target.id });
@@ -50,31 +58,65 @@
     : undefined;
   const isFavorite = favoriteStore?.isFavorite;
 
-  const isAired = $derived(hasTargetAired(target));
+  // A Play exists whatever the watched history reads, so its card never adds another;
+  // a partly watched show or season adds from its detail page only.
+  const hasPlayRead = $derived(
+    hasPlay || historyId !== undefined ? true : $hasPlayHeld,
+  );
+  const isPlayed = $derived(hasPlayRead === true);
+  const isWatchShown = $derived(isPlayed || hasTargetAired(target));
+  const watchHover = $derived(
+    toWatchHover({
+      target,
+      isPlayed: hasPlayRead,
+      playedAt,
+      plays: $plays,
+      watchedEpisodes: $watchedEpisodes,
+    }),
+  );
   // The favourite's Target is the card's show for an episode or a season, as `hasShowPlay` reads.
   const favoriteGate = $derived(
     toPlayGate({ isSet: $isFavorite, hasPlay: $hasShowPlay }),
   );
 
-  const toggleWatched = () => ($isWatched ? watched.remove() : watched.add());
+  const toggleWatched = () => {
+    if (historyId !== undefined) return watched.removePlay(historyId);
+
+    return isPlayed ? watched.remove() : watched.add();
+  };
   const toggleFavorite = () =>
     $isFavorite ? favoriteStore?.remove() : favoriteStore?.add();
 </script>
 
 <div class="trakt-quick-actions" data-size={size}>
   <div class="actions">
-    {#if isAired}
-      <QuickIcon
-        action="watch"
-        icon={IconCheck}
-        label={$isWatched
-        ? m.button_label_remove_from_watched({ title: target.title })
-        : m.button_label_mark_as_watched({ title: target.title })}
-        isSelected={$isWatched === true}
-        isPending={$isWatchUpdating}
-        isInert={!$isWatchedKnown || $isWatchUpdating}
-        onclick={toggleWatched}
-      />
+    {#if isWatchShown}
+      <!-- The tooltip opens over the card's title, whose click it must not take. -->
+      <Tooltip
+        side="bottom"
+        disabled={watchHover === undefined}
+        disableHoverableContent
+        triggerProps={{ onclick: toggleWatched }}
+      >
+        {#snippet trigger({ props })}
+          <QuickIcon
+            {...props}
+            action="watch"
+            icon={IconCheck}
+            label={isPlayed
+            ? m.button_label_remove_from_watched({ title: target.title })
+            : m.button_label_mark_as_watched({ title: target.title })}
+            isSelected={isPlayed}
+            isPending={$isWatchUpdating}
+            isInert={!$isWatchedKnown || $isWatchUpdating}
+          />
+        {/snippet}
+        {#snippet content()}
+          {#if watchHover}
+            <WatchHover hover={watchHover} />
+          {/if}
+        {/snippet}
+      </Tooltip>
     {/if}
     <ListMenu type={target.type} id={target.id}>
       {#snippet trigger({ props })}
@@ -104,7 +146,7 @@
     {/if}
   </div>
   {#if metadata}
-    <div class="metadata">{@render metadata()}</div>
+    <div class="metadata">{@render metadata(hasPlayRead)}</div>
   {/if}
 </div>
 

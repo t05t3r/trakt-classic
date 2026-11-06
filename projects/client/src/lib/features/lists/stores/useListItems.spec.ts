@@ -9,7 +9,7 @@ import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { ShowDevsResponseMock } from '$mocks/data/summary/shows/devs/ShowDevsResponseMock.ts';
 import { WatchlistPreviewMappedMock } from '$mocks/data/sync/mapped/WatchlistPreviewMappedMock.ts';
 import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
-import { DroppedShowsResponseMock } from '$mocks/data/users/response/DroppedShowsResponseMock.ts';
+import { DROPPED_AT } from '$mocks/data/users/DROPPED_AT.ts';
 import { WatchedWatchlistResponseMock } from '$mocks/data/users/response/WatchedWatchlistResponseMock.ts';
 import { USER_WATCHLIST_URL } from '$mocks/data/users/USER_WATCHLIST_URL.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
@@ -32,10 +32,13 @@ import { movieListItem } from '$test/beds/request/movieListItem.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
+import { readingOf } from '$test/beds/store/readingOf.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
+import { statusOf } from '$test/beds/store/statusOf.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { waitFor } from '@testing-library/svelte';
@@ -67,9 +70,6 @@ const DEVS_EPISODE_ROW = {
   ),
   show: ShowDevsResponseMock,
 };
-const DROPPED_AT = new Date(
-  assertDefined(DroppedShowsResponseMock.at(0)?.hidden_at),
-);
 
 function itemsStore(values: Partial<WatchlistValues> = {}) {
   return () => ({
@@ -103,7 +103,7 @@ function renderCold() {
 }
 
 function serveWatchlist(body: JsonBodyType) {
-  server.use(http.get(USER_WATCHLIST_URL, () => pagedResponse({ body })));
+  servePaged({ url: USER_WATCHLIST_URL, body });
 }
 
 // The count read's answer: `count` items, under headers it ignores.
@@ -141,10 +141,6 @@ function genreGrid() {
   });
 }
 
-function statusOf(reading: Observable<Reading>) {
-  return reading.pipe(map(({ status }) => status));
-}
-
 function readyRows(reading: Observable<Reading>) {
   return nextOf(statusOf(reading), 'ready').then((ready) => ready.data);
 }
@@ -168,13 +164,6 @@ const FILTERED = [
   { filter: 'hide', shown: 'The Batman' },
   { filter: 'fade', shown: 'Heretic (faded), Devs (faded), The Batman' },
 ] as const;
-
-function readingOf<K extends keyof Reading>(
-  reading: Observable<Reading>,
-  key: K,
-) {
-  return readKnown(reading.pipe(map((current) => current[key])));
-}
 
 describe('store: useListItems', () => {
   describe('rows', () => {
@@ -232,13 +221,11 @@ describe('store: useListItems', () => {
 
     it('should drop the watched rows under hide, leaving the counts', async () => {
       openAt(`${WATCHLIST_PATH}?hide=watched`);
-      server.use(
-        http.get(USER_WATCHLIST_URL, () =>
-          pagedResponse({
-            body: [...WatchedWatchlistResponseMock, UNWATCHED_ROW],
-            itemCount: 3,
-          })),
-      );
+      servePaged({
+        url: USER_WATCHLIST_URL,
+        body: [...WatchedWatchlistResponseMock, UNWATCHED_ROW],
+        itemCount: 3,
+      });
       const { reading } = await renderItems();
 
       const rows = await readyRows(reading);
@@ -351,14 +338,12 @@ describe('store: useListItems', () => {
   describe('counts', () => {
     it('should read the item and page counts from the page headers', async () => {
       openAt(WATCHLIST_PATH);
-      server.use(
-        http.get(USER_WATCHLIST_URL, () =>
-          pagedResponse({
-            body: WatchlistPreviewResponseMock,
-            pageCount: 3,
-            itemCount: 300,
-          })),
-      );
+      servePaged({
+        url: USER_WATCHLIST_URL,
+        body: WatchlistPreviewResponseMock,
+        pageCount: 3,
+        itemCount: 300,
+      });
       const { reading } = await renderItems();
 
       expect(await readingOf(reading, 'itemCount')).toBe(300);
@@ -429,13 +414,13 @@ describe('store: useListItems', () => {
   describe('a page past the last', () => {
     it('should replace a page past the last with the last page', async () => {
       openAt(`${WATCHLIST_PATH}?page=5`);
-      server.use(
-        http.get(
-          USER_WATCHLIST_URL,
-          () =>
-            pagedResponse({ body: [], page: 5, pageCount: 2, itemCount: 130 }),
-        ),
-      );
+      servePaged({
+        url: USER_WATCHLIST_URL,
+        body: [],
+        page: 5,
+        pageCount: 2,
+        itemCount: 130,
+      });
       const { reading } = await renderItems({ page: 5 });
       collectDistinctStates(reading);
 
@@ -446,13 +431,13 @@ describe('store: useListItems', () => {
 
     it('should read a page past the last as loading, never empty, until the replace', async () => {
       openAt(`${WATCHLIST_PATH}?page=5`);
-      server.use(
-        http.get(
-          USER_WATCHLIST_URL,
-          () =>
-            pagedResponse({ body: [], page: 5, pageCount: 2, itemCount: 130 }),
-        ),
-      );
+      servePaged({
+        url: USER_WATCHLIST_URL,
+        body: [],
+        page: 5,
+        pageCount: 2,
+        itemCount: 130,
+      });
       const { reading } = await renderItems({ page: 5 });
       const kinds = kindsOf(statusOf(reading));
 
@@ -555,14 +540,12 @@ describe('store: useListItems', () => {
 
     it('should keep a page within the list', async () => {
       openAt(`${WATCHLIST_PATH}?page=2`);
-      server.use(
-        http.get(USER_WATCHLIST_URL, () =>
-          pagedResponse({
-            body: WatchlistPreviewResponseMock,
-            page: 2,
-            pageCount: 3,
-          })),
-      );
+      servePaged({
+        url: USER_WATCHLIST_URL,
+        body: WatchlistPreviewResponseMock,
+        page: 2,
+        pageCount: 3,
+      });
       const { reading } = await renderItems({ page: 2 });
       collectDistinctStates(reading);
 
@@ -646,17 +629,12 @@ describe('store: useListItems', () => {
 
     it('should read the counts from the entries, not the headers', async () => {
       openAt(FAVORITES_PATH);
-      server.use(
-        http.get(
-          USER_FAVORITES_URL,
-          () =>
-            pagedResponse({
-              body: FavoritedMediaResponseMock,
-              pageCount: 9,
-              itemCount: 999,
-            }),
-        ),
-      );
+      servePaged({
+        url: USER_FAVORITES_URL,
+        body: FavoritedMediaResponseMock,
+        pageCount: 9,
+        itemCount: 999,
+      });
       const { reading } = await renderFavorites();
 
       expect(await readingOf(reading, 'itemCount')).toBe(2);

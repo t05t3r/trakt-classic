@@ -7,11 +7,12 @@ import type { Season } from '$lib/requests/models/Season.ts';
 import type { ShowEntry } from '$lib/requests/models/ShowEntry.ts';
 import { isValidDate } from '$lib/utils/date/isValidDate.ts';
 import { seasonLabel } from '$lib/utils/intl/seasonLabel.ts';
+import { toEpisodeRuntime } from '$lib/utils/media/toEpisodeRuntime.ts';
 import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
 
 export type MediaCardInput =
   | { type: 'movie'; movie: MovieEntry; playedAt?: Date }
-  | { type: 'show'; show: ShowEntry }
+  | { type: 'show'; show: ShowEntry; playedAt?: Date }
   | { type: 'season'; show: ShowEntry; season: Season }
   | {
     type: 'episode';
@@ -60,6 +61,7 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           id: movie.id,
           title: movie.title,
           airDate: toPlayedAirDate(movie.airDate, input.playedAt),
+          runtime: movie.runtime,
         },
         rating: {
           value: movie.rating,
@@ -77,7 +79,7 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           id: show.id,
           title: show.title,
           slug: show.slug,
-          airDate: show.airDate,
+          airDate: toPlayedAirDate(show.airDate, input.playedAt),
           episode: show.episode,
         },
         rating: {
@@ -125,6 +127,7 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           number: episode.number,
           show: { id: show.id, title: show.title },
           airDate: toPlayedAirDate(episode.airDate, input.playedAt),
+          runtime: toEpisodeRuntime({ episode, show }),
         },
         rating: {
           value: episode.rating,

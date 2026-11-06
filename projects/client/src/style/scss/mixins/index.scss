@@ -119,6 +119,15 @@
   }
 }
 
+// A button with no box of its own, in the link colour.
+@mixin link-button {
+  padding: var(--ni-0);
+  border: none;
+  background: none;
+  color: var(--color-link);
+  cursor: pointer;
+}
+
 // A link in its surrounding text's colour that underlines only under a mouse hover.
 @mixin inherited-link-style {
   color: inherit;
@@ -161,6 +170,23 @@ $_episode-type-colors: (
   font-family: var(--font-family-heading);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-heading);
+}
+
+// The box of an `ellipsis` element: the class does the clipping, this makes room for it.
+@mixin clipped-inline-box {
+  display: inline-block;
+  max-width: 100%;
+  // Top-aligned, the clipped box's bottom-edge baseline adds no height to the line.
+  vertical-align: top;
+}
+
+// A heading's lead glyph, as tall as the glyph token and top-aligned on the line.
+@mixin heading-glyph($width) {
+  width: $width;
+  height: var(--icon-size-heading);
+  margin-inline-end: var(--ni-10);
+  stroke-width: var(--icon-stroke-chrome);
+  vertical-align: top;
 }
 
 // A positioned link's focus ring, drawn inside its box; its content paints

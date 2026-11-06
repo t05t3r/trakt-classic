@@ -4,77 +4,28 @@ import { toActionUnderInfo } from './toActionUnderInfo.ts';
 const LAST_WATCHED_AT = new Date('2026-07-06T20:04:00Z');
 
 describe('toActionUnderInfo', () => {
-  describe('for plays', () => {
-    it('should read a single play in the singular', () => {
-      expect(
-        toActionUnderInfo({
-          kind: 'plays',
-          count: 1,
-          lastWatchedAt: LAST_WATCHED_AT,
-        }),
-      ).toBe('1 play · last 6 Jul 2026');
+  describe('for a played title', () => {
+    it('should read the date and time of its latest play', () => {
+      expect(toActionUnderInfo({ kind: 'played', at: LAST_WATCHED_AT })).toBe(
+        '6 Jul 2026 20:04',
+      );
     });
 
-    it('should read several plays in the plural', () => {
-      expect(
-        toActionUnderInfo({
-          kind: 'plays',
-          count: 3,
-          lastWatchedAt: LAST_WATCHED_AT,
-        }),
-      ).toBe('3 plays · last 6 Jul 2026');
-    });
-
-    it('should give no line before the first play', () => {
-      expect(
-        toActionUnderInfo({ kind: 'plays', count: 0, lastWatchedAt: null }),
-      ).toBeUndefined();
-    });
-
-    it('should give no line while the last play has no date', () => {
-      expect(
-        toActionUnderInfo({ kind: 'plays', count: 2, lastWatchedAt: null }),
-      ).toBeUndefined();
+    it('should give no line while the date is not known', () => {
+      expect(toActionUnderInfo({ kind: 'played', at: null })).toBeUndefined();
     });
   });
 
-  describe('for episodes', () => {
-    it('should read the watched and aired episodes and the last play', () => {
-      expect(
-        toActionUnderInfo({
-          kind: 'episodes',
-          completed: 12,
-          total: 40,
-          lastWatchedAt: LAST_WATCHED_AT,
-        }),
-      ).toBe('12 of 40 episodes · last 6 Jul 2026');
+  describe('for a dropped show', () => {
+    it('should read as dropped with no counts', () => {
+      expect(toActionUnderInfo({ kind: 'dropped' })).toBe('Dropped');
     });
 
-    it('should give no line before the first watched episode', () => {
+    it('should follow the counts it is given', () => {
       expect(
-        toActionUnderInfo({
-          kind: 'episodes',
-          completed: 0,
-          total: 40,
-          lastWatchedAt: LAST_WATCHED_AT,
-        }),
-      ).toBeUndefined();
+        toActionUnderInfo({ kind: 'dropped', counts: '25/30 eps — 25 plays' }),
+      ).toBe('25/30 eps — 25 plays · Dropped');
     });
-
-    it('should give no line while the last play has no date', () => {
-      expect(
-        toActionUnderInfo({
-          kind: 'episodes',
-          completed: 12,
-          total: 40,
-          lastWatchedAt: null,
-        }),
-      ).toBeUndefined();
-    });
-  });
-
-  it('should read a dropped show as dropped', () => {
-    expect(toActionUnderInfo({ kind: 'dropped' })).toBe('Dropped');
   });
 
   describe('for an added title', () => {

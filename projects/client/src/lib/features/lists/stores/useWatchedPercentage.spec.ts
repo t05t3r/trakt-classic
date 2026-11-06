@@ -11,19 +11,18 @@ import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/Watchlis
 import { WatchedWatchlistResponseMock } from '$mocks/data/users/response/WatchedWatchlistResponseMock.ts';
 import { USER_WATCHLIST_URL } from '$mocks/data/users/USER_WATCHLIST_URL.ts';
 import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
-import { server } from '$mocks/server.ts';
 import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { mapToEntries } from '$test/utils/mapToEntries.ts';
-import { http } from 'msw';
 import { firstValueFrom, map } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { useWatchedPercentage } from './useWatchedPercentage.ts';
@@ -118,7 +117,7 @@ describe('store: useWatchedPercentage', () => {
         { length: count },
         (_, index) => index < watched ? WATCHED_MOVIE_ROW : rowOfType('movie'),
       );
-      server.use(http.get(USER_WATCHLIST_URL, () => pagedResponse({ body })));
+      servePaged({ url: USER_WATCHLIST_URL, body });
       const store = await renderSettledHistory(() => ({
         percentage: watchlistPercentage(count),
       }));

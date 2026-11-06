@@ -18,6 +18,7 @@ describe('toFavoriteCard', () => {
         id: 916302,
         title: 'Heretic',
         airDate: new Date('2024-11-08T00:00:00.000Z'),
+        runtime: 111,
       },
       rating: {
         value: 0.7218,

@@ -9,7 +9,7 @@
   import DropMenu from '$lib/features/media-actions/components/DropMenu.svelte';
   import { usePendingDrops } from '$lib/features/media-actions/stores/usePendingDrops.ts';
   import MediaPosterCard from '$lib/features/media-card/components/MediaPosterCard.svelte';
-  import { toMediaCard } from '$lib/features/media-card/toMediaCard.ts';
+  import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
   import { toSectionStatus } from '$lib/features/query/toSectionStatus.ts';
   import { useQuery } from '$lib/features/query/useQuery.ts';
   import type { UpNextEntry } from '$lib/requests/models/UpNextEntry.ts';
@@ -70,15 +70,15 @@
         variant="posters"
       >
         {#snippet item(entry)}
-          {@const card = toMediaCard({
+          {@const card = toListItemCard({
             type: 'episode',
             show: entry.show,
             episode: entry,
           })}
           <MediaPosterCard
             {card}
-            poster={entry.show.poster}
-            posterTitle={entry.show.title}
+            poster={card.poster}
+            posterTitle={card.posterTitle}
             showHref={card.showHref}
           >
             {#snippet badges()}

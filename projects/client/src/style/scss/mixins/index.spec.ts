@@ -64,6 +64,12 @@ describe('style: mixins', () => {
     );
   });
 
+  it('should set an inline box no wider than its container, top-aligned on the line', async () => {
+    expect(await compileRule('@include clipped-inline-box;')).toBe(
+      'a{display:inline-block;max-width:100%;vertical-align:top}',
+    );
+  });
+
   it('should draw the focus ring inside the box, with a copy above the content', async () => {
     expect(await compileRule('@include inset-focus-ring;')).toBe(
       [
@@ -96,6 +102,18 @@ describe('style: mixins', () => {
         "@include phone-poster-cells('.cell', $divider: false);",
       ),
     ).toBe('@media(max-width: 767px){a .cell{padding-inline:var(--ni-0)}}');
+  });
+
+  it("should set a heading's lead glyph at the width it is given, on the heading's line", async () => {
+    expect(await compileRule('@include heading-glyph(var(--width));')).toBe(
+      [
+        'a{width:var(--width);',
+        'height:var(--icon-size-heading);',
+        'margin-inline-end:var(--ni-10);',
+        'stroke-width:var(--icon-stroke-chrome);',
+        'vertical-align:top}',
+      ].join(''),
+    );
   });
 
   it("should span the summary info column's columns, ending at the grid's end, from the small tablet up", async () => {

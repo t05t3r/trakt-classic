@@ -6,4 +6,6 @@ export type MenuCheckboxRowProps = {
   checked: MenuCheckState;
   onToggle: () => void;
   children: Snippet;
+  // `'button'` for a row that acts and closes rather than toggling.
+  role?: 'checkbox' | 'button';
 };

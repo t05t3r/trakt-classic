@@ -198,10 +198,7 @@
     // Clipped here, not on the heading, so the heading leaves its focus ring whole.
     .title-link,
     .show-link {
-      display: inline-block;
-      max-width: 100%;
-      // Top-aligned, the clipped box's bottom-edge baseline adds no height to the line.
-      vertical-align: top;
+      @include clipped-inline-box;
       text-decoration: none;
     }
 

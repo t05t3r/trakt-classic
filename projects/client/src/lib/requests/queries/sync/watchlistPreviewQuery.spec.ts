@@ -4,26 +4,21 @@ import { time } from '$lib/utils/timing/time.ts';
 import { WatchlistPreviewMappedMock } from '$mocks/data/sync/mapped/WatchlistPreviewMappedMock.ts';
 import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
-import { server } from '$mocks/server.ts';
 import { createTestBedQuery } from '$test/beds/query/createTestBedQuery.ts';
 import { observeInvalidation } from '$test/beds/query/observeInvalidation.ts';
 import { runQuery } from '$test/beds/query/runQuery.ts';
-import {
-  pagedResponse,
-  type PagedResponseParams,
-} from '$test/beds/request/pagedResponse.ts';
+import type { PagedResponseParams } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
-import { http } from 'msw';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { describe, expect, it } from 'vitest';
 import { watchlistPreviewQuery } from './watchlistPreviewQuery.ts';
 
 function serve(params: Omit<PagedResponseParams, 'body'> = {}) {
-  server.use(
-    http.get(
-      WATCHLIST_URL,
-      () => pagedResponse({ body: WatchlistPreviewResponseMock, ...params }),
-    ),
-  );
+  servePaged({
+    url: WATCHLIST_URL,
+    body: WatchlistPreviewResponseMock,
+    ...params,
+  });
 }
 
 function readPreview() {

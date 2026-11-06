@@ -16,6 +16,7 @@ import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
@@ -163,13 +164,7 @@ describe('store: useWatchlist', () => {
 
   it('should add an episode with an episode body', async () => {
     const { add } = await renderBound(UNLISTED_EPISODE);
-    const bodies: unknown[] = [];
-    server.use(
-      http.post(SYNC_WATCHLIST_URL, async ({ request }) => {
-        bodies.push(await request.json());
-        return new HttpResponse(null, { status: 201 });
-      }),
-    );
+    const bodies = recordBodies(SYNC_WATCHLIST_URL, { status: 201 });
 
     const requests = await captureRequests(() => add());
 
@@ -182,13 +177,7 @@ describe('store: useWatchlist', () => {
 
   it('should add a season with a season body', async () => {
     const { add } = await renderBound(UNLISTED_SEASON);
-    const bodies: unknown[] = [];
-    server.use(
-      http.post(SYNC_WATCHLIST_URL, async ({ request }) => {
-        bodies.push(await request.json());
-        return new HttpResponse(null, { status: 201 });
-      }),
-    );
+    const bodies = recordBodies(SYNC_WATCHLIST_URL, { status: 201 });
 
     const requests = await captureRequests(() => add());
 

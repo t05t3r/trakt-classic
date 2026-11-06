@@ -1,6 +1,7 @@
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
@@ -15,10 +16,7 @@ const setLayout = fakeLayouts({
 
 const trigger = () => screen.getByRole('button', { name: 'Filters' });
 const row = (name: string) => screen.getByRole('menuitemradio', { name });
-const openMenu = async () => {
-  await userEvent.click(trigger());
-  return screen.findByRole('menu', { name: 'Filters' });
-};
+const openMenu = () => openMenuByClick('Filters', 'Filters');
 
 beforeEach(() => {
   stubClientRects();
@@ -43,7 +41,7 @@ describe('component: WatchedFilterMenu', () => {
     });
 
     expect(trigger()).not.toHaveClass('is-selected');
-    const eye = container.querySelector('.trakt-watched-filter-menu');
+    const eye = container.querySelector('.trakt-struck-glyph');
     expect(eye).not.toHaveClass('is-struck');
   });
 
@@ -55,7 +53,7 @@ describe('component: WatchedFilterMenu', () => {
       });
 
       expect(trigger()).toHaveClass('is-selected');
-      const eye = container.querySelector('.trakt-watched-filter-menu');
+      const eye = container.querySelector('.trakt-struck-glyph');
       expect(eye).toHaveClass('is-struck');
     },
   );

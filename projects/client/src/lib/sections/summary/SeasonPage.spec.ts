@@ -35,7 +35,8 @@ const posterCornerNames = () =>
     .filter((corner) => !corner.closest('.trakt-fanart-card'))
     .map((corner) => corner.getAttribute('aria-label'));
 
-const historyButton = () => screen.findByRole('button', { name: /^Watched/ });
+const historyButton = () =>
+  screen.findByRole('button', { name: /^100% watched/ });
 
 function findBreadcrumb() {
   return screen.findByRole('heading', { level: 2, name: 'Silo' });
@@ -254,7 +255,7 @@ describe('component: SeasonPage', () => {
       renderPage();
 
       expect(await historyButton()).toHaveTextContent(
-        '10 of 10 episodes · last 27 Dec 2024',
+        '10/10 eps — 1 play',
       );
     });
 

@@ -13,16 +13,18 @@ import { createTestBedQuery } from '$test/beds/query/createTestBedQuery.ts';
 import { useWaitForQueryFetching } from '$test/beds/query/useWaitForQueryFetching.ts';
 import { useWaitForQueryPaused } from '$test/beds/query/useWaitForQueryPaused.ts';
 import { useWaitForUnobserved } from '$test/beds/query/useWaitForUnobserved.ts';
+import { waitForSuccess } from '$test/beds/query/waitForSuccess.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { movieListItem } from '$test/beds/request/movieListItem.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { idsOf } from '$test/beds/store/idsOf.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http, HttpResponse } from 'msw';
-import { filter, firstValueFrom, type Subscription } from 'rxjs';
+import type { Subscription } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { useInvalidator } from './useInvalidator.ts';
@@ -98,7 +100,7 @@ describe('useInvalidator', () => {
       first: createTestBedQuery(firstQuery()),
     }));
     subscriptions.push(first.subscribe());
-    await firstValueFrom(first.pipe(filter((result) => result.isSuccess)));
+    await waitForSuccess(first);
 
     setNetwork('offline');
     const earlier = invalidate(ACTION).then(() => events.push('settled'));
@@ -133,7 +135,7 @@ describe('useInvalidator', () => {
       second: createTestBedQuery(secondQuery()),
     }));
     subscriptions.push(first.subscribe());
-    await firstValueFrom(first.pipe(filter((result) => result.isSuccess)));
+    await waitForSuccess(first);
     subscriptions.push(second.subscribe());
     await waitForQueryFetching({ queryKey: secondQuery().queryKey });
     serve(FIRST_PATH, () => {
@@ -161,12 +163,7 @@ describe('useInvalidator', () => {
 
   describe('when a refetch lands with a further page to read', () => {
     async function renderSnapshot() {
-      server.use(
-        http.get(
-          ITEMS_URL,
-          () => pagedResponse({ body: [movieListItem(481)] }),
-        ),
-      );
+      servePaged({ url: ITEMS_URL, body: [movieListItem(481)] });
       const store = await renderStore(() => ({
         ...useInvalidator(),
         waitForUnobserved: useWaitForUnobserved(),

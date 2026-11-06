@@ -13,10 +13,15 @@ import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
 import { toUserAgent } from '$lib/utils/requests/toUserAgent.ts';
 import { SessionMappedMock } from '$mocks/data/auth/mapped/SessionMappedMock.ts';
 import { APP_ORIGIN } from '$mocks/data/images/APP_ORIGIN.ts';
+import { AVATAR_PATH } from '$mocks/data/images/AVATAR_PATH.ts';
+import { AVATAR_URL } from '$mocks/data/images/AVATAR_URL.ts';
 import { IMAGE_ORIGIN } from '$mocks/data/images/IMAGE_ORIGIN.ts';
+import { MOVIE_ART_PATH } from '$mocks/data/images/MOVIE_ART_PATH.ts';
+import { MOVIE_ART_URL } from '$mocks/data/images/MOVIE_ART_URL.ts';
 import { POSTER_PATH } from '$mocks/data/images/POSTER_PATH.ts';
 import { OnePixelWebpResponseMock } from '$mocks/data/images/response/OnePixelWebpResponseMock.ts';
 import { server } from '$mocks/server.ts';
+import { serveMediaRoot } from '$test/beds/image/serveMediaRoot.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { http, HttpResponse } from 'msw';
 import {
@@ -28,10 +33,13 @@ import {
   type MockInstance,
   vi,
 } from 'vitest';
+import { sweepImageCache } from './_internal/sweepImageCache.ts';
 import { createImageCache } from './createImageCache.ts';
 import { createImageProxy } from './createImageProxy.ts';
 
 const avatarBareDotPath = 'users/015/331/014/avatars/large/83f8741ac7.';
+const CHANGED_VERSION_PATH = AVATAR_PATH.replace(/\d+$/, '1800000000');
+const OTHER_USER_PATH = AVATAR_PATH.replace(/users\/\d+/, 'users/2');
 
 const jpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
@@ -82,6 +90,16 @@ async function writeCachedFile(path: string, bytes: Uint8Array): Promise<void> {
   const target = join(dir, path);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, bytes);
+}
+
+function requestImage(path: string, ifNoneMatch: string | Nil = null) {
+  return proxy.serve({ path, session: SessionMappedMock, ifNoneMatch });
+}
+
+async function readImage(path: string): Promise<Uint8Array> {
+  const response = await requestImage(path);
+
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 beforeEach(async () => {
@@ -161,7 +179,7 @@ describe('createImageProxy', () => {
     expect(response.headers.get('cache-control')).toBe(
       'private, max-age=31536000, immutable',
     );
-    expect(response.headers.get('etag')).toBe('"e0d9dd35c5"');
+    expect(response.headers.get('etag')).toBe(`"${POSTER_PATH}"`);
     expect(response.headers.get('cross-origin-resource-policy')).toBe(
       'same-origin',
     );
@@ -299,11 +317,11 @@ describe('createImageProxy', () => {
     const response = await proxy.serve({
       path: POSTER_PATH,
       session: SessionMappedMock,
-      ifNoneMatch: '"e0d9dd35c5"',
+      ifNoneMatch: `"${POSTER_PATH}"`,
     });
 
     expect(response.status).toBe(304);
-    expect(response.headers.get('etag')).toBe('"e0d9dd35c5"');
+    expect(response.headers.get('etag')).toBe(`"${POSTER_PATH}"`);
     expect(response.headers.get('cache-control')).toBe(
       'private, max-age=31536000, immutable',
     );
@@ -321,6 +339,231 @@ describe('createImageProxy', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/jpeg');
+  });
+
+  describe('for the versioned avatar form', () => {
+    it("should fetch the exact URL, query included, from the image origin's root", async () => {
+      const urls = serveMediaRoot(new Map([[AVATAR_PATH, jpegBytes]]));
+
+      const response = await requestImage(AVATAR_PATH);
+
+      expect(response.status).toBe(200);
+      expect(urls).toEqual([AVATAR_URL]);
+    });
+
+    it('should fetch a changed version again, leaving the old one its bytes', async () => {
+      const urls = serveMediaRoot(
+        new Map([
+          [AVATAR_PATH, jpegBytes],
+          [CHANGED_VERSION_PATH, OnePixelWebpResponseMock],
+        ]),
+      );
+
+      expect(await readImage(AVATAR_PATH)).toEqual(jpegBytes);
+      expect(await readImage(CHANGED_VERSION_PATH)).toEqual(
+        OnePixelWebpResponseMock,
+      );
+      expect(await readImage(AVATAR_PATH)).toEqual(jpegBytes);
+      expect(urls).toHaveLength(2);
+    });
+
+    it('should send concurrent requests for two versions to the origin apart', async () => {
+      const urls = serveMediaRoot(
+        new Map([
+          [AVATAR_PATH, jpegBytes],
+          [CHANGED_VERSION_PATH, OnePixelWebpResponseMock],
+        ]),
+      );
+
+      const [first, changed] = await Promise.all([
+        readImage(AVATAR_PATH),
+        readImage(CHANGED_VERSION_PATH),
+      ]);
+
+      expect(first).toEqual(jpegBytes);
+      expect(changed).toEqual(OnePixelWebpResponseMock);
+      expect(urls).toHaveLength(2);
+    });
+
+    it('should give two users with one version their own bytes', async () => {
+      serveMediaRoot(
+        new Map([
+          [AVATAR_PATH, jpegBytes],
+          [OTHER_USER_PATH, OnePixelWebpResponseMock],
+        ]),
+      );
+
+      expect(await readImage(AVATAR_PATH)).toEqual(jpegBytes);
+      expect(await readImage(OTHER_USER_PATH)).toEqual(
+        OnePixelWebpResponseMock,
+      );
+    });
+
+    it("should answer another avatar's If-None-Match with 200 and its own with 304", async () => {
+      serveMediaRoot(new Map([[AVATAR_PATH, jpegBytes]]));
+
+      const other = await requestImage(
+        AVATAR_PATH,
+        `"${CHANGED_VERSION_PATH}"`,
+      );
+      const own = await requestImage(AVATAR_PATH, `"${AVATAR_PATH}"`);
+
+      expect(other.status).toBe(200);
+      expect(other.headers.get('etag')).toBe(`"${AVATAR_PATH}"`);
+      expect(own.status).toBe(304);
+    });
+
+    it('should leave another version open after a 404 on one', async () => {
+      const urls = serveMediaRoot(new Map([[AVATAR_PATH, jpegBytes]]));
+
+      const missing = await requestImage(CHANGED_VERSION_PATH);
+      const missingAgain = await requestImage(CHANGED_VERSION_PATH);
+
+      expect(missing.status).toBe(404);
+      expect(missingAgain.status).toBe(404);
+      expect(urls).toHaveLength(1);
+      expect(await readImage(AVATAR_PATH)).toEqual(jpegBytes);
+    });
+
+    it('should answer 504 rather than throw when the image origin is malformed', async () => {
+      const malformed = createImageProxy({
+        origin: APP_ORIGIN,
+        imageOrigin: 'not a url',
+        cache: createImageCache({ dir, maxBytes: 0, concurrency: 6 }),
+      });
+
+      const response = await malformed.serve({
+        path: AVATAR_PATH,
+        session: SessionMappedMock,
+        ifNoneMatch: null,
+      });
+
+      expect(response.status).toBe(504);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+    });
+  });
+
+  describe('for the root art form', () => {
+    function serveSharded(path: string) {
+      server.use(
+        http.get(
+          `${IMAGE_ORIGIN}/${path}`,
+          () =>
+            HttpResponse.arrayBuffer(OnePixelWebpResponseMock.buffer, {
+              headers: { 'content-type': 'image/webp' },
+            }),
+        ),
+      );
+    }
+
+    it("should fetch it from the image origin's root", async () => {
+      const urls = serveMediaRoot(
+        new Map([[MOVIE_ART_PATH, OnePixelWebpResponseMock]]),
+      );
+
+      const response = await requestImage(MOVIE_ART_PATH);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe('image/webp');
+      expect(urls).toEqual([MOVIE_ART_URL]);
+      await response.body?.cancel();
+    });
+
+    it.each([
+      'shows/180770/medium/thumb.webp',
+      'seasons/257490/medium/poster.webp',
+      'episodes/5165667/medium/screenshot.webp',
+      'people/415018/medium/headshot.webp',
+    ])("should fetch %s from the image origin's root", async (path) => {
+      const urls = serveMediaRoot(new Map([[path, OnePixelWebpResponseMock]]));
+
+      expect(await readImage(path)).toEqual(OnePixelWebpResponseMock);
+      expect(urls).toEqual([`http://localhost/${path}`]);
+    });
+
+    it.each([
+      ['movie', POSTER_PATH],
+      ['show', 'shows/000/180/770/posters/medium/5312f1d1cf.jpg.webp'],
+    ])(
+      'should fetch the sharded %s from the image origin itself',
+      async (_, path) => {
+        serveSharded(path);
+
+        expect(await readImage(path)).toEqual(OnePixelWebpResponseMock);
+      },
+    );
+
+    it('should serve a second request from the file named after the path', async () => {
+      const urls = serveMediaRoot(
+        new Map([[MOVIE_ART_PATH, OnePixelWebpResponseMock]]),
+      );
+
+      await readImage(MOVIE_ART_PATH);
+      const second = await readImage(MOVIE_ART_PATH);
+
+      expect(second).toEqual(OnePixelWebpResponseMock);
+      expect(urls).toHaveLength(1);
+      expect(new Uint8Array(await readFile(join(dir, MOVIE_ART_PATH)))).toEqual(
+        OnePixelWebpResponseMock,
+      );
+    });
+
+    it('should fetch it again once a sweep has evicted its file', async () => {
+      const urls = serveMediaRoot(
+        new Map([[MOVIE_ART_PATH, OnePixelWebpResponseMock]]),
+      );
+
+      await readImage(MOVIE_ART_PATH);
+      await sweepImageCache({ dir, maxBytes: 1 });
+      await readImage(MOVIE_ART_PATH);
+
+      expect(urls).toHaveLength(2);
+    });
+
+    it.each([
+      [
+        'movie',
+        'movies/128/medium/poster.webp',
+        'movies/128/000/001/posters/medium/e0d9dd35c5.jpg.webp',
+      ],
+      [
+        'show',
+        'shows/180/medium/poster.webp',
+        'shows/180/770/000/posters/medium/5312f1d1cf.jpg.webp',
+      ],
+    ])(
+      'should keep a sharded %s path whose first shard equals the id apart',
+      async (_, artPath, sharded) => {
+        serveMediaRoot(new Map([[artPath, jpegBytes]]));
+        serveSharded(sharded);
+
+        expect(await readImage(artPath)).toEqual(jpegBytes);
+        expect(await readImage(sharded)).toEqual(OnePixelWebpResponseMock);
+        expect(await readImage(artPath)).toEqual(jpegBytes);
+      },
+    );
+
+    it('should use the whole path as its ETag and answer a match with 304', async () => {
+      serveMediaRoot(new Map([[MOVIE_ART_PATH, OnePixelWebpResponseMock]]));
+
+      const first = await requestImage(MOVIE_ART_PATH);
+      const again = await requestImage(MOVIE_ART_PATH, `"${MOVIE_ART_PATH}"`);
+
+      expect(first.headers.get('etag')).toBe(`"${MOVIE_ART_PATH}"`);
+      expect(again.status).toBe(304);
+      await first.body?.cancel();
+    });
+
+    it('should remember a 404 from the root without another fetch', async () => {
+      const urls = serveMediaRoot(new Map());
+
+      const missing = await requestImage(MOVIE_ART_PATH);
+      const missingAgain = await requestImage(MOVIE_ART_PATH);
+
+      expect(missing.status).toBe(404);
+      expect(missingAgain.status).toBe(404);
+      expect(urls).toEqual([MOVIE_ART_URL]);
+    });
   });
 
   it('should coalesce concurrent misses for the same path into a single origin fetch', async () => {

@@ -15,4 +15,20 @@ describe('mapToSeason', () => {
 
     expect(mapToSeason(unvoted).votes).toBeNull();
   });
+
+  it('should map a poster at the media host into every display size', () => {
+    const season = mapToSeason({
+      ...SILO_SEASON_ONE,
+      images: {
+        ...assertDefined(SILO_SEASON_ONE.images),
+        poster: ['media.trakt.tv/seasons/257490/medium/poster.webp'],
+      },
+    });
+
+    expect(season.poster?.url).toEqual({
+      medium: '/img/seasons/257490/medium/poster.webp',
+      thumb: '/img/seasons/257490/thumb/poster.webp',
+      full: '/img/seasons/257490/full/poster.webp',
+    });
+  });
 });

@@ -4,7 +4,7 @@ import {
   isWatchedInHistory,
   type WatchedInHistoryTarget,
 } from '$lib/features/media-actions/isWatchedInHistory.ts';
-import type { InfiniteQuery } from '$lib/features/query/models/InfiniteQuery.ts';
+import type { PageQuery } from '$lib/features/paging/stores/usePagedItems.ts';
 import { useInfiniteQuery } from '$lib/features/query/useQuery.ts';
 import { LIST_PAGE_SIZE } from '$lib/utils/LIST_PAGE_SIZE.ts';
 import { multicast } from '$lib/utils/store/multicast.ts';
@@ -21,10 +21,6 @@ export type WatchedPercentage = {
   count: number;
   percentage: number;
 };
-
-export type PageQuery<TParams, TEntry> = (
-  params: TParams & { page: number },
-) => InfiniteQuery<TEntry>;
 
 type WatchedPercentageParams<TParams, TEntry> = {
   query: PageQuery<TParams, TEntry>;

@@ -3,10 +3,10 @@ import {
   type MediaCard,
   toMediaCard,
 } from '$lib/features/media-card/toMediaCard.ts';
+import { toEpisodeScreenshot } from '$lib/features/media-card/toEpisodeScreenshot.ts';
 import type { EpisodeType } from '$lib/requests/models/EpisodeType.ts';
 import type { ImageUrl } from '$lib/requests/models/ImageUrlSchema.ts';
 import type { ActivityHistory } from '$lib/requests/queries/users/activityHistoryQuery.ts';
-import { episodeSxeLabel } from '$lib/utils/intl/episodeSxeLabel.ts';
 
 export type RecentlyWatchedCard = MediaCard<'movie' | 'episode'> & {
   image: ImageUrl;
@@ -28,6 +28,7 @@ export function toRecentlyWatchedCard(
   }
 
   const { episode, show } = entry;
+  const screenshot = toEpisodeScreenshot({ show, episode });
 
   return {
     ...toMediaCard({
@@ -36,11 +37,8 @@ export function toRecentlyWatchedCard(
       episode,
       playedAt: entry.watchedAt,
     }),
-    image: episode.cover.url.thumb,
-    imageAlt: m.image_alt_episode_screenshot({
-      show: show.title,
-      sxe: episodeSxeLabel(episode),
-    }),
+    image: screenshot.src,
+    imageAlt: screenshot.alt,
     episodeType: episode.type,
   };
 }

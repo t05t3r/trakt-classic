@@ -1,10 +1,13 @@
 import { IMAGE_PATH_SIZES } from './imageSizes.ts';
+import { isMediaRootPath } from './isMediaRootPath.ts';
 
 const imagePathPattern =
   /^(?:[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|gif)(?:\.webp)?|[A-Za-z0-9_-]+\.)$/i;
 const imageSizes = new Set<string>(IMAGE_PATH_SIZES);
 
 export function isImagePath(path: string): boolean {
+  if (isMediaRootPath(path)) return true;
+
   const segments = path.split('/');
 
   if (path.length > 200 || segments.length !== 7) return false;

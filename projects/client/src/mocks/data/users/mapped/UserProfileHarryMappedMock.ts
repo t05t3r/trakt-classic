@@ -11,7 +11,7 @@ export const UserProfileHarryMappedMock: UserProfile = {
   'key': 'user-41152',
   'slug': 'harry_du_bois',
   'avatar': {
-    'url': '/img/users/014/366/083/avatars/large/disco_cop.png',
+    'url': '/img/users/41152/avatar.webp?v=1754435517',
   },
   'private': false,
   'isVip': true,

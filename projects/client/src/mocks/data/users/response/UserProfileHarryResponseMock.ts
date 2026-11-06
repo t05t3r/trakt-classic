@@ -14,8 +14,7 @@ export const UserProfileHarryResponseMock: ProfileResponse = {
   },
   'images': {
     'avatar': {
-      'full':
-        'https://media.trakt.tv/images/users/014/366/083/avatars/large/disco_cop.png',
+      'full': 'https://media.trakt.tv/users/41152/avatar.webp?v=1754435517',
     },
   },
 };

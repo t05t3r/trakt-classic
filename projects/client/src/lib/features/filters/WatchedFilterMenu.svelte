@@ -1,5 +1,6 @@
 <script lang="ts">
   import DropdownButton from '$lib/components/buttons/DropdownButton.svelte';
+  import StruckGlyph from '$lib/components/buttons/StruckGlyph.svelte';
   import Menu from '$lib/components/menus/Menu.svelte';
   import MenuItem from '$lib/components/menus/MenuItem.svelte';
   import MenuRadioGroup from '$lib/components/menus/MenuRadioGroup.svelte';
@@ -40,9 +41,10 @@
       variant="icon"
       selected={isActive}
     >
-      <span class="trakt-watched-filter-menu" class:is-struck={isActive}>
-        <IconEye class="watched-filter-glyph" aria-hidden="true" />
-        <span class="watched-filter-strike"></span>
+      <span class="trakt-watched-filter-menu">
+        <StruckGlyph struck={isActive}>
+          <IconEye class="watched-filter-glyph" aria-hidden="true" />
+        </StruckGlyph>
       </span>
     </DropdownButton>
   {/snippet}
@@ -55,29 +57,12 @@
 
 <style lang="scss">
   .trakt-watched-filter-menu {
-    position: relative;
     display: inline-flex;
 
     :global(.watched-filter-glyph) {
       width: var(--icon-size-chrome-eye);
       height: var(--icon-size-chrome-eye);
       stroke-width: var(--icon-stroke-chrome);
-    }
-
-    .watched-filter-strike {
-      position: absolute;
-      inset-block-start: 45%;
-      inset-inline-start: var(--ni-0);
-      width: 100%;
-      height: var(--ni-1);
-      background: var(--color-accent);
-      opacity: 0;
-      transform: rotate(-45deg);
-      transition: opacity var(--transition-default);
-    }
-
-    &.is-struck .watched-filter-strike {
-      opacity: 1;
     }
   }
 </style>

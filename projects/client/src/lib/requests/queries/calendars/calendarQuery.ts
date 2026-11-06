@@ -8,7 +8,7 @@ import {
   CalendarEntrySchema,
 } from '$lib/requests/models/CalendarEntry.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
-import { isValidDate } from '$lib/utils/date/isValidDate.ts';
+import { parseDateTime } from '$lib/utils/date/parseDateTime.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import type { HotReleaseResponse } from '@trakt/api';
 import { z } from 'zod';
@@ -51,11 +51,8 @@ function mapToCalendarEpisode(row: HotReleaseResponse): CalendarEntry | null {
   const { episode, show } = row;
   if (episode == null || show == null) return null;
 
-  const firstAired = row.first_aired ?? episode.first_aired;
-  if (firstAired == null) return null;
-
-  const airsAt = new Date(firstAired);
-  if (!isValidDate(airsAt)) return null;
+  const airsAt = parseDateTime(row.first_aired ?? episode.first_aired);
+  if (!airsAt) return null;
 
   return {
     kind: 'episode',

@@ -2,12 +2,12 @@
   import Popover from '$lib/components/menus/Popover.svelte';
   import type { PopoverProps } from '$lib/components/menus/_internal/PopoverProps.ts';
 
-  const { side }: Pick<PopoverProps, 'side'> = $props();
+  const { side, variant }: Pick<PopoverProps, 'side' | 'variant'> = $props();
 
   let open = $state(false);
 </script>
 
-<Popover label="Your rating" {side} bind:open>
+<Popover label="Your rating" {side} {variant} bind:open>
   {#snippet trigger({ props })}
     <button type="button" {...props}>Rate</button>
   {/snippet}

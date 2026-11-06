@@ -5,8 +5,8 @@ import { DROP_URL } from '$mocks/data/users/DROP_URL.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
-import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { server } from '$mocks/server.ts';
+import { settledButton } from '$test/beds/buttons/settledButton.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { cards } from '$test/beds/dashboard/cards.ts';
 import { readyCards } from '$test/beds/dashboard/readyCards.ts';
@@ -19,19 +19,13 @@ import { collapsedCells } from '$test/beds/pagination/collapsedCells.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import type { UpNextResponse } from '@trakt/api';
 import { http, HttpResponse } from 'msw';
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  onTestFinished,
-} from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished } from 'vitest';
 import UpNextSection from './UpNextSection.svelte';
 
 // The list icon renders only once a layout matches.
@@ -78,10 +72,7 @@ async function readyWatchButton() {
     count: 1,
   });
   if (!card) throw new Error('no card');
-  const watch = await within(card).findByRole('button', {
-    name: 'Mark "Episode 2" as watched',
-  });
-  await waitFor(() => expect(watch).toHaveAttribute('aria-disabled', 'false'));
+  const watch = await settledButton('Mark "Episode 2" as watched', card);
 
   return { region, card, watch };
 }
@@ -109,10 +100,7 @@ async function openSiloDropMenu(entries = [devsAt(2), SILO]) {
 async function readyDevsWatchButton(region: HTMLElement, silo: HTMLElement) {
   const devs = cards(region, CARD_SELECTOR).find((card) => card !== silo);
   if (!devs) throw new Error('no Devs card');
-  const watch = await within(devs).findByRole('button', {
-    name: 'Mark "Episode 2" as watched',
-  });
-  await waitFor(() => expect(watch).toHaveAttribute('aria-disabled', 'false'));
+  const watch = await settledButton('Mark "Episode 2" as watched', devs);
 
   return watch;
 }
@@ -195,8 +183,6 @@ describe('section: UpNextSection', () => {
   });
 
   describe('row count', () => {
-    afterEach(() => safeLocalStorage.clear());
-
     it('should open the stored rows after a remount, on less and on more', async () => {
       // "less" scrolls its controls into view, which jsdom cannot do.
       stubScrollIntoView();
@@ -601,13 +587,7 @@ describe('section: UpNextSection', () => {
     });
 
     it('should post the drop for the show on the card', async () => {
-      const bodies: unknown[] = [];
-      server.use(
-        http.post(DROP_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return new HttpResponse(null, { status: 201 });
-        }),
-      );
+      const bodies = recordBodies(DROP_URL, { status: 201 });
       await openSiloDropMenu();
 
       await userEvent.click(

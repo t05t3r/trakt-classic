@@ -39,7 +39,11 @@ describe('component: ProfileMenu', () => {
       within(screen.getByRole('menu', { name: MENU_NAME }))
         .getAllByRole('menuitem')
         .map((row) => [row.textContent?.trim(), row.getAttribute('href')]),
-    ).toEqual([...USER_NAV_LINKS, ['Sign Out', null]]);
+    ).toEqual([
+      ...USER_NAV_LINKS,
+      ['Watchlist', '/users/me/watchlist'],
+      ['Sign Out', null],
+    ]);
   });
 
   it('should sign out through a POST form to the logout endpoint', async () => {

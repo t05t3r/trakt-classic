@@ -28,9 +28,7 @@
     {#if $lists === undefined}
       <li>
         <MenuRow checked="unknown">
-          <span class="list-menu-loading" role="status">
-            {m.text_list_menu_loading()}
-          </span>
+          <span role="status">{m.text_list_menu_loading()}</span>
         </MenuRow>
       </li>
     {:else}
@@ -56,15 +54,9 @@
 </RenderFor>
 
 <style lang="scss">
-  @use '$style/scss/mixins/index' as *;
-
   .trakt-list-menu {
     margin: var(--ni-0);
     padding: var(--ni-0);
     list-style: none;
-
-    .list-menu-loading {
-      @include visually-hidden;
-    }
   }
 </style>

@@ -103,6 +103,7 @@
     {#key $show.id}
       <SummaryOverview
         rows={toShowStatsRows({ show: $show, crew: $crew, studios: $studios })}
+        tagline={$show.tagline}
         overview={$show.overview}
         trailer={$show.trailer}
       >

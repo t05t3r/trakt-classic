@@ -1,6 +1,6 @@
 import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { runQuery } from '$test/beds/query/runQuery.ts';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useRowCount } from './useRowCount.ts';
 
 const UP_NEXT = { key: 'on_deck', rowMax: 3, defaultCount: 3 };
@@ -10,8 +10,6 @@ function readRowCount(store: ReturnType<typeof useRowCount>) {
 }
 
 describe('store: useRowCount', () => {
-  afterEach(() => safeLocalStorage.clear());
-
   it('should start at the default count when none is stored', async () => {
     expect(await readRowCount(useRowCount(UP_NEXT))).toBe(3);
   });

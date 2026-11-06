@@ -292,7 +292,7 @@
     },
     "link_label_history_all": {
       "default": "Back to full history",
-      "description": "Accessible label for the history header link that clears the data-sync filter and shows the full history."
+      "description": "Tooltip and accessible name of the X on the history page's banner, which clears the filter to one title and shows the full history."
     },
     "header_data_syncs": {
       "default": "Data Syncs",
@@ -985,7 +985,45 @@
     },
     "tooltip_text_watch_first_to_rate": {
       "default": "Watch it first to rate it",
-      "description": "Tooltip and accessible description of the blocked rating slot on a detail page, whose title the user has neither watched nor rated yet."
+      "description": "Tooltip and accessible description of the blocked rating slot on a detail page, or of a card's blocked community percentage, whose title the user has neither watched nor rated yet."
+    },
+    "button_label_card_rating": {
+      "default": "{percent}, {action}",
+      "description": "Accessible name of a card's community percentage: the percentage it shows, then the same text as its tooltip, as in '74%, Rate this movie'.",
+      "variables": {
+        "percent": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        }
+      }
+    },
+    "tooltip_text_change_your_rating": {
+      "default": "Change your rating",
+      "description": "Tooltip of a card's community percentage when the user has already rated the title; pressing it opens the rating picker."
+    },
+    "tooltip_text_add_to_watched_history": {
+      "default": "Add to watched history",
+      "description": "Hover text of a card's watch icon on a title with no plays."
+    },
+    "tooltip_text_watched_on": {
+      "default": "Watched on <b>{date}</b>",
+      "description": "Hover text of the watch icon on a card that stands for one play, giving the date it was watched.",
+      "variables": {
+        "date": {
+          "type": "string"
+        }
+      }
+    },
+    "tooltip_text_watched_percent": {
+      "default": "<b>{percent}</b> watched",
+      "description": "Hover text of a card's watch icon on a show or season with plays; percent is an already-formatted whole-number percentage, as in '83%'.",
+      "variables": {
+        "percent": {
+          "type": "string"
+        }
+      }
     },
     "tooltip_text_watched_episodes": {
       "default": "Watched {completed} of {total} episodes",
@@ -2702,8 +2740,8 @@
       "description": "Text for the button that opens the lists drawer. This allows users to add or remove a movie or show from their lists."
     },
     "button_text_view_history": {
-      "default": "View History",
-      "description": "Text for the button that opens the full page of the user's plays for a particular media item."
+      "default": "View history",
+      "description": "Row of a detail page's history button menu that opens the history page filtered to that movie, show, season or episode."
     },
     "dropdown_label_add_remove_from_lists": {
       "default": "Add or remove \"{title}\" from lists",
@@ -2762,9 +2800,9 @@
       "default": "System",
       "description": "Text for the system theme option in the theme selection dropdown."
     },
-    "button_label_list_options": {
-      "default": "List options",
-      "description": "Aria-label for the list title bar's gear button that opens the list options panel."
+    "button_label_options": {
+      "default": "Options",
+      "description": "Aria-label for the gear button, in a list's title bar or the ratings toolbar, that opens the toolbar's options panel on phones."
     },
     "button_label_reset_filter": {
       "default": "Reset",
@@ -3492,6 +3530,81 @@
       "default": "Apply",
       "description": "Text for the button that allows users to apply changes that are currently being edited."
     },
+    "button_text_clear": {
+      "default": "Clear",
+      "description": "Text for the button that clears a date range and closes its popover."
+    },
+    "button_text_range_last_7_days": {
+      "default": "Last 7 days",
+      "description": "Text for the preset row that filters a list to the last 7 days, today included."
+    },
+    "button_text_range_last_30_days": {
+      "default": "Last 30 days",
+      "description": "Text for the preset row that filters a list to the last 30 days, today included."
+    },
+    "button_text_range_last_month": {
+      "default": "Last month",
+      "description": "Text for the preset row that filters a list to the previous calendar month."
+    },
+    "label_date_start": {
+      "default": "Start Date",
+      "description": "Label for the date field that holds the first day of a date range."
+    },
+    "label_date_end": {
+      "default": "End Date",
+      "description": "Label for the date field that holds the last day of a date range."
+    },
+    "button_label_date_range": {
+      "default": "Date Range",
+      "description": "Accessible name of the popover the toolbar's calendar button opens, and the button's accessible name and tooltip while no date range is active."
+    },
+    "button_label_date_range_active": {
+      "default": "Date Range: {range}",
+      "description": "Accessible name of the toolbar's calendar button while a date range is active; range is the button's tooltip text, as in 'Date Range: 7 Jun 2026 – 30 Jun 2026' or 'Date Range: Since 7 Jun 2026'.",
+      "variables": {
+        "range": {
+          "type": "string"
+        }
+      }
+    },
+    "text_date_range_from_to": {
+      "default": "{from} – {to}",
+      "description": "Tooltip of the toolbar's calendar button while a date range with both ends is active, as in '7 Jun 2026 – 30 Jun 2026'.",
+      "variables": {
+        "from": {
+          "type": "string",
+          "description": "The range's first day, formatted.",
+          "required": true
+        },
+        "to": {
+          "type": "string",
+          "description": "The range's last day, formatted.",
+          "required": true
+        }
+      }
+    },
+    "text_date_range_since": {
+      "default": "Since {from}",
+      "description": "Tooltip of the toolbar's calendar button while a date range with only a first day is active, as in 'Since 7 Jun 2026'.",
+      "variables": {
+        "from": {
+          "type": "string",
+          "description": "The range's first day, formatted.",
+          "required": true
+        }
+      }
+    },
+    "text_date_range_until": {
+      "default": "Until {to}",
+      "description": "Tooltip of the toolbar's calendar button while a date range with only a last day is active, as in 'Until 30 Jun 2026'.",
+      "variables": {
+        "to": {
+          "type": "string",
+          "description": "The range's last day, formatted.",
+          "required": true
+        }
+      }
+    },
     "button_label_apply": {
       "default": "Apply changes",
       "description": "Aria-label for the button that allows users to apply changes that are currently being edited."
@@ -3739,7 +3852,7 @@
     },
     "button_text_shows": {
       "default": "Shows",
-      "description": "Text for the button that allows users to toggle shows in the watchlist, and the Shows row of a list toolbar's type menu, which shows only the List's shows."
+      "description": "Text for the button that allows users to toggle shows in the watchlist, and the Shows row of a list, history or ratings toolbar's type menu, which shows only that screen's shows."
     },
     "button_label_shows": {
       "default": "Shows",
@@ -3747,7 +3860,7 @@
     },
     "button_text_movies": {
       "default": "Movies",
-      "description": "Text for the button that allows users to toggle movies in the watchlist, and the Movies row of a list toolbar's type menu, which shows only the List's movies."
+      "description": "Text for the button that allows users to toggle movies in the watchlist, and the Movies row of a list, history or ratings toolbar's type menu, which shows only that screen's movies."
     },
     "button_label_movies": {
       "default": "Movies",
@@ -4857,6 +4970,10 @@
       "default": "Release date",
       "description": "Aria-label for the button that allows users to mark a movie or episode as watched on the release date."
     },
+    "button_label_more_actions": {
+      "default": "More actions",
+      "description": "Tooltip and aria-label for the side icon of a detail page's history button that opens its menu, and that menu's accessible name."
+    },
     "button_label_add_play": {
       "default": "Add another play",
       "description": "Tooltip and aria-label for the side icon of a detail page's history button that opens the choice of when the play was watched."
@@ -4893,53 +5010,71 @@
       "default": "Favorited",
       "description": "Text for a detail page's favorites button while the movie or show is a favorite; a click removes it from the favorites."
     },
-    "button_label_drop": {
-      "default": "Drop",
-      "description": "Tooltip and aria-label for the side icon of a show page's history button that flags the show as dropped."
-    },
-    "button_label_restore": {
-      "default": "Restore",
-      "description": "Tooltip and aria-label for the side icon of a dropped show's history button that restores the show."
-    },
     "button_label_add_to_list": {
       "default": "Add to list",
       "description": "Tooltip and aria-label for the side icon of a detail page's watchlist button that opens the menu of lists."
     },
-    "text_action_plays_last_one": {
-      "default": "1 play · last {date}",
-      "description": "Line under a detail page's history button for a movie or episode watched once, giving the date it was watched. A show that is not dropped, has every regular episode watched, and whose progress is empty, failed to load or was not given gets it too when its episodes hold one play.",
+    "text_action_counts_dropped": {
+      "default": "{counts} · {dropped}",
+      "description": "Line under a detail page's history button for a dropped show with progress; counts is its watched and aired episodes and plays, as in '25/30 eps — 25 plays', dropped the word 'Dropped'.",
       "variables": {
-        "date": {
+        "counts": {
           "type": "string"
-        }
-      }
-    },
-    "text_action_plays_last_other": {
-      "default": "{count} plays · last {date}",
-      "description": "Line under a detail page's history button for a movie or episode watched more than once, giving its plays and the date it was last watched. A show that is not dropped, has every regular episode watched, and whose progress is empty, failed to load or was not given gets it too, counting the plays of all its episodes.",
-      "variables": {
-        "count": {
-          "type": "number"
         },
-        "date": {
+        "dropped": {
           "type": "string"
         }
       }
     },
-    "text_action_episodes_last": {
-      "default": "{completed} of {aired} episodes · last {date}",
-      "description": "Line under a detail page's history button for a show or season, giving its watched and aired episodes and the date an episode was last watched.",
+    "text_watched_percent": {
+      "default": "{percent} watched",
+      "description": "Main line of a detail page's history button on a show or season with progress, shown uppercase, and the label of a show's or season's progress bar; percent is an already-formatted whole-number percentage, as in '83%'.",
+      "variables": {
+        "percent": {
+          "type": "string"
+        }
+      }
+    },
+    "text_watch_progress_counts": {
+      "default": "{completed}/{total} {unit}",
+      "description": "A show's or season's watched and aired episodes, with no plays known yet; unit is the abbreviated word, as in '25/30 eps'.",
       "variables": {
         "completed": {
           "type": "number"
         },
-        "aired": {
+        "total": {
           "type": "number"
         },
-        "date": {
+        "unit": {
           "type": "string"
         }
       }
+    },
+    "text_watch_progress_counts_plays": {
+      "default": "{completed}/{total} {unit} — {plays}",
+      "description": "A show's or season's watched and aired episodes, then its plays, specials counted in the plays only; unit is the abbreviated word and plays the counted word, as in '25/30 eps — 25 plays'.",
+      "variables": {
+        "completed": {
+          "type": "number"
+        },
+        "total": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "plays": {
+          "type": "string"
+        }
+      }
+    },
+    "text_watch_progress_unit_one": {
+      "default": "ep",
+      "description": "Abbreviated word after a total of one aired episode, as in '1/1 ep'."
+    },
+    "text_watch_progress_unit_other": {
+      "default": "eps",
+      "description": "Abbreviated word after any other total of aired episodes, as in '25/30 eps'."
     },
     "text_action_added": {
       "default": "Added {date}",
@@ -4968,11 +5103,11 @@
     },
     "text_this_month": {
       "default": "This month",
-      "description": "Text shown to indicate the users stats of the current month."
+      "description": "Text shown to indicate the users stats of the current month, and for the preset row that filters a list to the current calendar month, from its first day to today."
     },
     "text_this_year": {
       "default": "This year",
-      "description": "Text shown to indicate the users stats of the current year."
+      "description": "Text shown to indicate the users stats of the current year, and for the preset row that filters a list to the current calendar year, from 1 January to today."
     },
     "text_all_time": {
       "default": "All time",
@@ -5092,6 +5227,14 @@
     "button_text_sort_added_date": {
       "default": "Added Date",
       "description": "Text for the button that allows users to sort items by the date they were added."
+    },
+    "button_text_sort_watched_date": {
+      "default": "Watched Date",
+      "description": "Text for the history toolbar's one sort entry, which orders items by the date they were watched."
+    },
+    "button_text_sort_rated_date": {
+      "default": "Rated Date",
+      "description": "Text for the ratings toolbar's one sort entry, which orders items by the date they were rated."
     },
     "button_label_sort_added_date": {
       "default": "Sort by date added",
@@ -9124,43 +9267,72 @@
     },
     "text_rating_1": {
       "default": "Weak Sauce :(",
-      "description": "Label for a 1-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 1-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_2": {
       "default": "Terrible",
-      "description": "Label for a 2-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 2-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_3": {
       "default": "Bad",
-      "description": "Label for a 3-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 3-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_4": {
       "default": "Poor",
-      "description": "Label for a 4-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 4-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_5": {
       "default": "Meh",
-      "description": "Label for a 5-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 5-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_6": {
       "default": "Fair",
-      "description": "Label for a 6-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 6-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_7": {
       "default": "Good",
-      "description": "Label for a 7-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 7-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_8": {
       "default": "Great",
-      "description": "Label for an 8-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for an 8-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_9": {
       "default": "Superb",
-      "description": "Label for a 9-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 9-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
     },
     "text_rating_10": {
       "default": "Totally Ninja!",
-      "description": "Label for a 10-heart rating: in the rating picker's heart names and in the user-rating slot of a detail page's ratings bar, beside the rating or its preview."
+      "description": "Label for a 10-heart rating: in the rating picker's heart names, in the user-rating slot of a detail page's ratings bar, beside the rating or its preview, on a rated card's rating line and in the ratings toolbar's rating menu."
+    },
+    "label_rating_filter": {
+      "default": "Rating",
+      "description": "Accessible name of the ratings toolbar's rating menu, which lists All Ratings, then 10 down to 1."
+    },
+    "button_label_rating_filter": {
+      "default": "Rating: {rating}",
+      "description": "Accessible name of the button that opens the ratings toolbar's rating menu; rating is the selected row's visible text, as in 'Rating: 8 - Great'.",
+      "variables": {
+        "rating": {
+          "type": "string"
+        }
+      }
+    },
+    "text_rating_choice": {
+      "default": "{rating} - {label}",
+      "description": "Row of the ratings toolbar's rating menu, and its button's text while it is selected; rating is the value from 1 to 10 and label its name, as in '8 - Great'.",
+      "variables": {
+        "rating": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "button_text_rating_all": {
+      "default": "All Ratings",
+      "description": "Row of the ratings toolbar's rating menu, and its button's text while it is selected, that shows items of every rating."
     },
     "button_text_player_play_now": {
       "default": "Play Now",
@@ -9488,7 +9660,7 @@
     },
     "list_placeholder_ratings": {
       "default": "You haven't rated anything yet.",
-      "description": "Placeholder text shown when there are no ratings in the user's ratings list."
+      "description": "Shown in place of the ratings page's grid when the user has rated nothing: no type or rating filter is set, and no hide-watched has removed the page's ratings."
     },
     "button_label_view_all_ratings": {
       "default": "View all ratings",
@@ -9627,7 +9799,7 @@
     },
     "confirmation_title_remove_from_watched": {
       "default": "Remove from history?",
-      "description": "Title of the confirmation dialog shown before removing a movie, show, or episode from the user's watched history."
+      "description": "Title of the confirmation dialog shown before removing a movie, show, or episode from the user's watched history, and of the dialog that asks how much to remove when a single play is removed from the user's history."
     },
     "confirmation_title_remove_play": {
       "default": "Remove play?",
@@ -9651,7 +9823,15 @@
     },
     "button_text_no": {
       "default": "No",
-      "description": "Cancel button of the dialog that asks before a dropped show is restored."
+      "description": "Cancel button of the dialog that asks before a dropped show is restored, and of the dialog that asks how much to remove when a single play is removed from the user's history."
+    },
+    "button_text_only_this_play": {
+      "default": "Only this play",
+      "description": "Button of the dialog shown when a single play is removed from the user's history; it removes that play alone."
+    },
+    "button_text_all_plays": {
+      "default": "All plays",
+      "description": "Button of the dialog shown when a single play is removed from the user's history; it removes every play of that movie or episode."
     },
     "confirmation_title_delete_list": {
       "default": "Delete list?",
@@ -10982,7 +11162,7 @@
     },
     "error_text_write_history_changed": {
       "default": "Your history changed. Try again.",
-      "description": "Toast shown when a removal from history the user confirmed is not sent, because their watch history changed, is still saving another change, or could not be read after they confirmed."
+      "description": "Toast shown when a removal from history is not sent, because their watch history changed, is still saving another change, could not be read after they confirmed, or holds no plays of a title a detail page's button shows as watched."
     },
     "preview_feature_title_action_confirmations": {
       "default": "Action confirmations",
@@ -11752,7 +11932,11 @@
     },
     "button_label_sort_direction": {
       "default": "Direction",
-      "description": "Accessible name of the toggle that flips the sort direction between ascending and descending."
+      "description": "Tooltip and accessible name of the toggle that flips the sort direction between ascending and descending."
+    },
+    "button_label_toggle_dividers": {
+      "default": "Toggle Dividers",
+      "description": "Tooltip and accessible name of the toolbar toggle that shows or hides the date dividers between days on the history and ratings grids."
     },
     "text_sidebar_overview": {
       "default": "Overview",
@@ -11891,11 +12075,11 @@
     },
     "label_sort_by": {
       "default": "Sort by",
-      "description": "Accessible name of the sort menu on a show page's seasons block, which lists Number, Rating and Air date, on a season page's episodes block, which lists Number, Air date, Rating and Votes, or on a list toolbar, which lists Rank, Added Date, Title, Release Date, Runtime, Popularity, Rating, Votes and My Rating."
+      "description": "Accessible name of the sort menu on a show page's seasons block, which lists Number, Rating and Air date, on a season page's episodes block, which lists Number, Air date, Rating and Votes, on a list toolbar, which lists Rank, Added Date, Title, Release Date, Runtime, Popularity, Rating, Votes and My Rating, or on a history or ratings toolbar, which lists Watched Date or Rated Date alone."
     },
     "button_label_sort_by": {
       "default": "Sort by: {sort}",
-      "description": "Accessible name of the button that opens the sort menu on a show page's seasons block, a season page's episodes block or a list toolbar; sort is the selected sort's visible label, as in 'Sort by: Number'.",
+      "description": "Accessible name of the button that opens the sort menu on a show page's seasons block, a season page's episodes block or a list, history or ratings toolbar; sort is the selected sort's visible label, as in 'Sort by: Number'.",
       "variables": {
         "sort": {
           "type": "string"
@@ -11952,19 +12136,19 @@
     },
     "text_rate_this_movie": {
       "default": "Rate this movie",
-      "description": "Prompt in the unrated user-rating slot of a movie's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for a movie."
+      "description": "Prompt in the unrated user-rating slot of a movie's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for a movie, and the tooltip of an unrated movie's community percentage on a card."
     },
     "text_rate_this_show": {
       "default": "Rate this show",
-      "description": "Prompt in the unrated user-rating slot of a show's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for a show."
+      "description": "Prompt in the unrated user-rating slot of a show's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for a show, and the tooltip of an unrated show's community percentage on a card."
     },
     "text_rate_this_season": {
       "default": "Rate this season",
-      "description": "Prompt in the unrated user-rating slot of a season's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for a season."
+      "description": "Prompt in the unrated user-rating slot of a season's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for a season, and the tooltip of an unrated season's community percentage on a card."
     },
     "text_rate_this_episode": {
       "default": "Rate this episode",
-      "description": "Prompt in the unrated user-rating slot of an episode's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for an episode."
+      "description": "Prompt in the unrated user-rating slot of an episode's detail-page ratings bar, beside an outline heart; also the accessible name of the rating picker's popover for an episode, and the tooltip of an unrated episode's community percentage on a card."
     },
     "text_rating_unrate": {
       "default": "Unrate",
@@ -12069,9 +12253,63 @@
       "default": "Official List",
       "description": "Owner line under an official list's name in a list row, in place of an owner's name."
     },
+    "text_lists_items_one": {
+      "default": "Item",
+      "description": "Label of an item count of one on a toolbar, read after the number and shown as its tooltip."
+    },
     "text_lists_items": {
       "default": "Items",
-      "description": "Label of a list's item count, read after the number and shown as its tooltip."
+      "description": "Label of an item count on a list row or a toolbar, read after the number and shown as its tooltip."
+    },
+    "text_history_plays_one": {
+      "default": "Play",
+      "description": "Label of the history toolbar's play count of one, read after the number and shown as its tooltip."
+    },
+    "text_history_plays": {
+      "default": "Plays",
+      "description": "Label of the history toolbar's play count, how many times the user has watched something, read after the number and shown as its tooltip."
+    },
+    "text_history_item_movie": {
+      "default": "Displaying this movie",
+      "description": "First line of the history page's banner while the list is filtered to one movie, shown uppercase."
+    },
+    "text_history_item_episode": {
+      "default": "Displaying this episode",
+      "description": "First line of the history page's banner while the list is filtered to one episode, shown uppercase."
+    },
+    "text_history_item_show": {
+      "default": "Displaying episodes from this show",
+      "description": "First line of the history page's banner while the list is filtered to one show, shown uppercase."
+    },
+    "text_history_item_season": {
+      "default": "Displaying episodes from this season",
+      "description": "First line of the history page's banner while the list is filtered to one season, shown uppercase."
+    },
+    "text_history_item_empty": {
+      "default": "Displaying one title",
+      "description": "First line of the history page's banner while the list is filtered to one title that has no plays to name it by, shown uppercase."
+    },
+    "text_history_item_parent": {
+      "default": "{show} / {season}",
+      "description": "Line above an episode's title in the history page's banner, naming its show and its season.",
+      "variables": {
+        "show": {
+          "type": "string",
+          "description": "The show's title."
+        },
+        "season": {
+          "type": "string",
+          "description": "The season's label, e.g. 'Season 3'."
+        }
+      }
+    },
+    "text_history_empty": {
+      "default": "You haven't watched anything yet.",
+      "description": "Shown in place of the history page's grid when the user's history holds no plays and no filter is set."
+    },
+    "text_history_empty_range": {
+      "default": "Nothing watched in this range.",
+      "description": "Shown in place of the history page's grid when a date range, alone or with a type or genre filter, leaves no plays to show."
     },
     "text_lists_watched": {
       "default": "Watched",
@@ -12095,11 +12333,11 @@
     },
     "label_list_type": {
       "default": "Type",
-      "description": "Accessible name of a list toolbar's type menu, which lists All Types, Movies, Shows, Seasons and Episodes."
+      "description": "Accessible name of a toolbar's type menu, whose rows vary by toolbar."
     },
     "button_label_list_type": {
       "default": "Type: {type}",
-      "description": "Accessible name of the button that opens a list toolbar's type menu; type is the selected type's visible label, as in 'Type: All Types'.",
+      "description": "Accessible name of the button that opens a toolbar's type menu; type is the selected type's visible label, as in 'Type: All Types'.",
       "variables": {
         "type": {
           "type": "string"
@@ -12108,15 +12346,15 @@
     },
     "button_text_type_all": {
       "default": "All Types",
-      "description": "Row of a list toolbar's type menu, and its button's text while it is selected, that shows the List's items of every type."
+      "description": "Row of a list, history or ratings toolbar's type menu, and its button's text while it is selected, that shows that screen's items of every type."
     },
     "button_text_type_seasons": {
       "default": "Seasons",
-      "description": "Row of a list toolbar's type menu that shows only the List's seasons."
+      "description": "Row of a list or ratings toolbar's type menu that shows only that screen's seasons."
     },
     "button_text_type_episodes": {
       "default": "Episodes",
-      "description": "Row of a list toolbar's type menu that shows only the List's episodes."
+      "description": "Row of a list, history or ratings toolbar's type menu that shows only that screen's episodes."
     },
     "label_list_genre": {
       "default": "Genre",
@@ -12153,7 +12391,7 @@
     },
     "text_lists_empty_filtered": {
       "default": "Nothing matches these filters.",
-      "description": "Shown in place of a list's grid when its type or genre filter, or hiding watched items, leaves no items to show."
+      "description": "Shown in place of a list's grid when its type or genre filter, or hiding watched items, leaves no items to show, of the history page's grid when its type, genre or title filter leaves no plays and no date range is set, and of the ratings page's grid when its type or rating filter, or hiding watched items, leaves no ratings to show."
     },
     "text_lists_block_empty": {
       "default": "Not on any lists yet.",

@@ -13,8 +13,9 @@ export type ChoiceMenuProps<K extends string> = {
   choices: ReadonlyArray<{ value: K; label: string }>;
   // Given, the label of a first row that picks `null`.
   all?: string;
-  // Reports a change only: picking the checked row reports nothing.
+  // Reports a change only: picking the checked row reports through `onRepick`, if given.
   onChange: (value: K | null) => void;
+  onRepick?: () => void;
   font?: ComponentProps<typeof DropdownButton>['font'];
   isLimited?: MenuProps['isLimited'];
 };

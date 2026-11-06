@@ -52,6 +52,8 @@
 </div>
 
 <style lang="scss">
+  @use '$style/scss/mixins/index' as *;
+
   .trakt-clamped-text {
     .clamped-content {
       position: relative;
@@ -83,12 +85,9 @@
     }
 
     .read-more-button {
-      padding: var(--ni-0);
-      border: none;
-      background: none;
-      color: var(--color-link);
+      @include link-button;
+
       font: inherit;
-      cursor: pointer;
     }
   }
 </style>

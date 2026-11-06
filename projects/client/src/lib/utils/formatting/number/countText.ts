@@ -7,10 +7,13 @@ export type CountUnit =
   | 'shows'
   | 'movies'
   | 'plays'
+  | 'playsTitle'
   | 'seasons'
   | 'episodesTitle'
   | 'comments'
-  | 'replies';
+  | 'replies'
+  | 'items'
+  | 'watchProgressEpisodes';
 
 export type Count = { distinct: number; plays: number };
 
@@ -58,6 +61,10 @@ const UNIT_WORDS: Readonly<Record<CountUnit, UnitWords>> = {
     one: m.text_dashboard_stats_plays_one,
     other: m.text_dashboard_stats_plays_other,
   },
+  playsTitle: {
+    one: m.text_history_plays_one,
+    other: m.text_history_plays,
+  },
   seasons: {
     one: m.text_seasons_title_one,
     other: m.text_seasons_title_other,
@@ -73,6 +80,14 @@ const UNIT_WORDS: Readonly<Record<CountUnit, UnitWords>> = {
   replies: {
     one: m.text_comment_replies_one,
     other: m.text_comment_replies_other,
+  },
+  items: {
+    one: m.text_lists_items_one,
+    other: m.text_lists_items,
+  },
+  watchProgressEpisodes: {
+    one: m.text_watch_progress_unit_one,
+    other: m.text_watch_progress_unit_other,
   },
 };
 

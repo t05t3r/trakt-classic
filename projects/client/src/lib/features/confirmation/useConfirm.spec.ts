@@ -13,6 +13,19 @@ const REMOVE_PARAMS = {
   count: 3,
 };
 
+const REMOVE_PLAY_PARAMS = {
+  type: ConfirmationType.RemovePlay,
+  title: 'Heretic',
+};
+
+async function footerButtons(name: string) {
+  const dialog = await screen.findByRole('dialog', { name });
+
+  return within(dialog).getAllByRole('button', {
+    name: (buttonName) => buttonName !== 'Close',
+  });
+}
+
 describe('useConfirm', () => {
   it('should show the dialog with its title, body and both buttons', async () => {
     const { confirmAsync } = await renderStore(useConfirm);
@@ -79,7 +92,73 @@ describe('useConfirm', () => {
     },
   );
 
+  describe('button order', () => {
+    it('should put the cancel first in a dialog with one action', async () => {
+      const { confirmAsync } = await renderStore(useConfirm);
+
+      void confirmAsync(REMOVE_PARAMS);
+
+      const buttons = await footerButtons('Remove from history?');
+      expect(buttons.map((button) => button.textContent?.trim())).toEqual([
+        'Cancel',
+        'Remove from History',
+      ]);
+      expect(buttons.map((button) => button.dataset.variant)).toEqual([
+        'cancel',
+        'confirm',
+      ]);
+    });
+
+    it('should put both actions before the cancel in a dialog with two', async () => {
+      const { confirmAsync } = await renderStore(useConfirm);
+
+      void confirmAsync(REMOVE_PLAY_PARAMS);
+
+      const buttons = await footerButtons('Remove from history?');
+      expect(buttons.map((button) => button.textContent?.trim())).toEqual([
+        'Only this play',
+        'All plays',
+        'No',
+      ]);
+      expect(buttons.map((button) => button.dataset.variant)).toEqual([
+        'confirm',
+        'confirm',
+        'cancel',
+      ]);
+    });
+  });
+
   describe('confirmAsync', () => {
+    it.each([
+      { button: 'Only this play', answer: true },
+      { button: 'All plays', answer: 'alternate' },
+      { button: 'No', answer: false },
+    ])(
+      'should resolve $answer when $button is clicked',
+      async ({ button, answer }) => {
+        const { confirmAsync } = await renderStore(useConfirm);
+
+        const result = confirmAsync(REMOVE_PLAY_PARAMS);
+        await userEvent.click(
+          await screen.findByRole('button', { name: button }),
+        );
+
+        await expect(result).resolves.toBe(answer);
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      },
+    );
+
+    it('should resolve false for a second dialog with two actions, and leave the first one to answer', async () => {
+      const { confirmAsync } = await renderStore(useConfirm);
+
+      const first = confirmAsync(REMOVE_PLAY_PARAMS);
+      await screen.findByRole('dialog', { name: 'Remove from history?' });
+
+      await expect(confirmAsync(REMOVE_PLAY_PARAMS)).resolves.toBe(false);
+      await userEvent.click(screen.getByRole('button', { name: 'All plays' }));
+      await expect(first).resolves.toBe('alternate');
+    });
+
     it('should resolve true when the action is confirmed', async () => {
       const { confirmAsync } = await renderStore(useConfirm);
 

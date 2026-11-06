@@ -6,6 +6,7 @@
     pressed,
     onToggle,
     size = 'toolbar',
+    pressedTint = 'selected',
     children,
   }: IconToggleProps = $props();
 </script>
@@ -13,9 +14,11 @@
 <button
   type="button"
   class="trakt-icon-toggle"
+  title={label}
   aria-label={label}
   aria-pressed={pressed}
   data-size={size}
+  data-pressed-tint={pressedTint}
   onclick={onToggle}
 >
   {@render children()}
@@ -31,7 +34,7 @@
     cursor: pointer;
     transition: color var(--transition-default);
 
-    &[aria-pressed='true'] {
+    &[aria-pressed='true'][data-pressed-tint='selected'] {
       color: var(--color-toggle-selected);
     }
 

@@ -11,7 +11,6 @@ import { WatchedMoviesResponseMock } from '$mocks/data/users/response/WatchedMov
 import { WATCHED_MOVIES_QUERIES } from '$mocks/data/users/WATCHED_MOVIES_QUERIES.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
 import { WATCHED_SHOWS_QUERIES } from '$mocks/data/users/WATCHED_SHOWS_QUERIES.ts';
-import { server } from '$mocks/server.ts';
 import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
 import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
 import { useWaitForUnobserved } from '$test/beds/query/useWaitForUnobserved.ts';
@@ -19,11 +18,12 @@ import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
-import { http, HttpResponse } from 'msw';
+import { HttpResponse } from 'msw';
 import { filter, firstValueFrom } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type IsWatchedProps, useIsWatched } from './useIsWatched.ts';
@@ -201,12 +201,7 @@ describe('store: useIsWatched', () => {
     });
 
     it('should read the history as not known while an add grows it past one page', async () => {
-      server.use(
-        http.get(
-          WATCHED_MOVIES_URL,
-          () => pagedResponse({ body: WatchedMoviesResponseMock }),
-        ),
-      );
+      servePaged({ url: WATCHED_MOVIES_URL, body: WatchedMoviesResponseMock });
       const { heretic, unwatched } = await renderSettledHistory(() => ({
         heretic: useIsWatched({ type: 'movie', media: { id: HERETIC.id } }),
         unwatched: useWatched(UNWATCHED_MOVIE),
@@ -232,12 +227,7 @@ describe('store: useIsWatched', () => {
     });
 
     it('should turn not known when an add grows it past one page and that page fails', async () => {
-      server.use(
-        http.get(
-          WATCHED_MOVIES_URL,
-          () => pagedResponse({ body: WatchedMoviesResponseMock }),
-        ),
-      );
+      servePaged({ url: WATCHED_MOVIES_URL, body: WatchedMoviesResponseMock });
       const { heretic, unwatched, waitForQueriesIdle } =
         await renderSettledHistory(() => ({
           heretic: useIsWatched({ type: 'movie', media: { id: HERETIC.id } }),

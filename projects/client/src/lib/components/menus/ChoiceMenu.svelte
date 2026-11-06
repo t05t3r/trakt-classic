@@ -14,6 +14,7 @@
     choices,
     all,
     onChange,
+    onRepick,
     font,
     isLimited,
   }: ChoiceMenuProps<K> = $props();
@@ -26,7 +27,7 @@
 
   // The group reports `null` when the checked row is picked again.
   const select = (next: string | null) => {
-    if (next === null) return;
+    if (next === null) return onRepick?.();
     if (next === ALL) return onChange(null);
 
     const choice = choices.find((entry) => entry.value === next);

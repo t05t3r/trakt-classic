@@ -1,5 +1,6 @@
 import type { SortParam } from '$lib/features/view-params/stores/useSortParam.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
@@ -122,10 +123,7 @@ describe('component: SortableBlock', () => {
     openAt(`${PATH}?things=name,asc`);
     renderBlock();
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Sort by: Name' }),
-    );
-    const menu = await screen.findByRole('menu', { name: 'Sort by' });
+    const menu = await openMenuByClick('Sort by: Name', 'Sort by');
     const rows = within(menu).getAllByRole('menuitemradio');
 
     expect(rows.map((row) => row.textContent?.trim()))

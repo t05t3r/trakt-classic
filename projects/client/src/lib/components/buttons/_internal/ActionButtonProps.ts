@@ -6,6 +6,8 @@ export type ActionButtonProps = {
   icon: Icon;
   label: string;
   underInfo?: string;
+  // Drawn as a bar along the bottom edge; the label says it, so a screen reader hears it once.
+  percent?: number;
   // `undefined` while the state loads: shown unselected, and clicks are ignored.
   selected?: boolean;
   isUpdating?: boolean;

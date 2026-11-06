@@ -26,6 +26,13 @@ describe('util: parseDateOnly', () => {
     expect(parseDateOnly('2022-02-30')).toBeUndefined();
   });
 
+  it.each(['0000-06-07', '0000-02-29'])(
+    'should reject %s, a date in a year date parsing cannot read',
+    (value) => {
+      expect(parseDateOnly(value)).toBeUndefined();
+    },
+  );
+
   it('should reject garbage', () => {
     expect(parseDateOnly('soon')).toBeUndefined();
   });

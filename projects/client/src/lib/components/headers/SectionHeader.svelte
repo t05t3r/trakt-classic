@@ -105,11 +105,7 @@
     }
 
     :global(.section-title-icon) {
-      width: var(--heading-icon-width);
-      height: var(--icon-size-heading);
-      margin-inline-end: var(--ni-10);
-      stroke-width: var(--icon-stroke-chrome);
-      vertical-align: top;
+      @include heading-glyph(var(--heading-icon-width));
     }
 
     // A flex box as tall as the glyph, top-aligned, adds no height to the line.

@@ -1,9 +1,16 @@
+import {
+  RATING_VALUES,
+  type RatingFilter,
+} from '$lib/features/media-actions/RATING_VALUES.ts';
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
+import type { RatingsTypeFilter } from '$lib/features/ratings/RATINGS_TYPES.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
+import { hasDateTime } from '$lib/requests/_internal/hasDateTime.ts';
 import { mapToEpisodeEntry } from '$lib/requests/_internal/mapToEpisodeEntry.ts';
 import { mapToMovieEntry } from '$lib/requests/_internal/mapToMovieEntry.ts';
 import { mapToSeason } from '$lib/requests/_internal/mapToSeason.ts';
 import { mapToShowEntry } from '$lib/requests/_internal/mapToShowEntry.ts';
+import { withoutNullSeasonAirDate } from '$lib/requests/_internal/withoutNullSeasonAirDate.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { EpisodeEntrySchema } from '$lib/requests/models/EpisodeEntry.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
@@ -76,6 +83,11 @@ const isSupportedRating = (
 ): item is SupportedRatingResponse =>
   (SUPPORTED_RATING_TYPES as ReadonlyArray<string>).includes(item.type);
 
+const RatedSeasonRowSchema = z.preprocess(
+  withoutNullSeasonAirDate,
+  z.object({ season: seasonResponseSchema }),
+);
+
 const mapToRatingEntry = (item: SupportedRatingResponse): UserRatingEntry => {
   const common = {
     ratedAt: new Date(item.rated_at),
@@ -128,11 +140,7 @@ const mapToRatingEntry = (item: SupportedRatingResponse): UserRatingEntry => {
       const show = mapToShowEntry(
         assertDefined(item.show, 'Expected show in season rating'),
       );
-      const season = mapToSeason(
-        seasonResponseSchema.parse(
-          assertDefined(item.season, 'Expected season in season rating'),
-        ),
-      );
+      const season = mapToSeason(RatedSeasonRowSchema.parse(item).season);
       return {
         ...common,
         key: `rating-season-${show.id}-${season.number}`,
@@ -145,17 +153,24 @@ const mapToRatingEntry = (item: SupportedRatingResponse): UserRatingEntry => {
 };
 
 type UserRatingsParams =
-  & { slug: string }
+  & {
+    slug: string;
+    type: RatingsTypeFilter;
+    rating: RatingFilter;
+  }
   & ApiParams
   & PaginationParams;
 
+const ALL_RATINGS = RATING_VALUES.join(',');
+
 const userRatingsRequest = (
-  { fetch, slug, page, limit }: UserRatingsParams,
-) => {
-  // FIXME: add support for querying by type when we have support for multi-type
-  return api({ fetch }).users.ratings.all({
+  { fetch, slug, type, rating, page, limit }: UserRatingsParams,
+) =>
+  api({ fetch }).users.ratings.typedRating({
     params: {
       id: slug,
+      type,
+      rating: rating === 'all' ? ALL_RATINGS : rating,
     },
     query: {
       extended: 'full,images',
@@ -163,7 +178,6 @@ const userRatingsRequest = (
       limit,
     },
   });
-};
 
 export const userRatingsQuery = defineInfiniteQuery({
   key: 'userRatings',
@@ -175,11 +189,18 @@ export const userRatingsQuery = defineInfiniteQuery({
   ],
   dependencies: (
     params: UserRatingsParams,
-  ) => [params.slug, params.limit],
+  ) => [
+    params.slug,
+    params.type,
+    params.rating,
+    params.limit,
+    params.page,
+  ],
   request: userRatingsRequest,
   mapper: (response) => ({
     entries: response.body
       .filter(isSupportedRating)
+      .filter(hasDateTime('rated_at'))
       .map(mapToRatingEntry),
     page: extractPageMeta(response.headers),
   }),

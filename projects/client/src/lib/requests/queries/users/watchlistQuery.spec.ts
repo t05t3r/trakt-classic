@@ -4,7 +4,6 @@ import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/Watchlis
 import { UnairedSeasonWatchlistResponseMock } from '$mocks/data/users/response/UnairedSeasonWatchlistResponseMock.ts';
 import { USER_WATCHLIST_URL } from '$mocks/data/users/USER_WATCHLIST_URL.ts';
 import { WATCHLIST_SEGMENTS } from '$mocks/data/users/WATCHLIST_SEGMENTS.ts';
-import { server } from '$mocks/server.ts';
 import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
 import {
   describeListReadQuery,
@@ -12,11 +11,10 @@ import {
 } from '$test/beds/query/describeListReadQuery.ts';
 import { observeInvalidation } from '$test/beds/query/observeInvalidation.ts';
 import { runQuery } from '$test/beds/query/runQuery.ts';
-import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { mapToEntries } from '$test/utils/mapToEntries.ts';
 import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
-import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { watchlistQuery, type WatchlistType } from './watchlistQuery.ts';
 
@@ -75,12 +73,10 @@ describe('watchlistQuery', () => {
   });
 
   it('should read a season with a null air date as aired at no known date', async () => {
-    server.use(
-      http.get(
-        USER_WATCHLIST_URL,
-        () => pagedResponse({ body: UnairedSeasonWatchlistResponseMock }),
-      ),
-    );
+    servePaged({
+      url: USER_WATCHLIST_URL,
+      body: UnairedSeasonWatchlistResponseMock,
+    });
 
     expect(await readWatchlist()).toEqual([
       expect.objectContaining({

@@ -94,8 +94,9 @@
   /*
    * Tooltip
    */
-  --color-tooltip-background: var(--shade-800);
+  --color-tooltip-background: var(--shade-910);
   --color-tooltip-text: var(--shade-10);
+  --color-tooltip-progress-track: var(--shade-840);
 
   /**
    * Tags
@@ -839,6 +840,7 @@
   --icon-size-strip-star-lg: var(--ni-24);
   --icon-size-strip-heart: var(--ni-14);
   --icon-size-strip-heart-lg: var(--ni-16);
+  --icon-size-rating-heart: var(--font-size-card-subtitle);
   --icon-size-chrome-eye: var(--ni-21);
   --icon-size-badge-dropped: var(--ni-46);
   --icon-size-badge-dropped-sm: var(--ni-34);
@@ -861,6 +863,7 @@
   --btn-radius: var(--border-radius-l);
   --btn-radius-less: var(--border-radius-s);
   --divider-rule: var(--color-border);
+  --time-spent-padding-block-start: var(--ni-8);
   --menu-min-width: var(--ni-130);
   --menu-row-height: var(--ni-32);
   --menu-padding-block: var(--ni-10);
@@ -878,6 +881,7 @@
   --popover-padding-inline: var(--ni-14);
   --popover-arrow-size: var(--ni-11);
   --popover-arrow-fill-size: var(--ni-10);
+  --date-field-height: var(--ni-34);
   --rating-heart-size: var(--ni-20);
   // Classic's 1.22em heart cell at its 20px glyph.
   --rating-heart-width: 1.525rem;
@@ -944,6 +948,7 @@
     --icon-size-heading: var(--ni-18);
     --font-size-title-bar: var(--ni-16);
     --heading-icon-width: var(--ni-22);
+    --time-spent-padding-block-start: var(--ni-3);
     --line-height-see-more: 1.6;
     --font-size-pagination: var(--ni-14);
 

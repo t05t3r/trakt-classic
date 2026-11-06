@@ -3,27 +3,17 @@ import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setDocumentDirection } from '$test/beds/direction/setDocumentDirection.ts';
+import { controlledBy } from '$test/beds/dom/controlledBy.ts';
+import { closeFromOutside } from '$test/beds/menus/closeFromOutside.ts';
 import MenuHost from '$test/beds/menus/MenuHost.svelte';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 
 const trigger = () => screen.getByRole('button', { name: 'Rank' });
 const menu = () => screen.queryByRole('menu', { name: 'Sort by' });
-const openMenu = async () => {
-  await userEvent.click(trigger());
-  return screen.findByRole('menu', { name: 'Sort by' });
-};
-
-// The scroll lock turns off pointer events on the body, so an outside press lands on the root; at 1,1 it misses jsdom's 0,0 menu.
-const pressOutside = () =>
-  fireEvent.pointerDown(document.documentElement, { clientX: 1, clientY: 1 });
-// bits-ui re-attaches its outside-press listener just after the menu opens and drops a press made before it.
-const closeFromOutside = () =>
-  waitFor(() => {
-    pressOutside();
-    expect(menu()).not.toBeInTheDocument();
-  });
+const openMenu = () => openMenuByClick('Rank', 'Sort by');
 
 beforeEach(() => {
   stubClientRects();
@@ -43,10 +33,8 @@ describe('component: Menu', () => {
     render(MenuHost, { props: { onSelect: vi.fn() } });
 
     const opened = await openMenu();
-    const controlled = trigger().getAttribute('aria-controls');
 
-    expect(controlled).toBeTruthy();
-    expect(document.getElementById(controlled ?? '')).toBe(opened);
+    expect(controlledBy(trigger())).toBe(opened);
   });
 
   it('should select an item, close and focus the trigger', async () => {
@@ -66,7 +54,7 @@ describe('component: Menu', () => {
     await openMenu();
     const focus = vi.spyOn(trigger(), 'focus');
 
-    await closeFromOutside();
+    await closeFromOutside(menu);
 
     expect(trigger()).toHaveFocus();
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });

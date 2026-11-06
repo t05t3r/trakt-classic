@@ -3,7 +3,7 @@
   import { useUser } from '$lib/features/auth/stores/useUser.ts';
   import LazyImage from '$lib/features/image/components/LazyImage.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
-  import { userNavItems } from '$lib/features/navigation/userNavItems.ts';
+  import { profileMenuItems } from '$lib/features/navigation/profileMenuItems.ts';
   import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
   import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
   import NavMenu from './_internal/NavMenu.svelte';
@@ -20,7 +20,7 @@
 <div class="trakt-profile-menu">
   <NavMenu
     {label}
-    items={userNavItems}
+    items={profileMenuItems}
   >
     {#snippet trigger(isOpen)}
       <span class="profile-trigger" class:is-open={isOpen}>

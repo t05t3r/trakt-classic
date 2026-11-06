@@ -1,11 +1,10 @@
 <script lang="ts">
   import * as m from '$lib/features/i18n/messages.ts';
   import { toHumanNumber } from '$lib/utils/formatting/number/toHumanNumber.ts';
-  import { toTraktRating } from '$lib/utils/formatting/number/toTraktRating.ts';
   import IconHeartFilled from '@tabler/icons-svelte/icons/heart-filled';
   import type { CommunityRatingProps } from './_internal/CommunityRatingProps.ts';
-  import { isRatingShown } from './_internal/isRatingShown.ts';
   import { toHeartRating } from './_internal/toHeartRating.ts';
+  import { toShownRating } from './toShownRating.ts';
 
   const {
     rating,
@@ -15,15 +14,14 @@
     variant = 'default',
   }: CommunityRatingProps = $props();
 
-  const shownRating = $derived.by(() => {
-    const params = {
+  const shownRating = $derived(
+    toShownRating({
       rating,
       earliestReleaseDate,
       displayEarlyRatings,
       now: new Date(),
-    };
-    return isRatingShown(params) ? params.rating : null;
-  });
+    }),
+  );
 </script>
 
 {#if shownRating != null}
@@ -31,11 +29,11 @@
     <IconHeartFilled
       class="community-rating-heart"
       aria-hidden="true"
-      data-rating={toHeartRating(shownRating)}
+      data-rating={toHeartRating(shownRating.value)}
     />
     <span class="community-rating-number">
       <span class="community-rating-percentage">
-        {toTraktRating(shownRating)}
+        {shownRating.percent}
       </span>
       {#if votes != null}
         <span class="community-rating-votes tag">

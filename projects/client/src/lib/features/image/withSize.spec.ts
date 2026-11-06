@@ -57,6 +57,41 @@ describe('withSize', () => {
       .toBe(thumbs('full'));
   });
 
+  describe('for the movie art form', () => {
+    const movieArt = (size: string, art: string) =>
+      `https://media.trakt.tv/movies/12808/${size}/${art}.webp`;
+
+    it('should rewrite its size segment', () => {
+      expect(withSize({ url: movieArt('medium', 'poster'), size: 'thumb' }))
+        .toBe(movieArt('thumb', 'poster'));
+    });
+
+    it('should not mistake the art name thumb for the size', () => {
+      expect(withSize({ url: movieArt('medium', 'thumb'), size: 'full' }))
+        .toBe(movieArt('full', 'thumb'));
+    });
+  });
+
+  describe('for a show whose art is named thumb', () => {
+    it('should rewrite the size to thumb and leave the art name', () => {
+      expect(
+        withSize({
+          url: 'media.trakt.tv/shows/1/medium/thumb.webp',
+          size: 'thumb',
+        }),
+      ).toBe('media.trakt.tv/shows/1/thumb/thumb.webp');
+    });
+
+    it('should rewrite from thumb and leave the art name', () => {
+      expect(
+        withSize({
+          url: 'media.trakt.tv/shows/1/thumb/thumb.webp',
+          size: 'full',
+        }),
+      ).toBe('media.trakt.tv/shows/1/full/thumb.webp');
+    });
+  });
+
   it('should leave an avatar path untouched', () => {
     const avatar =
       'https://media.trakt.tv/images/users/015/331/014/avatars/large/83f8741ac7.jpg';

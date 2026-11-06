@@ -1,5 +1,6 @@
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
+import { hasDateTime } from '$lib/requests/_internal/hasDateTime.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
@@ -11,6 +12,7 @@ import type {
 } from '@trakt/api';
 import { z } from 'zod';
 import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
+import type { DateRangeParams } from '$lib/requests/models/DateRangeParams.ts';
 import type { FilterParams } from '$lib/requests/models/FilterParams.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
 import { mapToEpisodeActivityHistory } from '$lib/requests/_internal/mapToEpisodeActivityHistory.ts';
@@ -23,11 +25,11 @@ import {
 type ActivityHistoryParams =
   & {
     slug: string;
-    startDate?: Date;
-    endDate?: Date;
     syncId?: number;
+    seasonId?: number;
   }
   & ApiParams
+  & DateRangeParams
   & PaginationParams
   & FilterParams;
 
@@ -38,7 +40,7 @@ const HistorySchema = z.discriminatedUnion('type', [
 export type ActivityHistory = z.infer<typeof HistorySchema>;
 
 function activityHistoryRequest(
-  { fetch, slug, startDate, endDate, limit, page, filter, syncId }:
+  { fetch, slug, startDate, endDate, limit, page, filter, syncId, seasonId }:
     ActivityHistoryParams,
 ) {
   const queryParams = {
@@ -51,10 +53,15 @@ function activityHistoryRequest(
     ...filter,
   };
 
-  return api({ fetch }).users.history.all({
-    params: { id: slug },
-    query: queryParams,
-  });
+  return seasonId
+    ? api({ fetch }).users.history.typedItem({
+      params: { id: slug, type: 'seasons', item_id: `${seasonId}` },
+      query: queryParams,
+    })
+    : api({ fetch }).users.history.all({
+      params: { id: slug },
+      query: queryParams,
+    });
 }
 
 type ValidHistoryItemResponse =
@@ -83,12 +90,14 @@ export const activityHistoryQuery = defineInfiniteQuery({
     params.page,
     params.slug,
     params.syncId,
+    params.seasonId,
     ...getGlobalFilterDependencies(params.filter),
   ],
   request: activityHistoryRequest,
   mapper: (response) => ({
     entries: response.body
       .filter(isValidHistoryItemResponse)
+      .filter(hasDateTime('watched_at'))
       .map((item) =>
         item.type === 'movie'
           ? mapToMovieActivityHistory(item)

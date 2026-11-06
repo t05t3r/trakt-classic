@@ -1,5 +1,6 @@
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
+import { hasDateTime } from '$lib/requests/_internal/hasDateTime.ts';
 import { mapToMovieEntry } from '$lib/requests/_internal/mapToMovieEntry.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
@@ -8,6 +9,7 @@ import { time } from '$lib/utils/timing/time.ts';
 import type { MovieActivityHistoryResponse } from '@trakt/api';
 import { z } from 'zod';
 import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
+import type { DateRangeParams } from '$lib/requests/models/DateRangeParams.ts';
 import type { FilterParams } from '$lib/requests/models/FilterParams.ts';
 import { MovieEntrySchema } from '$lib/requests/models/MovieEntry.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
@@ -15,12 +17,11 @@ import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts'
 type MovieActivityHistoryParams =
   & {
     slug: string;
-    startDate?: Date;
-    endDate?: Date;
     id?: number;
     syncId?: number;
   }
   & ApiParams
+  & DateRangeParams
   & PaginationParams
   & FilterParams;
 
@@ -83,9 +84,11 @@ export const movieActivityHistoryQuery = defineInfiniteQuery({
   ],
   request: movieActivityHistoryRequest,
   mapper: (response) => ({
-    entries: response.body.map(mapToMovieActivityHistory),
+    entries: response.body
+      .filter(hasDateTime('watched_at'))
+      .map(mapToMovieActivityHistory),
     page: extractPageMeta(response.headers),
   }),
   schema: PaginatableSchemaFactory(MovieActivityHistorySchema),
-  ttl: time.hours(6),
+  ttl: time.minutes(15),
 });

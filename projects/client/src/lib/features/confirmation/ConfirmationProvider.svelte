@@ -8,16 +8,11 @@
 
   const { activeConfirmation, hideConfirmation } = createConfirmationContext();
 
-  const settle = (isConfirmed: boolean) => {
+  const settle = (answer: "onConfirm" | "onAlternate" | "onCancel") => {
     const request = activeConfirmation.value;
     hideConfirmation();
 
-    if (isConfirmed) {
-      request?.onConfirm();
-      return;
-    }
-
-    request?.onCancel?.();
+    request?.[answer]?.();
   };
 </script>
 
@@ -26,7 +21,8 @@
 {#if $activeConfirmation}
   <ConfirmationDialog
     {...mapToConfirmation($activeConfirmation)}
-    onConfirm={() => settle(true)}
-    onCancel={() => settle(false)}
+    onConfirm={() => settle("onConfirm")}
+    onAlternate={() => settle("onAlternate")}
+    onCancel={() => settle("onCancel")}
   />
 {/if}

@@ -1,7 +1,6 @@
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { useRowCount } from '$lib/stores/useRowCount.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
-import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
 import { SYNC_WATCHLIST_REMOVE_URL } from '$mocks/data/sync/SYNC_WATCHLIST_REMOVE_URL.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
@@ -21,7 +20,7 @@ import { renderStore } from '$test/beds/store/renderStore.ts';
 import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import WatchlistSection from './WatchlistSection.svelte';
 
 // The list icon renders only once a layout matches.
@@ -416,8 +415,6 @@ describe('section: WatchlistSection', () => {
   });
 
   describe('rows', () => {
-    afterEach(() => safeLocalStorage.clear());
-
     it('should lay the cards out as a poster grid of six, four and two up, with no gap below', async () => {
       const { region } = await readyFixtureCards();
 

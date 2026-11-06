@@ -20,7 +20,9 @@ export type PosterCardSubtitles =
     showHref?: never;
     showLead?: never;
     subtitle?: never;
-    lines?: readonly [Snippet | undefined, Snippet | undefined];
+    lines?:
+      | readonly [Snippet | undefined]
+      | readonly [Snippet | undefined, Snippet | undefined];
   }
   // The show line, on a season or episode card, takes the first line.
   | {

@@ -1,4 +1,4 @@
-type IsRatingShownParams = {
+export type IsRatingShownParams = {
   rating: number | Nil;
   earliestReleaseDate: Date;
   now: Date;

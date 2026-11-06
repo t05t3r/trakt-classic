@@ -11,4 +11,6 @@ export type CountStatProps = {
   size?: 'lg';
   // Shown under the value while a mouse hovers the stat.
   underCount?: string;
+  // Shows the label beside the value on wide screens, not only as the tooltip.
+  wideLabel?: boolean;
 };

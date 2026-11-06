@@ -1,16 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import HistoryChoice from './HistoryChoice.svelte';
 
 const trigger = () => screen.getByRole('button', { name: 'Add another play' });
 const menu = () =>
   screen.queryByRole('menu', { name: 'When did you watch this?' });
-const openChoice = async () => {
-  await userEvent.click(trigger());
-  return screen.findByRole('menu', { name: 'When did you watch this?' });
-};
+const openChoice = () =>
+  openMenuByClick('Add another play', 'When did you watch this?');
 
 beforeEach(() => {
   stubClientRects();
@@ -37,9 +37,7 @@ describe('component: HistoryChoice', () => {
     render(HistoryChoice, { props: { onAdd: vi.fn() } });
     await openChoice();
 
-    expect(
-      screen.getAllByRole('menuitem').map((item) => item.textContent?.trim()),
-    ).toEqual(['Just now', 'Release date']);
+    expect(readMenuRows()).toEqual(['Just now', 'Release date']);
   });
 
   it.each([
