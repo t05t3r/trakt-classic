@@ -1,28 +1,12 @@
 import { SHOW_IDS_BODY } from '$mocks/data/sync/SHOW_IDS_BODY.ts';
 import { RESTORE_URL } from '$mocks/data/users/RESTORE_URL.ts';
-import { server } from '$mocks/server.ts';
-import { http, HttpResponse } from 'msw';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { describe, expect, it, vi } from 'vitest';
 import { restoreShowRequest } from './restoreShowRequest.ts';
 
-function recordRestoreBodies(): unknown[] {
-  const bodies: unknown[] = [];
-  server.use(
-    http.post(
-      RESTORE_URL,
-      async ({ request }) => {
-        bodies.push(await request.json());
-        return new HttpResponse(null, { status: 200 });
-      },
-    ),
-  );
-
-  return bodies;
-}
-
 describe('restoreShowRequest', () => {
   it('should send the shows to the dropped section', async () => {
-    const bodies = recordRestoreBodies();
+    const bodies = recordBodies(RESTORE_URL);
 
     await restoreShowRequest({ body: SHOW_IDS_BODY });
 
@@ -30,7 +14,7 @@ describe('restoreShowRequest', () => {
   });
 
   it('should hand onResponse the final response', async () => {
-    recordRestoreBodies();
+    recordBodies(RESTORE_URL);
     const onResponse = vi.fn<(response: Response) => void>();
 
     await restoreShowRequest({ body: SHOW_IDS_BODY, onResponse });

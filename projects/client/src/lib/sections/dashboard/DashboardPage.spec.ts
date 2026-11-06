@@ -5,7 +5,7 @@ import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
 import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { serveUpNext } from '$test/beds/dashboard/serveUpNext.ts';
-import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -160,15 +160,13 @@ describe('section: DashboardPage', () => {
   });
 
   it('should render Last 30 Days from its query in its shell', async () => {
-    server.use(
-      http.get(HISTORY_URL, () =>
-        pagedResponse({
-          body: ActivityHistoryResponseMock.map((play) => ({
-            ...play,
-            watched_at: '2026-07-05T20:00:00.000Z',
-          })),
-        })),
-    );
+    servePaged({
+      url: HISTORY_URL,
+      body: ActivityHistoryResponseMock.map((play) => ({
+        ...play,
+        watched_at: '2026-07-05T20:00:00.000Z',
+      })),
+    });
     const { container } = renderComponent(DashboardPage, { props: {} });
 
     const last30Days = await screen.findByRole('region', {

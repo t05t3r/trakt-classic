@@ -1,5 +1,6 @@
 import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { LIST_PAGE_SIZE } from '$lib/utils/LIST_PAGE_SIZE.ts';
 import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
 import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/ExtendedUserSettingsMappedMock.ts';
 import { FAVORITES_PATH } from '$mocks/data/users/FAVORITES_PATH.ts';
@@ -10,6 +11,8 @@ import { USER_WATCHLIST_URL } from '$mocks/data/users/USER_WATCHLIST_URL.ts';
 import { WATCHLIST_PATH } from '$mocks/data/users/WATCHLIST_PATH.ts';
 import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { controlledBy } from '$test/beds/dom/controlledBy.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
@@ -21,12 +24,14 @@ import {
   pagedResponse,
   type PagedResponseParams,
 } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
+import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { http } from 'msw';
+import { http, type PathParams } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import BuiltInListPage from './BuiltInListPage.svelte';
 
@@ -34,15 +39,22 @@ const SLUG = ExtendedUserSettingsMappedMock.slug;
 
 const PATHS = { watchlist: WATCHLIST_PATH, favorites: FAVORITES_PATH } as const;
 
-type RenderPageParams = {
-  list?: keyof typeof PATHS;
-  search?: string;
-};
+type RenderPageParams =
+  & { list?: keyof typeof PATHS }
+  & (
+    | { search?: string; follows?: never }
+    // page.url then follows each replace the page makes.
+    | { search?: never; follows: true }
+  );
 
 async function renderPage(
-  { list = 'watchlist', search = '' }: RenderPageParams = {},
+  { list = 'watchlist', search = '', follows }: RenderPageParams = {},
 ) {
-  openAt(`${PATHS[list]}${search}`);
+  if (follows) {
+    followReplaces(PATHS[list]);
+  } else {
+    openAt(`${PATHS[list]}${search}`);
+  }
   const { container, userLoaded } = renderComponent(BuiltInListPage, {
     props: { list, slug: SLUG },
   });
@@ -52,11 +64,43 @@ async function renderPage(
 }
 
 function serveFavorites(params: PagedResponseParams) {
-  server.use(http.get(USER_FAVORITES_URL, () => pagedResponse(params)));
+  servePaged({ url: USER_FAVORITES_URL, ...params });
 }
 
 function serveWatchlist(params: PagedResponseParams) {
-  server.use(http.get(USER_WATCHLIST_URL, () => pagedResponse(params)));
+  servePaged({ url: USER_WATCHLIST_URL, ...params });
+}
+
+// A two-page watchlist whose page 2, for the reads `isHeld` picks by path, waits for release.
+function serveHeldSecondPage(
+  isHeld: (params: PathParams) => boolean,
+  itemCount = LIST_PAGE_SIZE + WatchedWatchlistResponseMock.length,
+) {
+  const secondPage = () =>
+    pagedResponse({
+      body: WatchedWatchlistResponseMock,
+      page: 2,
+      pageCount: 2,
+    });
+  const held = holdResponse(secondPage);
+  serveTwoPages({
+    url: USER_WATCHLIST_URL,
+    first: WatchlistPreviewResponseMock,
+    itemCount,
+    second: ({ params }) => isHeld(params) ? held.answer() : secondPage(),
+  });
+
+  return held;
+}
+
+// Two watched items over the two pages' count.
+const SHARE = /^1% Watched 2 \/ 122 items$/;
+
+type PickFromParams = { trigger: string; menu: string; row: string };
+
+async function pickFrom({ trigger, menu, row }: PickFromParams) {
+  await openMenuByClick(trigger, menu);
+  await pickMenuRadio(row);
 }
 
 const cells = (container: HTMLElement) =>
@@ -123,17 +167,13 @@ describe('section: BuiltInListPage', () => {
         USER_FAVORITES_URL,
         FavoritedMediaResponseMock,
       );
-      followReplaces(FAVORITES_PATH);
-      const { userLoaded } = renderComponent(BuiltInListPage, {
-        props: { list: 'favorites', slug: SLUG },
-      });
-      await userLoaded;
+      await renderPage({ list: 'favorites', follows: true });
 
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Genre: All Genres' }),
-      );
-      await screen.findByRole('menu', { name: 'Genre' });
-      await pickMenuRadio('Drama');
+      await pickFrom({
+        trigger: 'Genre: All Genres',
+        menu: 'Genre',
+        row: 'Drama',
+      });
 
       await waitFor(() =>
         expect(searches.map((search) => search.get('genres'))).toContain(
@@ -289,20 +329,16 @@ describe('section: BuiltInListPage', () => {
           });
         }),
       );
-      followReplaces(WATCHLIST_PATH);
-      const { userLoaded } = renderComponent(BuiltInListPage, {
-        props: { list: 'watchlist', slug: SLUG },
-      });
-      await userLoaded;
+      await renderPage({ follows: true });
       await waitFor(() =>
         expect(stat('Items')).toHaveTextContent(/^250 Items$/)
       );
 
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Genre: All Genres' }),
-      );
-      await screen.findByRole('menu', { name: 'Genre' });
-      await pickMenuRadio('Drama');
+      await pickFrom({
+        trigger: 'Genre: All Genres',
+        menu: 'Genre',
+        row: 'Drama',
+      });
       await genreCount.requested;
       await waitNegativeClaim();
 
@@ -312,15 +348,68 @@ describe('section: BuiltInListPage', () => {
       expect(genrePages).not.toContain('2');
     });
 
+    it("should keep the watched share after a sort pick while the new sort's later pages load", async () => {
+      const secondPage = serveHeldSecondPage(({ sort_by }) =>
+        sort_by === 'title'
+      );
+      await renderPage({ follows: true });
+      await waitFor(() => expect(stat('Watched')).toHaveTextContent(SHARE));
+
+      await pickFrom({
+        trigger: 'Sort by: Rank',
+        menu: 'Sort by',
+        row: 'Title',
+      });
+      await secondPage.requested;
+      await waitNegativeClaim();
+
+      expect(stat('Watched')).toHaveTextContent(SHARE);
+    });
+
+    it('should show no watched share after the item count changes while the new count is read', async () => {
+      serveHeldSecondPage(() => false);
+      await renderPage({ follows: true });
+      await waitFor(() => expect(stat('Watched')).toHaveTextContent(SHARE));
+
+      const secondPage = serveHeldSecondPage(
+        ({ sort_by }) => sort_by === 'title',
+        LIST_PAGE_SIZE + 1,
+      );
+      await pickFrom({
+        trigger: 'Sort by: Rank',
+        menu: 'Sort by',
+        row: 'Title',
+      });
+      await secondPage.requested;
+      await waitNegativeClaim();
+
+      expect(stat('Items')).toHaveTextContent(/^121 Items$/);
+      expect(stat('Watched')).not.toHaveTextContent(/%/);
+    });
+
+    it("should show no watched share after a type pick while the new type's later pages load", async () => {
+      const secondPage = serveHeldSecondPage(({ type }) => type === 'movies');
+      await renderPage({ follows: true });
+      await waitFor(() => expect(stat('Watched')).toHaveTextContent(SHARE));
+
+      await pickFrom({
+        trigger: 'Type: All Types',
+        menu: 'Type',
+        row: 'Movies',
+      });
+      await secondPage.requested;
+      await waitNegativeClaim();
+
+      expect(stat('Watched')).not.toHaveTextContent(/%/);
+    });
+
     it("should open the toolbar's options panel on the gear", async () => {
       await renderPage();
 
-      const gear = screen.getByRole('button', { name: 'List options' });
+      const gear = screen.getByRole('button', { name: 'Options' });
       await userEvent.click(gear);
 
-      const panel = assertDefined(
-        document.getElementById(gear.getAttribute('aria-controls') ?? ''),
-      );
+      const panel = assertDefined(controlledBy(gear));
       expect(panel).toHaveClass('is-open');
       expect(within(panel).getByRole('button', { name: 'Filters' }))
         .toBeInTheDocument();
@@ -329,17 +418,15 @@ describe('section: BuiltInListPage', () => {
     it('should close the options panel on a pick and return the focus to the gear', async () => {
       await renderPage();
 
-      const gear = screen.getByRole('button', { name: 'List options' });
+      const gear = screen.getByRole('button', { name: 'Options' });
       await userEvent.click(gear);
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Sort by: Rank' }),
-      );
-      await screen.findByRole('menu', { name: 'Sort by' });
-      await pickMenuRadio('Title');
+      await pickFrom({
+        trigger: 'Sort by: Rank',
+        menu: 'Sort by',
+        row: 'Title',
+      });
 
-      const panel = assertDefined(
-        document.getElementById(gear.getAttribute('aria-controls') ?? ''),
-      );
+      const panel = assertDefined(controlledBy(gear));
       await waitFor(() => expect(gear).toHaveFocus());
       expect(panel).not.toHaveClass('is-open');
     });

@@ -8,19 +8,20 @@
   import { useWatchlist } from '$lib/features/media-actions/stores/useWatchlist.ts';
   import { toPlayGate } from '$lib/features/media-actions/toPlayGate.ts';
   import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
-  import { isProgressComplete } from '$lib/utils/media/isProgressComplete.ts';
+  import { countText } from '$lib/utils/formatting/number/countText.ts';
+  import { toPercentage } from '$lib/utils/formatting/number/toPercentage.ts';
   import IconAlignLeft from '@tabler/icons-svelte/icons/align-left';
   import IconCheck from '@tabler/icons-svelte/icons/check';
-  import IconCircleMinus from '@tabler/icons-svelte/icons/circle-minus';
   import IconCirclePlus from '@tabler/icons-svelte/icons/circle-plus';
-  import IconPlayerTrackPrev from '@tabler/icons-svelte/icons/player-track-prev';
   import IconStar from '@tabler/icons-svelte/icons/star';
   import IconStarFilled from '@tabler/icons-svelte/icons/star-filled';
   import { toActionUnderInfo } from '../_internal/toActionUnderInfo.ts';
-  import DropMenu from './DropMenu.svelte';
+  import { toWatchProgress } from '../_internal/toWatchProgress.ts';
   import ListMenu from './ListMenu.svelte';
   import HistoryChoice from './_internal/HistoryChoice.svelte';
+  import MoreActionsMenu from './_internal/MoreActionsMenu.svelte';
   import type { ActionColumnProps } from './_internal/ActionColumnProps.ts';
+  import { canAddPlay } from './_internal/canAddPlay.ts';
   import { hasTargetAired } from './_internal/hasTargetAired.ts';
 
   const { target, progress, favorite = false }: ActionColumnProps = $props();
@@ -34,7 +35,7 @@
   const show = target.type === 'show'
     ? { id: target.id, title: target.title }
     : undefined;
-  const isDropped = show ? useDrop(show).isDropped : undefined;
+  const dropStore = show ? useDrop(show) : undefined;
   // svelte-ignore state_referenced_locally
   const favoriteStore = favorite &&
       (target.type === 'movie' || target.type === 'show')
@@ -42,14 +43,16 @@
     : undefined;
 
   const {
-    isWatched,
     isWatchedKnown,
     pendingWatched,
     plays,
     lastWatchedAt,
     hasPlay,
+    hasPlayHeld,
   } = watched;
   const isWatchUpdating = watched.isUpdating;
+  const isDropped = dropStore?.isDropped;
+  const isDropUpdating = dropStore?.isUpdating;
   const { isWatchlisted, listedAt } = watchlist;
   const isListUpdating = watchlist.isUpdating;
   const isFavorite = favoriteStore?.isFavorite;
@@ -61,51 +64,66 @@
     toPlayGate({ isSet: $isFavorite, hasPlay: $hasPlay }),
   );
 
-  const hasProgress = $derived(
-    target.type === 'show' || target.type === 'season',
-  );
-  const isProgressLoading = $derived(
-    hasProgress && progress?.kind === 'loading',
-  );
-  // A show or season follows its progress while that loads or is ready, else reads its history as a movie does.
-  const followsProgress = $derived(
-    isProgressLoading || (hasProgress && progress?.kind === 'ready'),
-  );
   const shownProgress = $derived(
     progress?.kind === 'ready' ? progress.data : undefined,
   );
+  const watchProgress = $derived(
+    shownProgress && toWatchProgress({ ...shownProgress, plays: $plays }),
+  );
 
-  // A pending write's value until it lands, then the progress.
-  const isProgressSelected = () =>
-    $pendingWatched ?? (shownProgress && isProgressComplete(shownProgress));
-
-  // A dropped show reads unwatched, but only once its progress is no longer loading.
+  // A write's value wins at once; progress above 0 proves a Play the history may not read yet.
   const isHistorySelected = $derived.by(() => {
-    if (isProgressLoading) return isProgressSelected();
-    if ($isDropped) return false;
+    if ($pendingWatched !== undefined) return $pendingWatched;
+    if (progress?.kind === 'loading') return undefined;
 
-    return followsProgress ? isProgressSelected() : $isWatched;
+    return shownProgress?.completed ? true : $hasPlayHeld;
   });
+
+  // A pending add's counts lag its fill, so it reads Watched with no under line until they arrive.
+  const areCountsShown = $derived(
+    isHistorySelected && $pendingWatched === undefined,
+  );
+  const shownWatchProgress = $derived(
+    areCountsShown ? watchProgress : undefined,
+  );
 
   // Only a show has a Drop, and Trakt takes one on a show with no plays but never lists it as dropped.
   const canDrop = $derived(
     show !== undefined && shownProgress !== undefined &&
-      shownProgress.completed > 0,
+      shownProgress.completed > 0 && isHistorySelected === true,
   );
 
-  const historyUnderInfo = $derived.by(() => {
-    if ($isDropped) return toActionUnderInfo({ kind: 'dropped' });
-    if (followsProgress) {
-      return shownProgress &&
-        toActionUnderInfo({ kind: 'episodes', ...shownProgress });
-    }
-    if (!$isWatched) return undefined;
+  // Unknown or saving, either row would act on a state the viewer cannot see yet.
+  const canDropRow = $derived(
+    canDrop && $isDropped === false && !$isDropUpdating,
+  );
+  const canRestoreRow = $derived($isDropped === true && !$isDropUpdating);
 
-    return toActionUnderInfo({
-      kind: 'plays',
-      count: $plays ?? 0,
-      lastWatchedAt: $lastWatchedAt,
-    });
+  const historyLabel = $derived.by(() => {
+    if (!isHistorySelected) return m.button_text_add_to_history();
+    if (shownWatchProgress) {
+      return m.text_watched_percent({
+        percent: toPercentage(shownWatchProgress.percent / 100),
+      });
+    }
+    if (areCountsShown && $plays) {
+      return countText.of({ count: $plays, unit: 'plays' });
+    }
+
+    return m.button_text_watched();
+  });
+
+  const historyUnderInfo = $derived.by(() => {
+    if (!areCountsShown) return undefined;
+    if ($isDropped) {
+      return toActionUnderInfo({
+        kind: 'dropped',
+        counts: shownWatchProgress?.counts,
+      });
+    }
+
+    return shownWatchProgress?.counts ??
+      toActionUnderInfo({ kind: 'played', at: $lastWatchedAt });
   });
 
   const toggleWatched = () =>
@@ -117,25 +135,15 @@
 </script>
 
 {#snippet historySide()}
-  <HistoryChoice onAdd={(at) => watched.add(at)} />
-  {#if show && ($isDropped || canDrop)}
-    <DropMenu {show}>
-      {#snippet trigger({ props })}
-        <ActionSideIcon
-          {...props}
-          icon={IconCircleMinus}
-          label={m.button_label_drop()}
-        />
-      {/snippet}
-      {#snippet restoreTrigger({ props })}
-        <ActionSideIcon
-          {...props}
-          icon={IconPlayerTrackPrev}
-          label={m.button_label_restore()}
-        />
-      {/snippet}
-    </DropMenu>
+  {#if canAddPlay(target)}
+    <HistoryChoice onAdd={(at) => watched.add(at)} />
   {/if}
+  <MoreActionsMenu
+    {target}
+    hasHistory={!!isHistorySelected}
+    onDrop={canDropRow ? dropStore?.drop : undefined}
+    onRestore={canRestoreRow ? dropStore?.restore : undefined}
+  />
 {/snippet}
 
 {#snippet watchlistSide()}
@@ -151,14 +159,13 @@
 {/snippet}
 
 <div class="trakt-action-column">
-  {#if isAired}
+  {#if isAired || $hasPlayHeld}
     <ActionButton
       color="watch"
       icon={IconCheck}
-      label={isHistorySelected
-      ? m.button_text_watched()
-      : m.button_text_add_to_history()}
+      label={historyLabel}
       underInfo={historyUnderInfo}
+      percent={shownWatchProgress?.percent}
       selected={isHistorySelected}
       isUpdating={$isWatchUpdating}
       isInert={!$isWatchedKnown || $isWatchUpdating}

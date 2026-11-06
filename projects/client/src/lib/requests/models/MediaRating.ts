@@ -1,3 +1,4 @@
+import { RATING_VALUES } from '$lib/features/media-actions/RATING_VALUES.ts';
 import { HttpsUrlSchema } from '$lib/requests/models/HttpsUrlSchema.ts';
 import { z } from 'zod';
 
@@ -15,7 +16,7 @@ export const MediaRatingSchema = z.object({
     rating: z.number(),
     votes: z.number(),
     distribution: z.record(
-      z.enum(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']),
+      z.enum(RATING_VALUES),
       z.number(),
     ),
   }).optional(),

@@ -8,6 +8,7 @@ import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { failOnce } from '$test/beds/request/failOnce.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
@@ -164,10 +165,7 @@ describe('component: EpisodesBlock', () => {
     openAt(SEASON_PATH);
     await renderBlock();
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Sort by: Number' }),
-    );
-    const menu = await screen.findByRole('menu', { name: 'Sort by' });
+    const menu = await openMenuByClick('Sort by: Number', 'Sort by');
 
     expect(
       within(menu).getAllByRole('menuitemradio').map((row) =>

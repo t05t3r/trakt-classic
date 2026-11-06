@@ -21,6 +21,7 @@
   // `ActionButton` sets the colours except the strip's own hover background.
   .trakt-action-side-icon {
     display: grid;
+    flex: 1;
     place-items: center;
     width: var(--action-button-side-width);
     padding: var(--ni-0);

@@ -4,6 +4,7 @@ import { useQuery } from '$lib/features/query/useQuery.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { recommendedMoviesQuery } from '$lib/requests/queries/recommendations/recommendedMoviesQuery.ts';
 import { recommendedShowsQuery } from '$lib/requests/queries/recommendations/recommendedShowsQuery.ts';
+import { waitForSuccess } from '$test/beds/query/waitForSuccess.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { HERETIC_HIDE_TARGET } from '$mocks/data/media-actions/HERETIC_HIDE_TARGET.ts';
 import { SILO_HIDE_TARGET } from '$mocks/data/media-actions/SILO_HIDE_TARGET.ts';
@@ -13,7 +14,7 @@ import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { screen, within } from '@testing-library/svelte';
 import { http, HttpResponse } from 'msw';
-import { filter, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { useHideRecommendation } from './useHideRecommendation.ts';
 
@@ -28,7 +29,7 @@ async function renderWithRecommendations() {
   const loaded = [store.shows, store.movies].map((query) => {
     const subscription = query.subscribe();
     onTestFinished(() => subscription.unsubscribe());
-    return firstValueFrom(query.pipe(filter(({ isSuccess }) => isSuccess)));
+    return waitForSuccess(query);
   });
   await Promise.all(loaded);
 

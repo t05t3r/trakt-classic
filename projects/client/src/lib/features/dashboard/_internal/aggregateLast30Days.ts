@@ -4,6 +4,7 @@ import type {
   Last30Days,
   PlayCount,
 } from '$lib/features/dashboard/models/Last30Days.ts';
+import { toPlayMinutes } from '$lib/features/history/toPlayMinutes.ts';
 import type { ActivityHistory } from '$lib/requests/queries/users/activityHistoryQuery.ts';
 import type { EpisodeActivityHistory } from '$lib/requests/queries/users/episodeActivityHistoryQuery.ts';
 import type { MovieActivityHistory } from '$lib/requests/queries/users/movieActivityHistoryQuery.ts';
@@ -20,22 +21,8 @@ type AggregateLast30DaysParams = {
 
 const SHOWN_GENRES = 10;
 
-// The mappers turn a missing runtime into NaN, which `??` does not catch.
-function runtimeOf(play: ActivityHistory): number {
-  if (play.type === 'movie') return play.movie.runtime;
-  if (Number.isNaN(play.episode.runtime)) return play.show.runtime;
-
-  return play.episode.runtime;
-}
-
-function minutesOf(play: ActivityHistory): number {
-  const runtime = runtimeOf(play);
-
-  return Number.isNaN(runtime) ? 0 : runtime;
-}
-
 function sumMinutes(plays: ReadonlyArray<ActivityHistory>): number {
-  return plays.reduce((total, play) => total + minutesOf(play), 0);
+  return plays.reduce((total, play) => total + toPlayMinutes(play), 0);
 }
 
 const isEpisodePlay = (play: ActivityHistory): play is EpisodeActivityHistory =>

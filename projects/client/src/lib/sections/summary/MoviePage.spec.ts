@@ -12,7 +12,7 @@ import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { commentPage } from '$test/beds/request/commentPage.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
-import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -140,11 +140,11 @@ describe('component: MoviePage', () => {
         `http://localhost/movies/${MATRIX_SLUG}/stats`,
         () => HttpResponse.json(MovieHereticStatsResponseMock),
       ),
-      http.get(
-        `http://localhost/movies/${MATRIX_SLUG}/comments/likes`,
-        () => pagedResponse({ body: commentPage({ page: 3 }) }),
-      ),
     );
+    servePaged({
+      url: `http://localhost/movies/${MATRIX_SLUG}/comments/likes`,
+      body: commentPage({ page: 3 }),
+    });
     serveTwoPages({
       url: `${HERETIC_COMMENTS_URL}/likes`,
       first: commentPage({ page: 1 }),

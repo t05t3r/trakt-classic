@@ -5,6 +5,7 @@ import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import type { createImageCache } from '../createImageCache.ts';
 import { isImagePath } from '../isImagePath.ts';
+import { isMediaRootPath } from '../isMediaRootPath.ts';
 
 type ImageCache = ReturnType<typeof createImageCache>;
 type CacheEntry = NonNullable<Awaited<ReturnType<ImageCache['hit']>>>;
@@ -32,8 +33,7 @@ function statusClass(status: number): string {
 }
 
 function etagFor(path: string): string {
-  const filename = path.split('/').at(-1) ?? '';
-  return `"${filename.split('.').at(0) ?? ''}"`;
+  return `"${path}"`;
 }
 
 function emptyResponse(
@@ -71,10 +71,16 @@ type MissParams = {
 
 type OriginParams = MissParams & { signal: AbortSignal };
 
-function fetchFromOrigin(
+// async, so a malformed imageOrigin rejects into the caller's catch instead of throwing past it.
+async function fetchFromOrigin(
   { path, imageOrigin, userAgent, signal }: Omit<OriginParams, 'cache'>,
 ): Promise<Response> {
-  return fetch(`${imageOrigin}/${path}`, {
+  // Avatars and root art sit at the origin's root, outside the image origin's path.
+  const base = isMediaRootPath(path)
+    ? new URL(imageOrigin).origin
+    : imageOrigin;
+
+  return fetch(`${base}/${path}`, {
     signal,
     redirect: 'follow',
     headers: { accept: 'image/webp,image/*', 'user-agent': userAgent },

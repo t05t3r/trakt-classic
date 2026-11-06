@@ -17,6 +17,19 @@ describe('mapToImage', () => {
     });
   });
 
+  it('should map movie art at the media host into every display size', () => {
+    const result = mapToImage({
+      candidate: 'media.trakt.tv/movies/12808/medium/poster.webp',
+      placeholder: PLACEHOLDERS.poster,
+    });
+
+    expect(result).toEqual({
+      medium: '/img/movies/12808/medium/poster.webp',
+      thumb: '/img/movies/12808/thumb/poster.webp',
+      full: '/img/movies/12808/full/poster.webp',
+    });
+  });
+
   it('should fall back to the placeholder in every size for a non-Trakt candidate', () => {
     const result = mapToImage({
       candidate: 'image.tmdb.org/t/p/original/lzCB9YN6MjGosh8v27o6omhSmjL.jpg',

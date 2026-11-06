@@ -1,3 +1,4 @@
+import { cardLines } from '$test/beds/media-card/cardLines.ts';
 import { cardActions } from '$test/beds/media/cardActions.ts';
 import { controlViewport } from '$test/beds/viewport/controlViewport.ts';
 import { render, screen, within } from '@testing-library/svelte';
@@ -46,7 +47,7 @@ function renderCard(props: Partial<PosterCardProps> = {}) {
     },
   });
 
-  const root = container.querySelector('.trakt-poster-card');
+  const root = container.querySelector<HTMLElement>('.trakt-poster-card');
   if (!root) throw new Error('PosterCard rendered no root');
 
   return { root, posterLink: root.querySelector('a.poster') };
@@ -241,13 +242,13 @@ describe('component: PosterCard', () => {
       });
 
       expect(root.querySelectorAll('.card-subtitle')).toHaveLength(2);
-      expect(screen.queryAllByRole('heading', { level: 4 })).toEqual([]);
+      expect(cardLines(root)).toEqual([]);
     });
 
     it('should draw no show line on a movie or show card', () => {
-      renderCard({ showHref: '/shows/silo' });
+      const { root } = renderCard({ showHref: '/shows/silo' });
 
-      expect(screen.queryAllByRole('heading', { level: 4 })).toEqual([]);
+      expect(cardLines(root)).toEqual([]);
     });
 
     it('should leave the second line empty and take no subtitle beside a show link', () => {
@@ -257,6 +258,8 @@ describe('component: PosterCard', () => {
       expectTypeOf<Base & Show & { lines: readonly [Snippet, undefined] }>()
         .toExtend<PosterCardProps>();
       expectTypeOf<Base & Show & { lines: readonly [undefined, Snippet] }>()
+        .not.toExtend<PosterCardProps>();
+      expectTypeOf<Base & Show & { lines: readonly [Snippet] }>()
         .not.toExtend<PosterCardProps>();
       expectTypeOf<Base & Show & { subtitle: Snippet }>().not
         .toExtend<PosterCardProps>();
@@ -303,9 +306,9 @@ describe('component: PosterCard', () => {
     });
 
     it('should render no subtitle row by default', () => {
-      renderCard();
+      const { root } = renderCard();
 
-      expect(screen.queryAllByRole('heading', { level: 4 })).toEqual([]);
+      expect(cardLines(root)).toEqual([]);
     });
 
     it('should render both lines, a filled one as a heading and a missing one as a no-break space', () => {
@@ -325,13 +328,9 @@ describe('component: PosterCard', () => {
     });
 
     it('should not make a missing line a heading', () => {
-      renderCard({ lines: [subtitle, undefined] });
+      const { root } = renderCard({ lines: [subtitle, undefined] });
 
-      expect(
-        screen.getAllByRole('heading', { level: 4 }).map((heading) =>
-          heading.textContent
-        ),
-      ).toEqual(['Silo']);
+      expect(cardLines(root)).toEqual(['Silo']);
     });
 
     it('should hide a missing line from assistive tech and keep a filled one', () => {
@@ -351,7 +350,21 @@ describe('component: PosterCard', () => {
           (line) => [line.tagName, line.textContent],
         ),
       ).toEqual([['DIV', '\u00a0'], ['DIV', '\u00a0']]);
-      expect(screen.queryAllByRole('heading', { level: 4 })).toEqual([]);
+      expect(cardLines(root)).toEqual([]);
+    });
+
+    it.each([
+      { name: 'filled', line: subtitle, shown: [['H4', 'Silo']] },
+      { name: 'missing', line: undefined, shown: [['DIV', '\u00a0']] },
+    ])('should render one line for one slot, $name', ({ line, shown }) => {
+      const { root } = renderCard({ lines: [line] });
+
+      expect(
+        Array.from(
+          root.querySelectorAll('.card-subtitle'),
+          (element) => [element.tagName, element.textContent],
+        ),
+      ).toEqual(shown);
     });
 
     it('should not wrap a line in a link of its own', () => {
@@ -364,12 +377,14 @@ describe('component: PosterCard', () => {
       expect(filled.closest('a')).toBeNull();
     });
 
-    it('should take a subtitle or two lines, never both', () => {
+    it('should take a subtitle or one or two lines, never both', () => {
       type Base = Pick<PosterCardProps, 'media' | 'href' | 'image'>;
       type Lines = readonly [Snippet | undefined, Snippet | undefined];
 
       expectTypeOf<Base & { subtitle: Snippet }>().toExtend<PosterCardProps>();
       expectTypeOf<Base & { lines: Lines }>().toExtend<PosterCardProps>();
+      expectTypeOf<Base & { lines: readonly [Snippet | undefined] }>()
+        .toExtend<PosterCardProps>();
       expectTypeOf<Base & { subtitle: Snippet; lines: Lines }>().not
         .toExtend<PosterCardProps>();
     });

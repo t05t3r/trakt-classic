@@ -12,6 +12,7 @@ import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { movieListItem } from '$test/beds/request/movieListItem.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
 import { useWaitForUnobserved } from '$test/beds/query/useWaitForUnobserved.ts';
@@ -32,9 +33,7 @@ const QUERY_KEY = userListItemIdsQuery({ userId: 'me', listId: LIST_ID })
   .queryKey;
 
 function serveOnePage(ids: ReadonlyArray<number>) {
-  server.use(
-    http.get(ITEMS_URL, () => pagedResponse({ body: ids.map(movieListItem) })),
-  );
+  servePaged({ url: ITEMS_URL, body: ids.map(movieListItem) });
 }
 
 // The second page waits for the spec, so a read can be taken while it loads.

@@ -15,6 +15,7 @@ import '$test/mocks/variables.mock.ts';
 import { useToasts } from '$lib/features/action-toast/stores/useToasts.ts';
 import { resetHiddenRecommendations } from '$lib/features/media-actions/resetHiddenRecommendations.ts';
 import { resetPendingOverrides } from '$lib/features/media-actions/resetPendingOverrides.ts';
+import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { server } from '$mocks/server.ts';
 import { bodyUnlocked } from '$test/beds/scroll-lock/bodyUnlocked.ts';
 import { act, cleanup } from '@testing-library/svelte';
@@ -48,6 +49,11 @@ afterEach(() => resetPendingOverrides());
 afterEach(() => resetHiddenRecommendations());
 // An observer a test never disconnects would take a later test's resize.
 afterEach(() => RESIZE_OBSERVERS.clear());
+// A stored preference or invalidation marker would carry into the next test.
+afterEach(() => {
+  if (typeof window === 'undefined') return;
+  safeLocalStorage.clear();
+});
 afterEach(async () => {
   if (typeof window === 'undefined') return;
   await act();

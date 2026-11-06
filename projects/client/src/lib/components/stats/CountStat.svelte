@@ -7,10 +7,16 @@
     label,
     size,
     underCount,
+    wideLabel = false,
   }: CountStatProps = $props();
 </script>
 
-<span class="trakt-count-stat" title={label} data-size={size}>
+<span
+  class="trakt-count-stat"
+  title={label}
+  data-size={size}
+  data-label={wideLabel ? 'wide' : undefined}
+>
   <Glyph class="count-stat-glyph" aria-hidden="true" />
   <span class="count-stat-value">
     {#if typeof value === 'string'}
@@ -50,7 +56,7 @@
       height: var(--icon-size-count-stat-lg);
     }
 
-    .count-stat-label {
+    &:not([data-label='wide']) .count-stat-label {
       @include visually-hidden;
     }
 
@@ -70,6 +76,12 @@
       &:hover .count-stat-under-count {
         opacity: 1;
         pointer-events: auto;
+      }
+    }
+
+    @include for-tablet-sm-and-below {
+      .count-stat-label {
+        @include visually-hidden;
       }
     }
   }

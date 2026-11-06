@@ -2,7 +2,6 @@
   import { page } from '$app/state';
   import EmptyState from '$lib/components/feedback/EmptyState.svelte';
   import SectionError from '$lib/components/feedback/SectionError.svelte';
-  import PosterGrid from '$lib/components/media/PosterGrid.svelte';
   import {
     openMenuIn,
     watchMenusIn,
@@ -13,33 +12,40 @@
   import ListDescription from '$lib/sections/subnav/ListDescription.svelte';
   import ListTitleBar from '$lib/sections/subnav/ListTitleBar.svelte';
   import { GlobalEventBus } from '$lib/utils/events/GlobalEventBus.ts';
+  import { FIRST_PAGE } from '$lib/utils/FIRST_PAGE.ts';
   import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
   import { firstFocusable } from '$lib/utils/focus/firstFocusable.ts';
   import { tick } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
-  import type { ListItemsSectionProps } from './ListItemsSectionProps.ts';
+  import type {
+    ListItemsSectionProps,
+    ToolbarControls,
+  } from './ListItemsSectionProps.ts';
+
+  const LOADING = { kind: 'loading' } as const;
 
   const {
-    status,
-    key,
-    item,
-    pages,
-    title,
-    href,
-    description,
+    reading,
+    heading,
     emptyText,
+    grid,
     toolbar,
   }: ListItemsSectionProps<T> = $props();
 
   const id = $props.id();
   const titleId = `${id}-title`;
   const panelId = `${id}-panel`;
+  const gearId = `${id}-gear`;
 
   let open = $state(false);
   let root: HTMLElement | undefined = $state();
-  let gear: HTMLButtonElement | undefined = $state();
   let body: HTMLElement | undefined = $state();
 
+  const status = $derived(reading?.status ?? LOADING);
+  const pages = $derived({
+    current: reading?.pages.current ?? FIRST_PAGE,
+    total: reading?.pages.total ?? 1,
+  });
   const isLoading = $derived(status.kind === 'loading');
   const isPaged = $derived(pages.total > 1);
 
@@ -60,8 +66,16 @@
     open = false;
 
     await tick();
-    gear?.focus();
+    document.getElementById(gearId)?.focus();
   };
+
+  // Without a title bar, the toolbar holds the gear and the spinner.
+  const controls: ToolbarControls = $derived({
+    open,
+    panelId,
+    close,
+    ...(!heading && { untitled: { gearId, toggle, loading: isLoading } }),
+  });
 
   const CELL = '.trakt-poster-grid > li';
 
@@ -156,18 +170,20 @@
   bind:this={root}
   {@attach open && closeOnEscape}
 >
-  {@render toolbar({ open, panelId, close })}
-  <ListTitleBar
-    {title}
-    {href}
-    {titleId}
-    loading={isLoading}
-    {open}
-    {panelId}
-    ontoggle={toggle}
-    bind:gear
-  />
-  <ListDescription text={description} />
+  {@render toolbar(controls)}
+  {#if heading}
+    <ListTitleBar
+      title={heading.title}
+      href={heading.href}
+      {titleId}
+      loading={isLoading}
+      {open}
+      {panelId}
+      {gearId}
+      ontoggle={toggle}
+    />
+    <ListDescription text={heading.description} />
+  {/if}
   <ContainerPage>
     <div class="list-items-body" aria-busy={isLoading} bind:this={body}>
       {#if status.kind === 'empty'}
@@ -182,13 +198,13 @@
           <SectionError
             retry={status.retry}
             fallback={body}
-            describedBy={titleId}
+            describedBy={heading ? titleId : undefined}
           />
         </div>
       {:else if status.kind === 'ready'}
         {@render pagination('top', m.label_pagination_navigation_top())}
         <div class="list-items-grid" {@attach trackGrid}>
-          <PosterGrid items={status.data} {key} {item} />
+          {@render grid(status.data)}
         </div>
         {@render pagination('bottom', m.label_pagination_navigation_bottom())}
       {/if}
@@ -198,6 +214,10 @@
 
 <style lang="scss">
   .trakt-list-items-section {
+    // A flow root keeps its children's margins on the section's surface.
+    display: flow-root;
+    background: var(--color-surface);
+
     // It takes focus only as a retry's fallback, and a ring would outline the whole grid.
     .list-items-body:focus {
       outline: none;
@@ -208,6 +228,8 @@
     }
 
     .list-items-pagination {
+      padding-block-end: var(--ni-6);
+
       &[data-position='top'] {
         margin-block-start: var(--ni-20);
       }

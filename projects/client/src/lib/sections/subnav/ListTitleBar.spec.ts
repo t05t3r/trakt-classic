@@ -6,6 +6,7 @@ import ListTitleBar from './ListTitleBar.svelte';
 import type { ListTitleBarProps } from './ListTitleBarProps.ts';
 
 const PANEL_ID = 'list-panel';
+const GEAR_ID = 'list-gear';
 
 function renderBar(overrides: Partial<ListTitleBarProps> = {}) {
   const ontoggle = vi.fn();
@@ -17,6 +18,7 @@ function renderBar(overrides: Partial<ListTitleBarProps> = {}) {
       loading: false,
       open: false,
       panelId: PANEL_ID,
+      gearId: GEAR_ID,
       ontoggle,
       ...overrides,
     },
@@ -24,7 +26,7 @@ function renderBar(overrides: Partial<ListTitleBarProps> = {}) {
 
   return {
     ontoggle,
-    gear: screen.getByRole('button', { name: 'List options' }),
+    gear: screen.getByRole('button', { name: 'Options' }),
   };
 }
 
@@ -55,29 +57,11 @@ describe('component: ListTitleBar', () => {
     expect(heading.querySelector('.trakt-pending-spinner')).toBeNull();
   });
 
-  it.each([
-    [false, 'false'],
-    [true, 'true'],
-  ])(
-    'should mark the gear expanded %s, controlling the panel',
-    (open, expanded) => {
-      const { gear } = renderBar({ open });
-
-      expect(gear).toHaveAttribute('aria-expanded', expanded);
-      expect(gear).toHaveAttribute('aria-controls', PANEL_ID);
-    },
-  );
-
-  it('should hold the gear outside the title', () => {
-    renderBar();
+  it('should hold the gear outside the title, toggling the panel when pressed', async () => {
+    const { ontoggle, gear } = renderBar();
 
     const heading = screen.getByRole('heading', { level: 2 });
     expect(within(heading).queryByRole('button')).toBeNull();
-  });
-
-  it('should toggle the panel when the gear is pressed', async () => {
-    const { ontoggle, gear } = renderBar();
-
     await userEvent.click(gear);
 
     expect(ontoggle).toHaveBeenCalledOnce();

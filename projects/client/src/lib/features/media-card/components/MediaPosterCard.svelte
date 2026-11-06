@@ -12,9 +12,13 @@
     card,
     poster,
     posterTitle,
+    fanart,
     droppedAt,
     rank,
     favorite,
+    historyId,
+    playedAt,
+    hasPlay,
     badges,
     progress,
     ...subtitles
@@ -43,16 +47,32 @@
   {...subtitles}
 >
   {#snippet image()}
-    <LazyImage
-      src={poster.url.thumb}
-      alt={m.image_alt_media_poster({ title: posterTitle })}
-      kind="poster"
-    />
+    {#if fanart}
+      <LazyImage src={fanart.src} alt={fanart.alt} kind="fanart" />
+    {:else}
+      <LazyImage
+        src={poster.url.thumb}
+        alt={m.image_alt_media_poster({ title: posterTitle })}
+        kind="poster"
+      />
+    {/if}
   {/snippet}
   {#snippet actions()}
-    <QuickActions target={card.target} size="smaller" {favorite}>
-      {#snippet metadata()}
-        <CardCommunityRating rating={card.rating} variant="smaller" />
+    <QuickActions
+      target={card.target}
+      size="smaller"
+      {favorite}
+      {historyId}
+      {playedAt}
+      {hasPlay}
+    >
+      {#snippet metadata(hasPlayRead)}
+        <CardCommunityRating
+          rating={card.rating}
+          target={card.target}
+          hasPlay={hasPlayRead}
+          variant="smaller"
+        />
       {/snippet}
     </QuickActions>
   {/snippet}

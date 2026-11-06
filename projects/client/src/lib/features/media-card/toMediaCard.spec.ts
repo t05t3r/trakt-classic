@@ -30,7 +30,44 @@ function episodePlayed({ airDate = AIRED, playedAt }: PlayParams) {
   };
 }
 
+// The fixture's show, aired on `airDate` and released on RELEASED.
+function showPlayed({ airDate = AIRED, playedAt }: PlayParams) {
+  return {
+    type: 'show' as const,
+    show: {
+      ...itemOfType('show').entry,
+      airDate,
+      effectiveReleaseDate: RELEASED,
+    },
+    playedAt,
+  };
+}
+
 describe('toMediaCard', () => {
+  describe('runtime', () => {
+    it("should carry a movie's runtime on its Target", () => {
+      const { movie } = moviePlayed({});
+
+      expect(
+        toMediaCard({ type: 'movie', movie: { ...movie, runtime: 159 } }).target
+          .runtime,
+      ).toBe(159);
+    });
+
+    it("should carry an episode's runtime, else its show's, on its Target", () => {
+      const { show, episode } = episodePlayed({});
+      const cardOf = (runtime: number) =>
+        toMediaCard({
+          type: 'episode',
+          show: { ...show, runtime: 45 },
+          episode: { ...episode, runtime },
+        });
+
+      expect(cardOf(53).target.runtime).toBe(53);
+      expect(cardOf(NaN).target.runtime).toBe(45);
+    });
+  });
+
   it("should type a card's Target by its kind", () => {
     expectTypeOf(toMediaCard(moviePlayed({})).target)
       .toEqualTypeOf<Extract<QuickActionsTarget, { type: 'movie' }>>();
@@ -54,6 +91,7 @@ describe('toMediaCard', () => {
         id: 259852,
         title: 'The Batman',
         airDate: new Date('2022-03-04T00:00:00.000Z'),
+        runtime: 177,
       },
       rating: {
         value: 0.7999,
@@ -142,6 +180,7 @@ describe('toMediaCard', () => {
         number: 1,
         show: { id: 154574, title: 'House of the Dragon' },
         airDate: new Date('2022-08-22T01:00:00.000Z'),
+        runtime: 66,
       },
       rating: {
         value: 0.7969,
@@ -154,6 +193,7 @@ describe('toMediaCard', () => {
     it.each([
       { play: 'a movie', input: moviePlayed },
       { play: 'an episode', input: episodePlayed },
+      { play: 'a show', input: showPlayed },
     ])(
       'should date $play by its play when the play comes before the air date, leaving the rating date',
       ({ input }) => {
@@ -169,6 +209,7 @@ describe('toMediaCard', () => {
     it.each([
       { play: 'a movie', input: moviePlayed },
       { play: 'an episode', input: episodePlayed },
+      { play: 'a show', input: showPlayed },
     ])(
       'should keep the air date of $play when the play comes after it',
       ({ input }) => {
@@ -181,16 +222,20 @@ describe('toMediaCard', () => {
       },
     );
 
-    it('should date an episode with an invalid air date by its play', () => {
-      const playedAt = new Date('2025-01-31T23:12:41.000Z');
+    it.each([
+      { play: 'an episode', input: episodePlayed },
+      { play: 'a show', input: showPlayed },
+    ])(
+      'should date $play with an invalid air date by its play',
+      ({ input }) => {
+        const playedAt = new Date('2025-01-31T23:12:41.000Z');
 
-      const card = toMediaCard(
-        episodePlayed({ airDate: INVALID_DATE, playedAt }),
-      );
+        const card = toMediaCard(input({ airDate: INVALID_DATE, playedAt }));
 
-      expect(card.target.airDate).toEqual(playedAt);
-      expect(card.rating.earliestReleaseDate).toEqual(RELEASED);
-    });
+        expect(card.target.airDate).toEqual(playedAt);
+        expect(card.rating.earliestReleaseDate).toEqual(RELEASED);
+      },
+    );
 
     it.each([
       { airDate: AIRED, when: 'valid' },
@@ -210,17 +255,7 @@ describe('toMediaCard', () => {
   it.each([
     { kind: 'a movie', input: moviePlayed({}) },
     { kind: 'an episode', input: episodePlayed({}) },
-    {
-      kind: 'a show',
-      input: {
-        type: 'show' as const,
-        show: {
-          ...itemOfType('show').entry,
-          airDate: AIRED,
-          effectiveReleaseDate: RELEASED,
-        },
-      },
-    },
+    { kind: 'a show', input: showPlayed({}) },
   ])(
     "should rate $kind from its effective release date, leaving the Target's air date",
     ({ input }) => {

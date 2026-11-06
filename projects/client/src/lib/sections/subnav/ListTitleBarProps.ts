@@ -7,6 +7,6 @@ export type ListTitleBarProps = {
   loading: boolean;
   open: boolean;
   panelId: string;
+  gearId: string;
   ontoggle: () => void;
-  gear?: HTMLButtonElement;
 };

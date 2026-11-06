@@ -79,6 +79,27 @@ describe('component: DropdownButton', () => {
   );
 
   it.each([
+    { selectedTint: undefined, expected: 'selected' },
+    { selectedTint: 'selected' as const, expected: 'selected' },
+    { selectedTint: 'accent' as const, expected: 'accent' },
+  ])(
+    'should mark tint $selectedTint as $expected',
+    ({ selectedTint, expected }) => {
+      render(DropdownButton, {
+        props: {
+          label: 'Filters',
+          selected: true,
+          selectedTint,
+          children: glyphSnippet,
+        },
+      });
+
+      expect(button('Filters'))
+        .toHaveAttribute('data-selected-tint', expected);
+    },
+  );
+
+  it.each([
     { variant: undefined, expected: 'default' },
     { variant: 'icon' as const, expected: 'icon' },
   ])('should take the $expected look', ({ variant, expected }) => {

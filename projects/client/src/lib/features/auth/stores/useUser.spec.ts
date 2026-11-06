@@ -1,11 +1,10 @@
-import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
 import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
 import { SILO_SEASON } from '$mocks/data/media-actions/SILO_SEASON.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
+import { DROPPED_AT } from '$mocks/data/users/DROPPED_AT.ts';
 import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
-import { DroppedShowsResponseMock } from '$mocks/data/users/response/DroppedShowsResponseMock.ts';
 import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/ExtendedUserSettingsMappedMock.ts';
 import { server } from '$mocks/server.ts';
 import { listedAtOf } from '$test/beds/media-actions/listedAtOf.ts';
@@ -17,10 +16,6 @@ import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { useUser } from './useUser.ts';
-
-const DROPPED_AT = new Date(
-  assertDefined(DroppedShowsResponseMock.at(0)?.hidden_at),
-);
 
 const SILO_EPISODE_1_ID = 5165667;
 const LISTED_AT = '2024-01-01T12:00:00.000Z';

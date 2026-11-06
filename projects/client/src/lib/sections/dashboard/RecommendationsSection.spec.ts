@@ -4,7 +4,6 @@ import type {
   RecommendationsMovieResponse,
   RecommendationsShowResponse,
 } from '$lib/requests/models/RecommendationsResponse.ts';
-import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { MovieHereticResponseMock } from '$mocks/data/summary/movies/heretic/response/MovieHereticResponseMock.ts';
 import { ShowSiloResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloResponseMock.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
@@ -12,6 +11,7 @@ import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { RECOMMENDED_SHOWS_URL } from '$mocks/data/recommendations/RECOMMENDED_SHOWS_URL.ts';
 import { RECOMMENDED_MOVIES_URL } from '$mocks/data/recommendations/RECOMMENDED_MOVIES_URL.ts';
 import { server } from '$mocks/server.ts';
+import { settledButton } from '$test/beds/buttons/settledButton.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
@@ -22,7 +22,7 @@ import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import RecommendationsSection from './RecommendationsSection.svelte';
 
 const setLayout = fakeLayouts({
@@ -159,8 +159,6 @@ describe('section: RecommendationsSection', () => {
     // "less" scrolls its controls into view, which jsdom cannot do.
     stubScrollIntoView();
   });
-
-  afterEach(() => safeLocalStorage.clear());
 
   it('should render the show and the movie column from their queries', async () => {
     const { shows, movies } = await renderRegions();
@@ -338,11 +336,9 @@ describe('section: RecommendationsSection', () => {
       const { shows: showsRegion, movies: moviesRegion } =
         await renderRegions();
       await readyCells(moviesRegion, 4);
-      const watch = await within(moviesRegion).findByRole('button', {
-        name: 'Mark "Movie 1" as watched',
-      });
-      await waitFor(() =>
-        expect(watch).toHaveAttribute('aria-disabled', 'false')
+      const watch = await settledButton(
+        'Mark "Movie 1" as watched',
+        moviesRegion,
       );
       await userEvent.click(watch);
       await refetch.requested;
@@ -370,11 +366,9 @@ describe('section: RecommendationsSection', () => {
       const { shows: showsRegion, movies: moviesRegion } =
         await renderRegions();
       await readyCells(moviesRegion, 4);
-      const watch = await within(moviesRegion).findByRole('button', {
-        name: 'Mark "Movie 1" as watched',
-      });
-      await waitFor(() =>
-        expect(watch).toHaveAttribute('aria-disabled', 'false')
+      const watch = await settledButton(
+        'Mark "Movie 1" as watched',
+        moviesRegion,
       );
       await userEvent.click(watch);
       await refetch.requested;
@@ -513,11 +507,9 @@ describe('section: RecommendationsSection', () => {
         });
         const { movies: moviesRegion } = await renderRegions();
         await readyCells(moviesRegion, 4);
-        const watch = await within(moviesRegion).findByRole('button', {
-          name: 'Mark "Movie 1" as watched',
-        });
-        await waitFor(() =>
-          expect(watch).toHaveAttribute('aria-disabled', 'false')
+        const watch = await settledButton(
+          'Mark "Movie 1" as watched',
+          moviesRegion,
         );
         await userEvent.click(watch);
         await refetch.requested;

@@ -116,7 +116,7 @@ describe('CommentCard', () => {
 
       expect(avatarImage(container)).toHaveAttribute(
         'src',
-        '/img/users/000/000/001/avatars/medium/user-1.jpg',
+        '/img/users/1/avatar.webp?v=1754435517',
       );
     });
 

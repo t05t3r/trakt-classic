@@ -34,5 +34,13 @@ export function mapToConfirmation(params: ConfirmationParams): Confirmation {
         buttonText: m.button_text_restore_confirm(),
         cancelText: m.button_text_no(),
       };
+    case ConfirmationType.RemovePlay:
+      return {
+        title: m.confirmation_title_remove_from_watched(),
+        message: params.title,
+        buttonText: m.button_text_only_this_play(),
+        alternateText: m.button_text_all_plays(),
+        cancelText: m.button_text_no(),
+      };
   }
 }

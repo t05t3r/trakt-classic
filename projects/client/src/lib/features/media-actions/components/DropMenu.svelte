@@ -5,6 +5,7 @@
   import * as m from '$lib/features/i18n/messages.ts';
   import { useDrop } from '$lib/features/media-actions/stores/useDrop.ts';
   import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
+  import { createPressHold } from '$lib/utils/focus/createPressHold.ts';
   import IconCircleMinus from '@tabler/icons-svelte/icons/circle-minus';
   import IconPlayerTrackPrev from '@tabler/icons-svelte/icons/player-track-prev';
   import { createAttachmentKey, type Attachment } from 'svelte/attachments';
@@ -12,27 +13,21 @@
 
   const HOLD_FOCUS = createAttachmentKey();
 
-  const {
-    show,
-    trigger: dropTrigger = dropButton,
-    restoreTrigger = restoreButton,
-  }: DropMenuProps = $props();
+  const { show }: DropMenuProps = $props();
   // A new show needs a new menu, so this store serves the menu's whole life.
   // svelte-ignore state_referenced_locally
   const { isDropped, isUpdating, drop, restore } = useDrop(show);
 
   const retention = createFocusRetention();
+  const pressHold = createPressHold();
   let control: HTMLElement | undefined;
-  let pressedControl: HTMLElement | undefined;
 
   // A press swaps Drop and Restore, and a write that fails or is ignored swaps them back,
   // so the control that comes in takes the focus of the one that left.
   const holdFocusAcrossSwap: Attachment<HTMLElement> = (element) => {
     control = element;
-    if (pressedControl && pressedControl !== element) {
-      retention.remember(pressedControl);
-      pressedControl = undefined;
-    }
+    const pressedControl = pressHold.take(element);
+    if (pressedControl) retention.remember(pressedControl);
     const untrack = retention.track(element);
     retention.settle(element);
 
@@ -47,15 +42,9 @@
     [HOLD_FOCUS]: holdFocusAcrossSwap,
   });
 
-  // Held from the press, since the menu or the confirm takes the focus first;
-  // an action that ends with no swap lets it go, so a later swap leaves focus alone.
-  const pressed = (action: () => Promise<unknown>) => () => {
-    const press = control;
-    pressedControl = press;
-    void action().finally(() => {
-      if (pressedControl === press) pressedControl = undefined;
-    });
-  };
+  // An action that ends with no swap lets go, so a later swap leaves focus alone.
+  const pressed = (action: () => Promise<unknown>) => () =>
+    pressHold.press(control, action);
 
   // Unknown or saving, a press would act on a state the viewer cannot see yet.
   const isInert = $derived($isDropped === undefined || $isUpdating);
@@ -106,11 +95,11 @@
 {/snippet}
 
 {#if $isDropped}
-  {@render restoreTrigger({ props: restoreProps })}
+  {@render restoreButton({ props: restoreProps })}
 {:else}
   <Menu label={m.label_drop_show_at()} {isInert}>
     {#snippet trigger({ props })}
-      {@render dropTrigger({ props: withFocusHold(props) })}
+      {@render dropButton({ props: withFocusHold(props) })}
     {/snippet}
 
     <MenuItem onSelect={pressed(drop)}>

@@ -1,12 +1,13 @@
 import { goto } from '$app/navigation';
 import { LIST_TYPES } from '$lib/features/lists/LIST_TYPES.ts';
-import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
 import { useListParams } from '$lib/features/lists/stores/useListParams.ts';
 import { FAVORITES_PATH } from '$mocks/data/users/FAVORITES_PATH.ts';
 import { WATCHLIST_PATH } from '$mocks/data/users/WATCHLIST_PATH.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { toolbarControls } from '$test/beds/lists/toolbarControls.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
@@ -22,7 +23,7 @@ type ToolbarValues = Partial<
   Omit<ListStatsToolbarProps<WatchlistType>, 'params'>
 >;
 
-const PANEL_ID = 'list-options';
+const { panelId: PANEL_ID } = toolbarControls();
 
 type ToolbarScreen = {
   path?: string;
@@ -44,9 +45,7 @@ async function renderToolbar(
   return render(ListStatsToolbar<WatchlistType>, {
     props: {
       params,
-      isPanelOpen: false,
-      panelId: PANEL_ID,
-      onChoose: NOOP_FN,
+      controls: toolbarControls(),
       ...props,
     },
   });
@@ -54,11 +53,6 @@ async function renderToolbar(
 
 const button = (name: string) => screen.getByRole('button', { name });
 const stat = (label: string) => screen.getByTitle(label);
-
-async function openMenu(trigger: string, menu: string) {
-  await userEvent.click(button(trigger));
-  return screen.findByRole('menu', { name: menu });
-}
 
 function rowsOf(menu: HTMLElement) {
   return within(menu).getAllByRole('menuitemradio');
@@ -76,7 +70,7 @@ describe('section: ListStatsToolbar', () => {
     it("should list All Types and the screen's types, All checked", async () => {
       await renderToolbar();
 
-      const rows = rowsOf(await openMenu('Type: All Types', 'Type'));
+      const rows = rowsOf(await openMenuByClick('Type: All Types', 'Type'));
 
       expect(labelsOf(rows))
         .toEqual(['All Types', 'Movies', 'Shows', 'Seasons', 'Episodes']);
@@ -89,7 +83,7 @@ describe('section: ListStatsToolbar', () => {
         types: LIST_TYPES.favorites,
       });
 
-      const rows = rowsOf(await openMenu('Type: All Types', 'Type'));
+      const rows = rowsOf(await openMenuByClick('Type: All Types', 'Type'));
 
       expect(labelsOf(rows)).toEqual(['All Types', 'Movies', 'Shows']);
     });
@@ -102,7 +96,7 @@ describe('section: ListStatsToolbar', () => {
 
     it('should write a picked type', async () => {
       await renderToolbar();
-      await openMenu('Type: All Types', 'Type');
+      await openMenuByClick('Type: All Types', 'Type');
 
       await pickMenuRadio('Movies');
 
@@ -116,7 +110,7 @@ describe('section: ListStatsToolbar', () => {
     it('should list All Genres then the genres by name, capped in height', async () => {
       await renderToolbar();
 
-      const menu = await openMenu('Genre: All Genres', 'Genre');
+      const menu = await openMenuByClick('Genre: All Genres', 'Genre');
       const labels = labelsOf(rowsOf(menu));
 
       expect(labels).toHaveLength(25);
@@ -127,7 +121,7 @@ describe('section: ListStatsToolbar', () => {
 
     it('should write a picked genre', async () => {
       await renderToolbar({ search: '?genres=horror' });
-      await openMenu('Genre: Horror', 'Genre');
+      await openMenuByClick('Genre: Horror', 'Genre');
 
       await pickMenuRadio('Drama');
 
@@ -141,7 +135,7 @@ describe('section: ListStatsToolbar', () => {
     it('should list the nine sorts with the current one checked', async () => {
       await renderToolbar({ search: '?sort=votes,desc' });
 
-      const rows = rowsOf(await openMenu('Sort by: Votes', 'Sort by'));
+      const rows = rowsOf(await openMenuByClick('Sort by: Votes', 'Sort by'));
 
       expect(labelsOf(rows)).toEqual([
         'Rank',
@@ -159,7 +153,7 @@ describe('section: ListStatsToolbar', () => {
 
     it('should write a picked sort at its default direction', async () => {
       await renderToolbar();
-      await openMenu('Sort by: Rank', 'Sort by');
+      await openMenuByClick('Sort by: Rank', 'Sort by');
 
       await pickMenuRadio('Title');
 
@@ -198,7 +192,7 @@ describe('section: ListStatsToolbar', () => {
 
     it('should write a picked watched filter', async () => {
       await renderToolbar();
-      await openMenu('Filters', 'Filters');
+      await openMenuByClick('Filters', 'Filters');
 
       await pickMenuRadio('Fade watched');
 
@@ -217,35 +211,35 @@ describe('section: ListStatsToolbar', () => {
     ])(
       'should report a pick in the $menu menu',
       async ({ trigger, menu, pick }) => {
-        const onChoose = vi.fn();
-        await renderToolbar({ onChoose });
-        await openMenu(trigger, menu);
+        const close = vi.fn();
+        await renderToolbar({ controls: toolbarControls({ close }) });
+        await openMenuByClick(trigger, menu);
 
         await pickMenuRadio(pick);
 
-        expect(onChoose).toHaveBeenCalledOnce();
+        expect(close).toHaveBeenCalledOnce();
       },
     );
 
     it('should report nothing on a pick of the checked sort row again', async () => {
-      const onChoose = vi.fn();
-      await renderToolbar({ onChoose });
-      await openMenu('Sort by: Rank', 'Sort by');
+      const close = vi.fn();
+      await renderToolbar({ controls: toolbarControls({ close }) });
+      await openMenuByClick('Sort by: Rank', 'Sort by');
 
       await pickMenuRadio('Rank');
       await waitNegativeClaim();
 
       expect(goto).not.toHaveBeenCalled();
-      expect(onChoose).not.toHaveBeenCalled();
+      expect(close).not.toHaveBeenCalled();
     });
 
     it('should report a press of the direction', async () => {
-      const onChoose = vi.fn();
-      await renderToolbar({ onChoose });
+      const close = vi.fn();
+      await renderToolbar({ controls: toolbarControls({ close }) });
 
       await userEvent.click(button('Direction'));
 
-      expect(onChoose).toHaveBeenCalledOnce();
+      expect(close).toHaveBeenCalledOnce();
     });
   });
 
@@ -317,6 +311,13 @@ describe('section: ListStatsToolbar', () => {
       ]);
     });
 
+    it('should fill no start block, the filters holding the row start', async () => {
+      const { container } = await renderToolbar();
+
+      expect(container.querySelector('.toolbar-start')).toBeNull();
+      expect(container.querySelector('.toolbar-filters')).not.toBeNull();
+    });
+
     it('should group the direction and watched toggles apart from the sort menu', async () => {
       await renderToolbar();
 
@@ -325,18 +326,19 @@ describe('section: ListStatsToolbar', () => {
       expect(toggles).toContainElement(button('Filters'));
       expect(toggles).not.toContainElement(button('Sort by: Rank'));
     });
+  });
 
-    it('should mark the panel open while its open prop is set', async () => {
-      const { container } = await renderToolbar({ isPanelOpen: true });
+  describe('without a title bar', () => {
+    it('should hold the spinner and the gear its controls carry', async () => {
+      const { container } = await renderToolbar({
+        controls: toolbarControls({
+          untitled: { gearId: 'list-gear', loading: true },
+        }),
+      });
 
-      expect(container.querySelector(`#${PANEL_ID}`)).toHaveClass('is-open');
-    });
-
-    it('should leave the panel closed while its open prop is unset', async () => {
-      const { container } = await renderToolbar({ isPanelOpen: false });
-
-      expect(container.querySelector(`#${PANEL_ID}`))
-        .not.toHaveClass('is-open');
+      expect(container.querySelector('.trakt-pending-spinner')).not.toBeNull();
+      expect(screen.getByRole('button', { name: 'Options' }))
+        .toHaveAttribute('id', 'list-gear');
     });
   });
 });

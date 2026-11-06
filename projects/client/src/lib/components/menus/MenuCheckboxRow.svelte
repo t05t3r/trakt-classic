@@ -2,14 +2,24 @@
   import MenuRow from './MenuRow.svelte';
   import type { MenuCheckboxRowProps } from './_internal/MenuCheckboxRowProps.ts';
 
-  const { checked, onToggle, children }: MenuCheckboxRowProps = $props();
+  const {
+    checked,
+    onToggle,
+    children,
+    role = 'checkbox',
+  }: MenuCheckboxRowProps = $props();
+
+  const roleProps = $derived(
+    role === 'button'
+      ? { 'aria-pressed': checked === true }
+      : { role, 'aria-checked': checked === true },
+  );
 </script>
 
 <button
   type="button"
-  role="checkbox"
+  {...roleProps}
   class="trakt-menu-checkbox-row"
-  aria-checked={checked === true}
   aria-disabled={checked === 'unknown' ? 'true' : undefined}
   onclick={onToggle}
 >

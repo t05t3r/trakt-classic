@@ -91,9 +91,18 @@
               />
             {/snippet}
             {#snippet actions()}
-              <QuickActions target={card.target} favorite>
-                {#snippet metadata()}
-                  <CardCommunityRating rating={card.rating} />
+              <QuickActions
+                target={card.target}
+                favorite
+                historyId={entry.id}
+                playedAt={entry.watchedAt}
+              >
+                {#snippet metadata(hasPlay)}
+                  <CardCommunityRating
+                    rating={card.rating}
+                    target={card.target}
+                    {hasPlay}
+                  />
                 {/snippet}
               </QuickActions>
             {/snippet}

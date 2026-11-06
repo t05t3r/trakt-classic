@@ -1,6 +1,7 @@
 <script lang="ts">
-  import ListReader from '$lib/sections/lists/_internal/ListReader.svelte';
-  import { BehaviorSubject, EMPTY, type Observable, switchMap } from 'rxjs';
+  import ListReader from '$lib/sections/lists/ListReader.svelte';
+  import { createKeyedReader } from '$lib/utils/store/createKeyedReader.ts';
+  import { EMPTY, type Observable } from 'rxjs';
 
   type ListReaderHostProps = { read: (key: string) => Observable<string> };
 
@@ -9,10 +10,10 @@
   let key = $state('a');
   let isOpen = $state(false);
 
-  const readings = new BehaviorSubject<Observable<string> | undefined>(
-    undefined,
-  );
-  const reading = readings.pipe(switchMap((current) => current ?? EMPTY));
+  const { latest: readings, reading } = createKeyedReader<
+    Observable<string> | undefined,
+    string
+  >({ initial: undefined, read: (current) => current ?? EMPTY });
 </script>
 
 <button type="button" onclick={() => (isOpen = !isOpen)}>

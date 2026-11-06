@@ -8,6 +8,7 @@
     trigger,
     children,
     side = 'bottom',
+    variant = 'default',
     open = $bindable(false),
   }: PopoverProps = $props();
   // The content drops its own id, so the dialog carries the one the trigger's aria-controls names.
@@ -34,6 +35,7 @@
             {...props}
             {id}
             class="trakt-popover"
+            data-variant={variant}
             role="dialog"
             aria-label={label}
           >
@@ -61,6 +63,11 @@
     border: var(--ni-1) solid var(--color-popover-border);
     background: var(--color-surface-menu);
     box-shadow: var(--shadow-popover);
+  }
+
+  :global(.trakt-popover[data-variant='flush']) {
+    inline-size: var(--popover-width);
+    padding: var(--ni-0);
   }
 
   // bits-ui turns this downward triangle to face the trigger on either side.
@@ -92,5 +99,9 @@
 
   :global(.trakt-popover .popover-arrow[data-side='bottom']::after) {
     border-block-start-color: var(--color-popover-arrow-fill-bottom);
+  }
+
+  :global(.trakt-popover[data-variant='flush'] .popover-arrow[data-side='bottom']::after) {
+    border-block-start-color: var(--color-surface-menu);
   }
 </style>

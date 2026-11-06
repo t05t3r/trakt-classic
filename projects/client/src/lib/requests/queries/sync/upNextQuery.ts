@@ -8,6 +8,7 @@ import {
   type UpNextEntry,
   UpNextEntrySchema,
 } from '$lib/requests/models/UpNextEntry.ts';
+import { toEpisodeRuntime } from '$lib/utils/media/toEpisodeRuntime.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import type { UpNextResponse } from '@trakt/api';
 
@@ -21,7 +22,7 @@ function mapToUpNextEntry(item: UpNextResponse): UpNextEntry {
   return {
     show,
     ...episode,
-    runtime: Number.isNaN(episode.runtime) ? show.runtime : episode.runtime,
+    runtime: toEpisodeRuntime({ episode, show }),
     ...mapToShowProgress(item.progress),
   };
 }

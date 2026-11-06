@@ -19,6 +19,10 @@ describe('component: IconToggle', () => {
       'type',
       'button',
     );
+    expect(screen.getByRole('button', { name: 'Direction' })).toHaveAttribute(
+      'title',
+      'Direction',
+    );
   });
 
   it.each([true, false])(
@@ -86,6 +90,29 @@ describe('component: IconToggle', () => {
 
       expect(screen.getByRole('button', { name: 'Direction' }))
         .toHaveAttribute('data-size', expected);
+    },
+  );
+
+  // The pressed colour is CSS keyed on this mark.
+  it.each([
+    { pressedTint: undefined, expected: 'selected' },
+    { pressedTint: 'selected' as const, expected: 'selected' },
+    { pressedTint: 'none' as const, expected: 'none' },
+  ])(
+    'should mark the pressed tint $expected for a tint of $pressedTint',
+    ({ pressedTint, expected }) => {
+      render(IconToggle, {
+        props: {
+          label: 'Direction',
+          pressed: true,
+          onToggle: vi.fn(),
+          pressedTint,
+          children: glyphSnippet,
+        },
+      });
+
+      expect(screen.getByRole('button', { name: 'Direction' }))
+        .toHaveAttribute('data-pressed-tint', expected);
     },
   );
 });

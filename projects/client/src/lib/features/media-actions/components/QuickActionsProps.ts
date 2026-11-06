@@ -1,7 +1,14 @@
 import type { Snippet } from 'svelte';
 
 export type QuickActionsTarget =
-  | { type: 'movie'; id: number; title: string; airDate: Date | Nil }
+  | {
+    type: 'movie';
+    id: number;
+    title: string;
+    airDate: Date | Nil;
+    // In minutes, NaN when Trakt gave none.
+    runtime?: number;
+  }
   | {
     type: 'show';
     id: number;
@@ -18,6 +25,8 @@ export type QuickActionsTarget =
     number: number;
     show: { id: number; title: string };
     airDate: Date | Nil;
+    // In minutes, its show's when it has none, NaN when Trakt gave neither.
+    runtime?: number;
   }
   | {
     type: 'season';
@@ -35,5 +44,13 @@ export type QuickActionsProps = {
   size?: 'full' | 'smaller';
   // Off by default; read once, like `target`.
   favorite?: boolean;
-  metadata?: Snippet;
+  // A Play's own card: its watch icon reads played and removes that Play.
+  historyId?: number;
+  // When that Play was watched, for the icon's hover text.
+  playedAt?: Date;
+  // The card's media has a Play: its watch icon shows even when unaired and reads played.
+  // With no `historyId`, a press removes all its Plays.
+  hasPlay?: true;
+  // Told whether the Target has a Play: undefined until known, then held through a refetch.
+  metadata?: Snippet<[boolean | undefined]>;
 };

@@ -5,6 +5,7 @@ import type { Season } from '$lib/requests/models/Season.ts';
 import type { ShowEntry } from '$lib/requests/models/ShowEntry.ts';
 import { showProgressQuery } from '$lib/requests/queries/shows/showProgressQuery.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
 import { DEVS_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_SEASON_ACTIONS_TARGET.ts';
 import { OTHER_UNWATCHED_MOVIE } from '$mocks/data/media-actions/OTHER_UNWATCHED_MOVIE.ts';
 import { SILO_EPISODE } from '$mocks/data/media-actions/SILO_EPISODE.ts';
@@ -16,6 +17,7 @@ import { ShowSiloSeasonsMappedMock } from '$mocks/data/summary/shows/silo/mapped
 import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressResponseMock.ts';
 import { SYNC_HISTORY_REMOVE_URL } from '$mocks/data/sync/SYNC_HISTORY_REMOVE_URL.ts';
 import { SYNC_HISTORY_URL } from '$mocks/data/sync/SYNC_HISTORY_URL.ts';
+import { HISTORY_ID } from '$mocks/data/users/HISTORY_ID.ts';
 import { WatchedMoviesMappedMock } from '$mocks/data/users/mapped/WatchedMoviesMappedMock.ts';
 import { WatchedShowsMappedMock } from '$mocks/data/users/mapped/WatchedShowsMappedMock.ts';
 import { WatchedMoviesResponseMock } from '$mocks/data/users/response/WatchedMoviesResponseMock.ts';
@@ -36,6 +38,8 @@ import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { collectStates } from '$test/beds/store/collectStates.ts';
@@ -43,8 +47,9 @@ import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { screen, within } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { filter, firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom, type Observable } from 'rxjs';
 import {
   afterEach,
   describe,
@@ -96,6 +101,15 @@ const DEVS_FIRST_SEASON = seasonTarget(
   DEVS_SEASON_ACTIONS_TARGET.show,
   DEVS_SEASON_ACTIONS_TARGET,
 );
+const DEVS_SHOW = {
+  type: 'show',
+  media: { id: DEVS.id, slug: 'devs', title: 'Devs', episode: { count: 8 } },
+} satisfies WatchedStoreProps;
+const DEVS_SPECIALS_SEASON = seasonTarget(DEVS_SEASON_ACTIONS_TARGET.show, {
+  id: 1000,
+  number: 0,
+  episodes: { count: 1, aired: 1 },
+});
 // Its show's watched history holds plays of other episodes too.
 const DEVS_EPISODE = {
   type: 'episode',
@@ -106,6 +120,50 @@ const SILO_FIRST_SEASON_PROMPT =
   'Mark all 10 aired episodes of "Season 1 of Silo" as watched? Episodes already watched get another play.';
 
 const REFUSED_TOAST = 'Your history changed. Try again.';
+const OTHER_HISTORY_ID = 7002;
+
+const postsIn = (requests: ReadonlyArray<string>) =>
+  requests.filter((request) => request.startsWith('POST'));
+
+// Answers each removal and records its body and whether the Target read watched.
+function recordRemovals(isWatched: Observable<boolean | undefined>) {
+  const removals: { body: unknown; isWatched: boolean | undefined }[] = [];
+  server.use(
+    http.post(SYNC_HISTORY_REMOVE_URL, async ({ request }) => {
+      removals.push({
+        body: await request.json(),
+        isWatched: await firstValueFrom(isWatched),
+      });
+      return new HttpResponse(null, { status: 200 });
+    }),
+  );
+
+  return removals;
+}
+
+// Once a write posts, the movies history holds a second play of Heretic.
+function serveSecondPlayAfterWrite() {
+  const hasWritten = { value: false };
+  server.use(
+    http.post(SYNC_HISTORY_URL, () => {
+      hasWritten.value = true;
+      return new HttpResponse(null, { status: 201 });
+    }),
+    http.get(WATCHED_MOVIES_URL, ({ request }) => {
+      const page = Number(
+        new URL(request.url).searchParams.get('page') ?? 1,
+      );
+      if (page > 1) return HttpResponse.json({});
+      if (!hasWritten.value) {
+        return HttpResponse.json(WatchedMoviesResponseMock);
+      }
+
+      return HttpResponse.json({
+        916302: ['2024-12-27T16:15:28.000Z', '2026-10-03T09:00:00.000Z'],
+      });
+    }),
+  );
+}
 
 function episodeStores() {
   return {
@@ -165,12 +223,7 @@ async function renderFailedMovies(failedPage: number) {
 }
 
 async function renderSettledMovies() {
-  server.use(
-    http.get(
-      WATCHED_MOVIES_URL,
-      () => pagedResponse({ body: WatchedMoviesResponseMock }),
-    ),
-  );
+  servePaged({ url: WATCHED_MOVIES_URL, body: WatchedMoviesResponseMock });
 
   return renderSettledHistory(episodeStores);
 }
@@ -225,6 +278,15 @@ const UNKNOWN_HISTORY: ReadonlyArray<{
       return episode;
     },
   },
+];
+
+const WATCHED_WRITES: ReadonlyArray<{
+  action: string;
+  write: (store: ReturnType<typeof useWatched>) => Promise<void>;
+}> = [
+  { action: 'add', write: (store) => store.add() },
+  { action: 'remove', write: (store) => store.remove() },
+  { action: 'removePlay', write: (store) => store.removePlay(HISTORY_ID) },
 ];
 
 describe('store: useWatched', () => {
@@ -325,16 +387,14 @@ describe('store: useWatched', () => {
     );
 
     it('should read the latest play of several targets', async () => {
-      server.use(
-        http.get(WATCHED_MOVIES_URL, () =>
-          pagedResponse({
-            body: {
-              '1': ['2024-01-10T20:00:00.000Z'],
-              '2': ['2024-03-10T20:00:00.000Z', '2024-02-10T20:00:00.000Z'],
-              '3': ['2024-02-20T20:00:00.000Z'],
-            },
-          })),
-      );
+      servePaged({
+        url: WATCHED_MOVIES_URL,
+        body: {
+          '1': ['2024-01-10T20:00:00.000Z'],
+          '2': ['2024-03-10T20:00:00.000Z', '2024-02-10T20:00:00.000Z'],
+          '3': ['2024-02-20T20:00:00.000Z'],
+        },
+      });
       const { lastWatchedAt } = await renderStore(() =>
         useWatched({
           type: 'movie',
@@ -395,12 +455,7 @@ describe('store: useWatched', () => {
       await unwatched.add();
       await settleFailure(waitForQueriesIdle, failed);
       const knownAfterFailure = await firstValueFrom(episode.isWatchedKnown);
-      server.use(
-        http.get(
-          WATCHED_MOVIES_URL,
-          () => pagedResponse({ body: WatchedMoviesResponseMock }),
-        ),
-      );
+      servePaged({ url: WATCHED_MOVIES_URL, body: WatchedMoviesResponseMock });
 
       await invalidate(InvalidateAction.MarkAsWatched('movie'));
       await firstValueFrom(episode.isWatchedKnown.pipe(filter(Boolean)));
@@ -424,16 +479,18 @@ describe('store: useWatched', () => {
       expect(await firstValueFrom(pendingWatched)).toBeUndefined();
     });
 
-    it('should neither confirm nor write on add or remove', async () => {
-      const { add, remove } = await renderStore(() => useWatched(NO_MOVIES));
+    it('should neither confirm nor write on add or either remove', async () => {
+      const { add, remove, removePlay } = await renderStore(() =>
+        useWatched(NO_MOVIES)
+      );
 
       const requests = await captureRequests(async () => {
         await add();
         await remove();
+        await removePlay(HISTORY_ID);
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual([]);
+      expect(postsIn(requests)).toEqual([]);
       expect(screen.queryByRole('dialog')).toBeNull();
     });
   });
@@ -693,6 +750,131 @@ describe('store: useWatched', () => {
     );
   });
 
+  describe('held Play', () => {
+    it('should read not known until the history first settles', async () => {
+      holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+      const { hasPlayHeld } = await renderStore(() => useWatched(HERETIC));
+
+      expect(await firstValueFrom(hasPlayHeld)).toBeUndefined();
+    });
+
+    it('should keep the last known Play and no Play while the history refetches', async () => {
+      const { played, unplayed, writer } = await renderSettledHistory(() => ({
+        played: useWatched(HERETIC),
+        unplayed: useWatched(UNWATCHED_MOVIE),
+        writer: useWatched(OTHER_UNWATCHED_MOVIE),
+      }));
+      const playedStates = collectDistinctStates(played.hasPlayHeld);
+      const unplayedStates = collectDistinctStates(unplayed.hasPlayHeld);
+      const refetch = holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+
+      const added = writer.add();
+      await refetch.requested;
+      refetch.release();
+      await added;
+
+      expect(playedStates).toEqual([true]);
+      expect(unplayedStates).toEqual([false]);
+    });
+
+    it('should read a partly watched show as played, though it is not watched', async () => {
+      const { hasPlayHeld, isWatched } = await renderSettledHistory(() =>
+        useWatched(SILO)
+      );
+
+      expect(await firstValueFrom(hasPlayHeld)).toBe(true);
+      expect(await firstValueFrom(isWatched)).toBe(false);
+    });
+  });
+
+  describe('watched episodes', () => {
+    it.each(
+      [
+        { name: 'a show', props: DEVS_SHOW, episodes: 8, plays: 11 },
+        { name: 'a season', props: DEVS_FIRST_SEASON, episodes: 8, plays: 10 },
+        { name: 'a show of one play', props: SILO, episodes: 1, plays: 1 },
+        {
+          name: 'a season of one play',
+          props: SILO_FIRST_SEASON,
+          episodes: 1,
+          plays: 1,
+        },
+        {
+          name: 'a season with none',
+          props: SILO_SECOND_SEASON,
+          episodes: 0,
+          plays: 0,
+        },
+        {
+          name: 'a show with none',
+          props: {
+            type: 'show',
+            media: {
+              ...UNPLAYED_SHOW,
+              slug: 'unplayed',
+              episode: { count: 8 },
+            },
+          },
+          episodes: 0,
+          plays: 0,
+        },
+      ] satisfies Array<
+        {
+          name: string;
+          props: WatchedStoreProps;
+          episodes: number;
+          plays: number;
+        }
+      >,
+    )(
+      'should count $episodes episodes and $plays plays of $name, specials among the plays only',
+      async ({ props, episodes, plays }) => {
+        const store = await renderSettledHistory(() => useWatched(props));
+
+        expect(await firstValueFrom(store.watchedEpisodes)).toBe(episodes);
+        expect(await firstValueFrom(store.plays)).toBe(plays);
+      },
+    );
+
+    it('should read no episode count for the specials season, keeping its plays', async () => {
+      const store = await renderSettledHistory(() =>
+        useWatched(DEVS_SPECIALS_SEASON)
+      );
+
+      expect(await firstValueFrom(store.watchedEpisodes)).toBeUndefined();
+      expect(await firstValueFrom(store.plays)).toBe(1);
+    });
+
+    it.each(
+      [
+        { name: 'a movie', props: HERETIC },
+        { name: 'an episode', props: SILO_EPISODE },
+      ] satisfies Array<{ name: string; props: WatchedStoreProps }>,
+    )('should read no episode count for $name', async ({ props }) => {
+      const { watchedEpisodes } = await renderSettledHistory(() =>
+        useWatched(props)
+      );
+
+      expect(await firstValueFrom(watchedEpisodes)).toBeUndefined();
+    });
+
+    it('should keep its last count while the history refetches', async () => {
+      const { show, writer } = await renderSettledHistory(() => ({
+        show: useWatched(DEVS_SHOW),
+        writer: useWatched(SILO_EPISODE),
+      }));
+      const states = collectDistinctStates(show.watchedEpisodes);
+      const refetch = holdRequest({ method: 'get', url: WATCHED_SHOWS_URL });
+
+      const added = writer.add();
+      await refetch.requested;
+      refetch.release();
+      await added;
+
+      expect(states).toEqual([8]);
+    });
+  });
+
   describe('add', () => {
     it('should flip to watched while the request is in flight, then settle', async () => {
       const { add, isWatched, isUpdating } = await renderSettledHistory(() =>
@@ -767,12 +949,7 @@ describe('store: useWatched', () => {
     });
 
     it('should keep an added Target watched while the page it lands on loads, and ignore a second add', async () => {
-      server.use(
-        http.get(
-          WATCHED_MOVIES_URL,
-          () => pagedResponse({ body: WatchedMoviesResponseMock }),
-        ),
-      );
+      servePaged({ url: WATCHED_MOVIES_URL, body: WatchedMoviesResponseMock });
       const { add, isWatched } = await renderSettledHistory(() =>
         useWatched(UNWATCHED_MOVIE)
       );
@@ -836,13 +1013,7 @@ describe('store: useWatched', () => {
             }),
         ),
       );
-      const bodies: unknown[] = [];
-      server.use(
-        http.post(SYNC_HISTORY_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return new HttpResponse(null, { status: 201 });
-        }),
-      );
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
       const { add } = await renderSettledHistory(() => useWatched(SILO));
 
       const added = add();
@@ -930,8 +1101,7 @@ describe('store: useWatched', () => {
 
       const requests = await captureRequests(() => add());
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual([]);
+      expect(postsIn(requests)).toEqual([]);
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
@@ -953,8 +1123,7 @@ describe('store: useWatched', () => {
         const requests = await captureRequests(() => add());
 
         expect(requests).toContain('GET /shows/silo/progress/watched');
-        expect(requests.filter((request) => request.startsWith('POST')))
-          .toEqual([]);
+        expect(postsIn(requests)).toEqual([]);
         expect(
           within(screen.getByRole('status')).getByText(
             "Couldn't save. Try again.",
@@ -1027,16 +1196,18 @@ describe('store: useWatched', () => {
       await removed;
     });
 
-    it('should neither confirm nor write when the targets have no plays', async () => {
+    it('should neither confirm nor write, and say the history changed, when the targets have no plays', async () => {
       const { remove } = await renderSettledHistory(() =>
         useWatched(UNWATCHED_MOVIE)
       );
 
       const requests = await captureRequests(() => remove());
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual([]);
+      expect(postsIn(requests)).toEqual([]);
       expect(screen.queryByRole('dialog')).toBeNull();
+      expect(
+        within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+      ).toBeVisible();
     });
 
     it('should send nothing and write no override when the confirmation is cancelled', async () => {
@@ -1051,23 +1222,316 @@ describe('store: useWatched', () => {
         await removed;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual([]);
+      expect(postsIn(requests)).toEqual([]);
       expect(updates).toEqual([false]);
+    });
+  });
+
+  describe('removePlay', () => {
+    it("should post the Play's id alone and refetch the history, its Target still watched in flight", async () => {
+      const { removePlay, isWatched } = await renderSettledHistory(() =>
+        useWatched(HERETIC)
+      );
+      const removals = recordRemovals(isWatched);
+
+      const requests = await captureRequests(async () => {
+        const removed = removePlay(HISTORY_ID);
+        const dialog = await screen.findByRole('dialog', {
+          name: 'Remove from history?',
+        });
+        expect(within(dialog).getByText('Heretic')).toBeVisible();
+        await answerDialog('Remove from history?', 'Only this play');
+        await removed;
+      });
+
+      expect(removals).toEqual([{
+        body: { ids: [HISTORY_ID] },
+        isWatched: true,
+      }]);
+      expect(postsIn(requests)).toEqual(['POST /sync/history/remove']);
+      expect(requests).toContain('GET /users/me/watched/movies');
+    });
+
+    it("should ask with an episode's own title", async () => {
+      const { removePlay } = await renderSettledHistory(() =>
+        useWatched(SILO_EPISODE)
+      );
+
+      const removed = removePlay(HISTORY_ID);
+      const dialog = await screen.findByRole('dialog', {
+        name: 'Remove from history?',
+      });
+      expect(within(dialog).getByText('Silo 1x01')).toBeVisible();
+      await answerDialog('Remove from history?', 'No');
+      await removed;
+    });
+
+    it('should show the failure toast when the post fails', async () => {
+      const { removePlay } = await renderSettledHistory(() =>
+        useWatched(HERETIC)
+      );
+      server.use(
+        http.post(
+          SYNC_HISTORY_REMOVE_URL,
+          () => new HttpResponse(null, { status: 500 }),
+        ),
+      );
+
+      const removed = removePlay(HISTORY_ID);
+      await answerDialog('Remove from history?', 'Only this play');
+      await removed;
+
+      expect(await screen.findByText("Couldn't save. Try again."))
+        .toBeVisible();
+    });
+
+    it.each([
+      { outcome: 'success', status: 200 },
+      { outcome: 'failure', status: 500 },
+    ])(
+      'should read updating during the post and not after its $outcome, with another store of the Target untouched',
+      async ({ status }) => {
+        const { store, other } = await renderSettledHistory(() => ({
+          store: useWatched(HERETIC),
+          other: useWatched(HERETIC),
+        }));
+        const write = holdRequest({
+          method: 'post',
+          url: SYNC_HISTORY_REMOVE_URL,
+          answer: () => new HttpResponse(null, { status }),
+        });
+        const updates = collectStates(store.isUpdating);
+        const otherUpdates = collectStates(other.isUpdating);
+
+        const removed = store.removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        await write.requested;
+        expect(updates).toEqual([false, true]);
+        write.release();
+        await removed;
+
+        expect(updates).toEqual([false, true, false]);
+        expect(otherUpdates).toEqual([false]);
+      },
+    );
+
+    it('should start nothing on a second removal in flight on one store, and read updating until the first settles', async () => {
+      const { removePlay, isUpdating } = await renderSettledHistory(() =>
+        useWatched(HERETIC)
+      );
+      const write = holdRequest({
+        method: 'post',
+        url: SYNC_HISTORY_REMOVE_URL,
+        answer: () => new HttpResponse(null, { status: 200 }),
+      });
+      const updates = collectStates(isUpdating);
+
+      const requests = await captureRequests(async () => {
+        const removed = removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        await write.requested;
+        await removePlay(OTHER_HISTORY_ID);
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(updates).toEqual([false, true]);
+        write.release();
+        await removed;
+      });
+
+      expect(postsIn(requests)).toEqual(['POST /sync/history/remove']);
+      expect(updates).toEqual([false, true, false]);
+    });
+
+    it('should refuse a second post of the same Play', async () => {
+      const { first, second } = await renderSettledHistory(() => ({
+        first: useWatched(HERETIC),
+        second: useWatched(HERETIC),
+      }));
+      const write = holdRequest({
+        method: 'post',
+        url: SYNC_HISTORY_REMOVE_URL,
+        answer: () => new HttpResponse(null, { status: 200 }),
+      });
+
+      const requests = await captureRequests(async () => {
+        const removed = first.removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        await write.requested;
+        const refused = second.removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        await refused;
+        write.release();
+        await removed;
+      });
+
+      expect(postsIn(requests)).toEqual(['POST /sync/history/remove']);
+    });
+
+    it('should post another Play of the same Target beside the one in flight', async () => {
+      const { first, second } = await renderSettledHistory(() => ({
+        first: useWatched(HERETIC),
+        second: useWatched(HERETIC),
+      }));
+      const write = holdRequest({
+        method: 'post',
+        url: SYNC_HISTORY_REMOVE_URL,
+        answer: () => new HttpResponse(null, { status: 200 }),
+      });
+
+      const requests = await captureRequests(async () => {
+        const removed = first.removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        await write.requested;
+        const next = second.removePlay(OTHER_HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        write.release();
+        await Promise.all([removed, next]);
+      });
+
+      expect(postsIn(requests)).toEqual([
+        'POST /sync/history/remove',
+        'POST /sync/history/remove',
+      ]);
+    });
+
+    it('should stop a remove with the refusal toast while a Play removal is pending', async () => {
+      const { store, other } = await renderSettledHistory(() => ({
+        store: useWatched(HERETIC),
+        other: useWatched(HERETIC),
+      }));
+      const write = holdRequest({
+        method: 'post',
+        url: SYNC_HISTORY_REMOVE_URL,
+        answer: () => new HttpResponse(null, { status: 200 }),
+      });
+
+      const requests = await captureRequests(async () => {
+        const removed = store.removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Only this play');
+        await write.requested;
+        const refused = other.remove();
+        await answerDialog('Remove from history?', 'Remove from History');
+        await refused;
+        write.release();
+        await removed;
+      });
+
+      expect(postsIn(requests)).toEqual(['POST /sync/history/remove']);
+      expect(
+        within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+      ).toBeVisible();
+    });
+
+    it('should send nothing and write no override on the cancel, X or Escape', async () => {
+      const { removePlay, isUpdating } = await renderSettledHistory(() =>
+        useWatched(HERETIC)
+      );
+      const updates = collectStates(isUpdating);
+
+      const requests = await captureRequests(async () => {
+        const onNo = removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'No');
+        await onNo;
+
+        const onClose = removePlay(HISTORY_ID);
+        await answerDialog('Remove from history?', 'Close');
+        await onClose;
+
+        const onEscape = removePlay(HISTORY_ID);
+        await screen.findByRole('dialog', { name: 'Remove from history?' });
+        await userEvent.keyboard('{Escape}');
+        await onEscape;
+      });
+
+      expect(postsIn(requests)).toEqual([]);
+      expect(updates).toEqual([false]);
+    });
+
+    describe('all plays', () => {
+      it("should post the Target's remove-all once, with no second dialog", async () => {
+        const { removePlay, isWatched } = await renderSettledHistory(() =>
+          useWatched(HERETIC)
+        );
+        const removals = recordRemovals(isWatched);
+
+        const requests = await captureRequests(async () => {
+          const removed = removePlay(HISTORY_ID);
+          await answerDialog('Remove from history?', 'All plays');
+          expect(screen.queryByRole('dialog')).toBeNull();
+          await removed;
+        });
+
+        expect(removals).toEqual([
+          { body: { movies: [{ ids: { trakt: 916302 } }] }, isWatched: false },
+        ]);
+        expect(postsIn(requests)).toEqual(['POST /sync/history/remove']);
+      });
+
+      it('should send nothing and show the refusal toast when the count changed in the dialog', async () => {
+        const { first, second } = await renderSettledHistory(() => ({
+          first: useWatched(HERETIC),
+          second: useWatched(HERETIC),
+        }));
+        serveSecondPlayAfterWrite();
+
+        const requests = await captureRequests(async () => {
+          const removed = first.removePlay(HISTORY_ID);
+          await screen.findByRole('dialog', { name: 'Remove from history?' });
+          await second.add();
+          await answerDialog('Remove from history?', 'All plays');
+          await removed;
+        });
+
+        expect(postsIn(requests)).toEqual(['POST /sync/history']);
+        expect(
+          within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+        ).toBeVisible();
+      });
+
+      it('should send nothing and show the refusal toast while another watched write is pending', async () => {
+        const { store, other } = await renderSettledHistory(() => ({
+          store: useWatched(HERETIC),
+          other: useWatched(UNWATCHED_MOVIE),
+        }));
+        const write = holdRequest({
+          method: 'post',
+          url: SYNC_HISTORY_URL,
+          answer: () => new HttpResponse(null, { status: 201 }),
+        });
+
+        const requests = await captureRequests(async () => {
+          const added = other.add();
+          await write.requested;
+          const removed = store.removePlay(HISTORY_ID);
+          await answerDialog('Remove from history?', 'All plays');
+          await removed;
+          write.release();
+          await added;
+        });
+
+        expect(postsIn(requests)).toEqual(['POST /sync/history']);
+        expect(
+          within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+        ).toBeVisible();
+      });
     });
   });
 
   describe('while the history is not known', () => {
     it.each(
       UNKNOWN_HISTORY.flatMap(({ name, reach }) =>
-        (['add', 'remove'] as const).map((action) => ({ name, reach, action }))
+        WATCHED_WRITES.map(({ action, write }) => ({
+          name,
+          reach,
+          action,
+          write,
+        }))
       ),
     )(
       'should send nothing on $action $name',
-      async ({ reach, action }) => {
+      async ({ reach, write }) => {
         const episode = await reach();
 
-        const requests = await captureRequests(() => episode[action]());
+        const requests = await captureRequests(() => write(episode));
 
         expect(requests).toEqual([]);
         expect(screen.queryByRole('dialog')).toBeNull();
@@ -1104,8 +1568,7 @@ describe('store: useWatched', () => {
         await Promise.all([added, episodeAdded]);
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
     });
 
     it(
@@ -1149,8 +1612,7 @@ describe('store: useWatched', () => {
           await reader.add();
         });
 
-        expect(requests.filter((request) => request.startsWith('POST')))
-          .toEqual(['POST /sync/history']);
+        expect(postsIn(requests)).toEqual(['POST /sync/history']);
       },
       10_000,
     );
@@ -1212,8 +1674,7 @@ describe('store: useWatched', () => {
         await second;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(await firstValueFrom(isUpdating)).toBe(false);
     });
@@ -1383,14 +1844,13 @@ describe('store: useWatched', () => {
         await first;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
     });
   });
 
   describe('while a write is pending', () => {
-    it('should ignore add and remove until the override clears', async () => {
-      const { add, remove } = await renderSettledHistory(() =>
+    it('should ignore add and either remove until the override clears', async () => {
+      const { add, remove, removePlay } = await renderSettledHistory(() =>
         useWatched(HERETIC)
       );
       const write = holdRequest({
@@ -1402,14 +1862,17 @@ describe('store: useWatched', () => {
       const requests = await captureRequests(async () => {
         const added = add();
         await write.requested;
-        const ignored = Promise.all([add(), remove()]);
+        const ignored = Promise.all([
+          add(),
+          remove(),
+          removePlay(HISTORY_ID),
+        ]);
         write.release();
         await added;
         await ignored;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
@@ -1440,8 +1903,7 @@ describe('store: useWatched', () => {
         await Promise.all([added, removed]);
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history/remove']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history/remove']);
     });
 
     it('should drop a remove whose target started a write while it confirmed', async () => {
@@ -1465,8 +1927,7 @@ describe('store: useWatched', () => {
         await Promise.all([removed, added]);
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
     });
   });
 
@@ -1476,26 +1937,7 @@ describe('store: useWatched', () => {
         first: useWatched(HERETIC),
         second: useWatched(HERETIC),
       }));
-      const hasWritten = { value: false };
-      server.use(
-        http.post(SYNC_HISTORY_URL, () => {
-          hasWritten.value = true;
-          return new HttpResponse(null, { status: 201 });
-        }),
-        http.get(WATCHED_MOVIES_URL, ({ request }) => {
-          const page = Number(
-            new URL(request.url).searchParams.get('page') ?? 1,
-          );
-          if (page > 1) return HttpResponse.json({});
-          if (!hasWritten.value) {
-            return HttpResponse.json(WatchedMoviesResponseMock);
-          }
-
-          return HttpResponse.json({
-            916302: ['2024-12-27T16:15:28.000Z', '2026-10-03T09:00:00.000Z'],
-          });
-        }),
-      );
+      serveSecondPlayAfterWrite();
 
       const playsBeforeConfirm: number[] = [];
       const requests = await captureRequests(async () => {
@@ -1510,8 +1952,7 @@ describe('store: useWatched', () => {
       });
 
       expect(playsBeforeConfirm).toEqual([2]);
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
       expect(
         within(screen.getByRole('status')).getByText(REFUSED_TOAST),
       ).toBeVisible();
@@ -1542,8 +1983,7 @@ describe('store: useWatched', () => {
         await Promise.all([added, removed]);
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
       expect(
         within(screen.getByRole('status')).getByText(REFUSED_TOAST),
       ).toBeVisible();
@@ -1565,8 +2005,7 @@ describe('store: useWatched', () => {
         await removed;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
       expect(
         within(screen.getByRole('status')).getByText(REFUSED_TOAST),
       ).toBeVisible();
@@ -1601,12 +2040,10 @@ describe('store: useWatched', () => {
     });
 
     it("should sum its episodes' plays and read their latest play, leaving other seasons out", async () => {
-      server.use(
-        http.get(
-          WATCHED_SHOWS_URL,
-          () => pagedResponse({ body: WatchedShowsSiloResponseMock }),
-        ),
-      );
+      servePaged({
+        url: WATCHED_SHOWS_URL,
+        body: WatchedShowsSiloResponseMock,
+      });
       const { plays, lastWatchedAt } = await renderStore(() =>
         useWatched(SILO_FIRST_SEASON)
       );
@@ -1649,13 +2086,7 @@ describe('store: useWatched', () => {
     );
 
     it('should confirm with its aired count, read no progress, post a top-level season and refetch the shows history and the progress', async () => {
-      const bodies: unknown[] = [];
-      server.use(
-        http.post(SYNC_HISTORY_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return new HttpResponse(null, { status: 201 });
-        }),
-      );
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
       const { season, observe, waitForQueriesIdle } =
         await renderSettledHistory(() => ({
           season: useWatched(SILO_FIRST_SEASON),
@@ -1695,8 +2126,7 @@ describe('store: useWatched', () => {
 
       const requests = await captureRequests(() => add());
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual([]);
+      expect(postsIn(requests)).toEqual([]);
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
@@ -1711,8 +2141,7 @@ describe('store: useWatched', () => {
         await added;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual([]);
+      expect(postsIn(requests)).toEqual([]);
     });
 
     it('should write once when added again while its confirmation is open', async () => {
@@ -1728,18 +2157,11 @@ describe('store: useWatched', () => {
         await first;
       });
 
-      expect(requests.filter((request) => request.startsWith('POST')))
-        .toEqual(['POST /sync/history']);
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
     });
 
     it('should confirm with its play and remove it as a top-level season', async () => {
-      const bodies: unknown[] = [];
-      server.use(
-        http.post(SYNC_HISTORY_REMOVE_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return new HttpResponse(null, { status: 200 });
-        }),
-      );
+      const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
       const { remove } = await renderSettledHistory(() =>
         useWatched(SILO_FIRST_SEASON)
       );

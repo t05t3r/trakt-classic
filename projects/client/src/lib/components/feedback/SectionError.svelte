@@ -34,12 +34,11 @@
 </EmptyState>
 
 <style lang="scss">
+  @use '$style/scss/mixins/index' as *;
+
   .section-error-retry {
-    padding: var(--ni-0);
-    border: none;
-    background: none;
-    color: var(--color-link);
+    @include link-button;
+
     text-decoration: underline;
-    cursor: pointer;
   }
 </style>

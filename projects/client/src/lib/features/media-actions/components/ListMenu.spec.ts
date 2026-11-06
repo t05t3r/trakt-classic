@@ -5,7 +5,6 @@ import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
 import { LIST_RESPONSE } from '$mocks/data/users/LIST_RESPONSE.ts';
 import { LISTS_EXACT_URL } from '$mocks/data/users/LISTS_EXACT_URL.ts';
-import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import ListMenuHost from '$test/beds/media-actions/ListMenuHost.svelte';
@@ -14,9 +13,10 @@ import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
+import { HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const setLayout = fakeLayouts({
@@ -29,23 +29,21 @@ const NEW_LIST_ID = 6790;
 
 // The default ids mock lists the Matrix in every list; this one lists nothing.
 function serveLists() {
-  server.use(
-    http.get(LISTS_EXACT_URL, () =>
-      pagedResponse({
-        body: [
-          LIST_RESPONSE,
-          {
-            ...LIST_RESPONSE,
-            name: 'Watch next',
-            ids: { trakt: UNLISTED_ID, slug: 'watch-next' },
-          },
-        ],
-      })),
-    http.get(
-      `http://localhost/users/me/lists/${UNLISTED_ID}/items*`,
-      () => pagedResponse({ body: [] }),
-    ),
-  );
+  servePaged({
+    url: LISTS_EXACT_URL,
+    body: [
+      LIST_RESPONSE,
+      {
+        ...LIST_RESPONSE,
+        name: 'Watch next',
+        ids: { trakt: UNLISTED_ID, slug: 'watch-next' },
+      },
+    ],
+  });
+  servePaged({
+    url: `http://localhost/users/me/lists/${UNLISTED_ID}/items*`,
+    body: [],
+  });
 }
 
 const row = (name: string) => screen.getByRole('menuitemcheckbox', { name });
@@ -234,24 +232,22 @@ describe('component: ListMenu', () => {
       await openMenu();
       await settledRow('Watch next', false);
       // The refetch puts a new list first, so the clicked row's index moves.
-      server.use(
-        http.get(LISTS_EXACT_URL, () =>
-          pagedResponse({
-            body: [
-              {
-                ...LIST_RESPONSE,
-                name: 'Up next',
-                ids: { trakt: NEW_LIST_ID, slug: 'up-next' },
-              },
-              LIST_RESPONSE,
-              {
-                ...LIST_RESPONSE,
-                name: 'Watch next',
-                ids: { trakt: UNLISTED_ID, slug: 'watch-next' },
-              },
-            ],
-          })),
-      );
+      servePaged({
+        url: LISTS_EXACT_URL,
+        body: [
+          {
+            ...LIST_RESPONSE,
+            name: 'Up next',
+            ids: { trakt: NEW_LIST_ID, slug: 'up-next' },
+          },
+          LIST_RESPONSE,
+          {
+            ...LIST_RESPONSE,
+            name: 'Watch next',
+            ids: { trakt: UNLISTED_ID, slug: 'watch-next' },
+          },
+        ],
+      });
 
       const before = await settledRow('My personal list', true);
       await userEvent.click(before);

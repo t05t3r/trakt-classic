@@ -81,8 +81,7 @@ export function commentResponse(
       ids: { slug: `user-${id}`, trakt: id },
       images: {
         avatar: {
-          full:
-            `https://media.trakt.tv/images/users/000/000/001/avatars/medium/user-${id}.jpg`,
+          full: `https://media.trakt.tv/users/${id}/avatar.webp?v=1754435517`,
         },
       },
     },

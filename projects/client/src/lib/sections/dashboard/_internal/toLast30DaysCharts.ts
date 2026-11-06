@@ -5,6 +5,7 @@ import type {
   Last30Day,
   Last30Days,
 } from '$lib/features/dashboard/models/Last30Days.ts';
+import type { HistoryType } from '$lib/features/history/HISTORY_TYPES.ts';
 import { subtractDays } from '$lib/utils/date/subtractDays.ts';
 import { toTranslatedGenre } from '$lib/utils/formatting/string/toTranslatedGenre.ts';
 import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
@@ -41,7 +42,7 @@ function toGenreLinkStart(now: Date): string {
 const toGenreBar =
   (startAt: string) =>
   ({ slug, share, episodes, shows, movies }: GenreShare): GenreBar => {
-    const historyOf = (type: 'episodes' | 'shows' | 'movies') =>
+    const historyOf = (type: HistoryType) =>
       UrlBuilder.history.genre({ type, genre: slug, startAt });
 
     return {

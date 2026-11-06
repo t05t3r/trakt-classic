@@ -81,6 +81,24 @@ describe('component: CountStat', () => {
     expect(container.querySelector('.count-stat-under-count')).toBeNull();
   });
 
+  it('should mark the label wide when asked', () => {
+    const { container } = render(CountStat, {
+      props: { icon: IconFile, value: '250', label: 'Items', wideLabel: true },
+    });
+
+    expect(container.querySelector('.trakt-count-stat'))
+      .toHaveAttribute('data-label', 'wide');
+  });
+
+  it('should leave the label unmarked by default', () => {
+    const { container } = render(CountStat, {
+      props: { icon: IconFile, value: '250', label: 'Items' },
+    });
+
+    expect(container.querySelector('.trakt-count-stat'))
+      .not.toHaveAttribute('data-label');
+  });
+
   it('should hide the glyph from assistive technology', () => {
     const { container } = render(CountStat, {
       props: { icon: IconFile, value: '250', label: 'Items' },

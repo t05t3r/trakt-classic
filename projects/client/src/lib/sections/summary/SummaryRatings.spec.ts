@@ -19,6 +19,7 @@ import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
 import { server } from '$mocks/server.ts';
+import { waitForEnabled } from '$test/beds/buttons/waitForEnabled.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { emulateFocusVisible } from '$test/beds/focus/emulateFocusVisible.ts';
 import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
@@ -77,9 +78,7 @@ function slot(name: string) {
 
 // The slot ignores a press until the history is known.
 async function settledSlot(name: string) {
-  const button = await slot(name);
-  await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled'));
-  return button;
+  return waitForEnabled(await slot(name));
 }
 
 function heartSlot(container: HTMLElement) {

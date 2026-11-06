@@ -6,10 +6,8 @@
   import * as m from '$lib/features/i18n/messages.ts';
   import MediaPosterCard from '$lib/features/media-card/components/MediaPosterCard.svelte';
   import UserRatingCorner from '$lib/features/media-card/components/UserRatingCorner.svelte';
-  import {
-    type MediaCardInput,
-    toMediaCard,
-  } from '$lib/features/media-card/toMediaCard.ts';
+  import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
+  import type { MediaCardInput } from '$lib/features/media-card/toMediaCard.ts';
   import ContainerPage from '$lib/sections/layout/ContainerPage.svelte';
 
   type RelatedEntry = Extract<MediaCardInput, { type: 'movie' | 'show' }>;
@@ -46,12 +44,11 @@
             tabletLimit={TABLET_LIMIT}
           >
             {#snippet item(entry)}
-              {@const media = mediaOf(entry)}
-              {@const card = toMediaCard(entry)}
+              {@const card = toListItemCard(entry)}
               <MediaPosterCard
                 {card}
-                poster={media.poster}
-                posterTitle={media.title}
+                poster={card.poster}
+                posterTitle={card.posterTitle}
               >
                 {#snippet badges()}
                   <UserRatingCorner

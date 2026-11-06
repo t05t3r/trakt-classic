@@ -5,6 +5,10 @@ import type { PersonalListType } from '$lib/models/PersonalListType.ts';
 import type { DiscoverMode } from '$lib/features/filters/models/DiscoverMode.ts';
 import type { CrewPositions } from '$lib/requests/models/CrewPosition.ts';
 import type { LandingError } from '$lib/features/auth/models/LandingError.ts';
+import type { HistoryItem } from '$lib/features/history/HISTORY_ITEM_TYPES.ts';
+import type { HistoryType } from '$lib/features/history/HISTORY_TYPES.ts';
+import type { RatingFilter } from '$lib/features/media-actions/RATING_VALUES.ts';
+import type { RatingsTypeFilter } from '$lib/features/ratings/RATINGS_TYPES.ts';
 import { formatLocalDate } from '$lib/utils/date/formatLocalDate.ts';
 import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
 import { buildParamString } from './buildParamString.ts';
@@ -37,12 +41,15 @@ type LandingParams = {
   error?: LandingError;
 };
 
-type HistoryType = 'episodes' | 'shows' | 'movies';
-
 type HistoryGenreParams = {
   type: HistoryType;
   genre: string;
   startAt: string;
+};
+
+type RatingsUrlParams = {
+  type?: RatingsTypeFilter;
+  rating?: RatingFilter;
 };
 
 type UrlBuilderParams =
@@ -160,6 +167,13 @@ export const UrlBuilder = {
         start_at: formatLocalDate(date),
         days: '1',
       }),
+    item: ({ type, id }: HistoryItem) =>
+      withSearch(
+        type === 'show' || type === 'season'
+          ? '/users/me/history/episodes'
+          : '/users/me/history',
+        { [type]: String(id) },
+      ),
     sync: (syncId: number) =>
       `/history${buildParamString({ sync_id: syncId })}`,
     category: (params: UrlBuilderParams) => {
@@ -196,7 +210,14 @@ export const UrlBuilder = {
     },
   },
   progress: (): '/users/me/progress' => '/users/me/progress',
-  ratings: (): '/users/me/ratings' => '/users/me/ratings',
+  ratings: (
+    { type = 'all', rating = 'all' }: RatingsUrlParams = {},
+  ):
+    | '/users/me/ratings'
+    | `/users/me/ratings/${RatingsTypeFilter}/${RatingFilter}` =>
+    type === 'all' && rating === 'all'
+      ? '/users/me/ratings'
+      : `/users/me/ratings/${type}/${rating}`,
   startWatching: (user: string, params: Record<string, string | number> = {}) =>
     `/users/${user}/start-watching${buildParamString(sanitizeParams(params))}`,
 

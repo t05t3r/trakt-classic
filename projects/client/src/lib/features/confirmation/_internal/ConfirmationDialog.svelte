@@ -2,36 +2,42 @@
   import Modal from '$lib/components/dialogs/Modal.svelte';
   import type { ConfirmationDialogProps } from './ConfirmationDialogProps.ts';
 
+  type DialogAction = {
+    variant: 'confirm' | 'cancel';
+    text: string;
+    onclick: () => void;
+  };
+
   const {
     title,
     message,
     buttonText,
+    alternateText,
     cancelText,
     onConfirm,
+    onAlternate,
     onCancel,
   }: ConfirmationDialogProps = $props();
 </script>
+
+{#snippet action({ variant, text, onclick }: DialogAction)}
+  <button class="confirmation-button" data-variant={variant} type="button" {onclick}>
+    {text}
+  </button>
+{/snippet}
 
 <Modal {title} onClose={onCancel}>
   <p class="trakt-confirmation-dialog">{message}</p>
 
   {#snippet footer()}
-    <button
-      class="confirmation-button"
-      data-variant="cancel"
-      type="button"
-      onclick={onCancel}
-    >
-      {cancelText}
-    </button>
-    <button
-      class="confirmation-button"
-      data-variant="confirm"
-      type="button"
-      onclick={onConfirm}
-    >
-      {buttonText}
-    </button>
+    {#if alternateText}
+      {@render action({ variant: 'confirm', text: buttonText, onclick: onConfirm })}
+      {@render action({ variant: 'confirm', text: alternateText, onclick: onAlternate })}
+      {@render action({ variant: 'cancel', text: cancelText, onclick: onCancel })}
+    {:else}
+      {@render action({ variant: 'cancel', text: cancelText, onclick: onCancel })}
+      {@render action({ variant: 'confirm', text: buttonText, onclick: onConfirm })}
+    {/if}
   {/snippet}
 </Modal>
 

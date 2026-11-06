@@ -11,7 +11,7 @@ export const ExtendedUserSettingsMappedMock: UserSettings = {
   'joinedAt': new Date('2021-03-15T08:00:00.000Z'),
   'birthday': new Date('1977-03-21'),
   'avatar': {
-    'url': '/img/users/014/366/083/avatars/large/disco_cop.png',
+    'url': '/img/users/41152/avatar.webp?v=1754435517',
   },
   'about': "Sorry about the amnesia. I'm actually a superstar detective.",
   'isVip': true,

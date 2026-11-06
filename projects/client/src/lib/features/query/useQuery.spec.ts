@@ -13,6 +13,7 @@ import { ageLoadedData } from '$test/beds/query/ageLoadedData.ts';
 import { PAST_INVALIDATION_AGE } from '$test/beds/query/PAST_INVALIDATION_AGE.ts';
 import { runStaleTimers } from '$test/beds/query/runStaleTimers.ts';
 import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
+import { waitForSuccess } from '$test/beds/query/waitForSuccess.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
@@ -140,7 +141,7 @@ async function renderProbe(
   }));
   const subscription = store.query.subscribe();
   onTestFinished(() => subscription.unsubscribe());
-  await firstValueFrom(store.query.pipe(filter((result) => result.isSuccess)));
+  await waitForSuccess(store.query);
 
   return { ...store, queryKey: options.queryKey };
 }

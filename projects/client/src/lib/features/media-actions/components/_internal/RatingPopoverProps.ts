@@ -12,6 +12,7 @@ export type ShownRating = {
 export type RatingPopoverProps = {
   target: RatingStoreProps;
   label: string;
+  side?: 'top' | 'bottom';
   // Spread `props` on the slot's own button; `shown` is null while unrated and nothing is previewed.
   // `isOpen` lets a caller treat an open picker as already past its gate.
   trigger: Snippet<

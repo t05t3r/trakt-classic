@@ -71,6 +71,23 @@ beforeEach(() => {
 });
 
 describe('component: RatingPopover', () => {
+  it.each(
+    [
+      [undefined, 'top'],
+      ['top', 'top'],
+      ['bottom', 'bottom'],
+    ] as const,
+  )('should open on side %s as %s', async (side, placed) => {
+    renderComponent(RatingPopoverHost, { props: { target: MATRIX, side } });
+
+    await userEvent.click(await trigger());
+
+    expect(await screen.findByRole('dialog')).toHaveAttribute(
+      'data-side',
+      placed,
+    );
+  });
+
   describe('shown', () => {
     it('should hand the trigger no rating while the title is unrated', async () => {
       renderComponent(RatingPopoverHost, { props: { target: MATRIX } });

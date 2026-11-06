@@ -4,6 +4,7 @@ import type { MediaComment } from '$lib/requests/models/MediaComment.ts';
 import { server } from '$mocks/server.ts';
 import { mediaComment } from '$test/beds/comments/mediaComment.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { controlledBy } from '$test/beds/dom/controlledBy.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { commentResponse } from '$test/beds/request/commentResponse.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
@@ -93,9 +94,7 @@ describe('component: CommentThread', () => {
 
     await userEvent.click(toggle());
     const [reply] = await screen.findAllByText('Comment 2');
-    const box = document.getElementById(
-      toggle().getAttribute('aria-controls') ?? '',
-    );
+    const box = controlledBy(toggle());
 
     expect(box).toContainElement(reply ?? null);
   });
@@ -137,9 +136,7 @@ describe('component: CommentThread', () => {
     renderThread();
     await userEvent.click(toggle());
     const retry = await screen.findByRole('button', { name: 'Retry' });
-    const box = document.getElementById(
-      toggle().getAttribute('aria-controls') ?? '',
-    )?.firstElementChild;
+    const box = controlledBy(toggle())?.firstElementChild;
     recordSearches(REPLIED_COMMENT_REPLIES_URL, REPLIES);
 
     retry.focus();
@@ -169,9 +166,7 @@ describe('component: CommentThread', () => {
     const empty = await screen.findByText('No replies to show.');
 
     expect(empty).toHaveClass('trakt-empty-state');
-    expect(document.getElementById(
-      toggle().getAttribute('aria-controls') ?? '',
-    )).toContainElement(empty);
+    expect(controlledBy(toggle())).toContainElement(empty);
     expect(container.querySelectorAll('.trakt-comment-card')).toHaveLength(1);
   });
 

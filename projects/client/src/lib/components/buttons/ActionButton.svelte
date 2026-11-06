@@ -1,5 +1,6 @@
 <script lang="ts">
   import PendingSpinner from '$lib/components/feedback/PendingSpinner.svelte';
+  import TickProgressBar from '$lib/components/progress/TickProgressBar.svelte';
   import type { ActionButtonProps } from './_internal/ActionButtonProps.ts';
 
   const {
@@ -7,6 +8,7 @@
     icon: Glyph,
     label,
     underInfo,
+    percent,
     selected,
     isUpdating = false,
     isInert = false,
@@ -59,6 +61,11 @@
       {@render side()}
     </div>
   {/if}
+  {#if percent !== undefined}
+    <div class="action-button-bar" aria-hidden="true">
+      <TickProgressBar value={percent} total={100} size="sm" {label} />
+    </div>
+  {/if}
 </div>
 
 <style lang="scss">
@@ -70,6 +77,7 @@
     --action-side-background: var(--color-surface-sunken);
     --action-side-color: var(--color-text-help);
 
+    position: relative;
     display: flex;
     min-height: var(--action-button-height);
     border: var(--border-thickness-xxs) solid var(--action-button-color);
@@ -189,8 +197,18 @@
       line-height: var(--line-height-text);
     }
 
+    // One column, so each icon a button gains leaves the strip's width alone.
     .action-button-side {
       display: flex;
+      flex-direction: column;
+    }
+
+    // Clicks pass through to the button and side icons it runs under.
+    .action-button-bar {
+      position: absolute;
+      inset-block-end: var(--ni-0);
+      inset-inline: var(--ni-0);
+      pointer-events: none;
     }
   }
 </style>

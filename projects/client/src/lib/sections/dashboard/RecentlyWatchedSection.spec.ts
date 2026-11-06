@@ -1,31 +1,33 @@
-import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { EpisodeSiloResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloResponseMock.ts';
 import { ShowSiloResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloResponseMock.ts';
 import { ActivityHistoryResponseMock } from '$mocks/data/users/response/ActivityHistoryResponseMock.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
-import { WatchedShowsSiloResponseMock } from '$mocks/data/users/response/WatchedShowsSiloResponseMock.ts';
+import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { SYNC_HISTORY_REMOVE_URL } from '$mocks/data/sync/SYNC_HISTORY_REMOVE_URL.ts';
-import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 import { server } from '$mocks/server.ts';
+import { waitForEnabled } from '$test/beds/buttons/waitForEnabled.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { cards } from '$test/beds/dashboard/cards.ts';
 import { readyCards } from '$test/beds/dashboard/readyCards.ts';
 import { renderSection } from '$test/beds/dashboard/renderSection.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { collapsedCells } from '$test/beds/pagination/collapsedCells.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
-import { cleanup, waitFor, within } from '@testing-library/svelte';
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
+import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import type { ActivityHistoryResponse } from '@trakt/api';
 import { http, HttpResponse } from 'msw';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import RecentlyWatchedSection from './RecentlyWatchedSection.svelte';
 
 // The list icon renders only once a layout matches.
@@ -85,16 +87,6 @@ async function settledIcons(card: HTMLElement, count: number) {
     );
     return icons;
   });
-}
-
-// The watched history holds the fixture's play of Silo 1x01.
-function serveSiloEpisodeWatched() {
-  server.use(
-    http.get(
-      WATCHED_SHOWS_URL,
-      () => pagedResponse({ body: WatchedShowsSiloResponseMock }),
-    ),
-  );
 }
 
 // The fixture's plays, with the episode's or the movie's dates replaced.
@@ -298,6 +290,27 @@ describe('section: RecentlyWatchedSection', () => {
         .toHaveTextContent('31 Jan 2025 23:12');
     });
 
+    it("should rate a Play's card from its percentage, so a slow history cannot block it", async () => {
+      stubClientRects();
+      holdRequest({ method: 'get', url: WATCHED_SHOWS_URL });
+      serve(() => pagedResponse({ body: [siloPlay(1)] }));
+      const region = await renderSection(SECTION);
+      const [card] = await readyCards({
+        region,
+        selector: CARD_SELECTOR,
+        count: 1,
+      });
+      if (!card) throw new Error('no card');
+      const button = await within(card).findByRole('button', {
+        name: /^\d+%/,
+      });
+
+      await userEvent.click(await waitForEnabled(button));
+
+      expect(await screen.findByRole('dialog', { name: 'Rate this episode' }))
+        .toHaveAttribute('data-side', 'bottom');
+    });
+
     it("should mark each card with the user's rating of its own episode or movie", async () => {
       const { episode, movie } = await readyFixtureCards();
 
@@ -314,9 +327,8 @@ describe('section: RecentlyWatchedSection', () => {
 
       const icons = await settledIcons(episode, 3);
 
-      // The watched fixtures hold no play of this episode's id.
       expect(icons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
-        'Mark "Freedom Day" as watched',
+        'Remove "Freedom Day" from your History',
         'Add or remove "Freedom Day" from lists',
         'Remove "Silo" from your Favorites',
       ]);
@@ -328,8 +340,18 @@ describe('section: RecentlyWatchedSection', () => {
         .toHaveAttribute('data-variant', 'default');
     });
 
-    it("should select an episode card's watch icon when the history holds a play of that episode", async () => {
-      serveSiloEpisodeWatched();
+    it("should give an episode card the Play's date and time on a hover", async () => {
+      const { episode } = await readyFixtureCards();
+      const [watch] = await settledIcons(episode, 3);
+
+      await userEvent.hover(assertDefined(watch));
+
+      await waitFor(() =>
+        expect(watch).toHaveAccessibleDescription('Watched on 31 Jan 2025 1h')
+      );
+    });
+
+    it("should select an episode card's watch icon though the watched history holds no play of that episode", async () => {
       const { episode } = await readyFixtureCards();
 
       const [watch] = await settledIcons(episode, 3);
@@ -349,7 +371,6 @@ describe('section: RecentlyWatchedSection', () => {
           }),
         })
       );
-      serveSiloEpisodeWatched();
       const { episode } = await readyFixtureCards();
 
       const [watch] = await settledIcons(episode, 3);
@@ -411,7 +432,6 @@ describe('section: RecentlyWatchedSection', () => {
           }),
         })
       );
-      serveSiloEpisodeWatched();
       const { episode } = await readyFixtureCards();
 
       const [watch] = await settledIcons(episode, 3);
@@ -424,6 +444,26 @@ describe('section: RecentlyWatchedSection', () => {
       expect(episode.querySelector('.trakt-community-rating')).toBeNull();
     });
 
+    it.each(
+      [
+        { type: 'episode', id: 1 },
+        { type: 'movie', id: 2 },
+      ] as const,
+    )(
+      "should ask about the Play on a $type card's watch and post that entry's id",
+      async ({ type, id }) => {
+        const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
+        const fixture = await readyFixtureCards();
+        const [watch] = await settledIcons(fixture[type], 3);
+        if (!(watch instanceof HTMLElement)) throw new Error('no watch icon');
+
+        await userEvent.click(watch);
+        await answerDialog('Remove from history?', 'Only this play');
+
+        await waitFor(() => expect(bodies).toEqual([{ ids: [id] }]));
+      },
+    );
+
     it('should keep the watch icon of an episode with no air date in place and pending while a confirmed remove is held', async () => {
       holdRequest({
         method: 'post',
@@ -435,18 +475,17 @@ describe('section: RecentlyWatchedSection', () => {
           body: datedPlays({ episode: { first_aired: null } }),
         })
       );
-      serveSiloEpisodeWatched();
       const { episode } = await readyFixtureCards();
       const [watch] = await settledIcons(episode, 3);
       if (!(watch instanceof HTMLElement)) throw new Error('no watch icon');
 
       await userEvent.click(watch);
-      await answerDialog('Remove from history?', 'Remove from History');
+      await answerDialog('Remove from history?', 'Only this play');
 
       await waitFor(() => expect(watch).toHaveAttribute('aria-busy', 'true'));
       expect(watch).toHaveAttribute(
         'aria-label',
-        'Mark "Freedom Day" as watched',
+        'Remove "Freedom Day" from your History',
       );
       expect(episode).toContainElement(watch);
     });
@@ -464,8 +503,6 @@ describe('section: RecentlyWatchedSection', () => {
   });
 
   describe('rows', () => {
-    afterEach(() => safeLocalStorage.clear());
-
     it('should lay the cards out as a fanart grid of three, two and one up', async () => {
       const { region } = await readyFixtureCards();
 

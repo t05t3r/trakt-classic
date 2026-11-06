@@ -40,6 +40,7 @@ import { UserFollowRequestsResponseMock } from '$mocks/data/users/response/UserF
 import { UserFollowingResponseMock } from '$mocks/data/users/response/UserFollowingResponseMock.ts';
 import { UserMonthInReviewResponseMock } from '$mocks/data/users/response/UserMonthInReviewResponseMock.ts';
 import { UserPendingFollowsResponseMock } from '$mocks/data/users/response/UserPendingFollowsResponseMock.ts';
+import { UserRatingsResponseMock } from '$mocks/data/users/response/UserRatingsResponseMock.ts';
 import { UserStatsResponseMock } from '$mocks/data/users/response/UserStatsResponseMock.ts';
 import { UserWatchingResponseMock } from '$mocks/data/users/response/UserWatchingResponseMock.ts';
 import { WatchedMoviesResponseMock } from '$mocks/data/users/response/WatchedMoviesResponseMock.ts';
@@ -47,11 +48,16 @@ import { WatchedShowsMinimalResponseMock } from '$mocks/data/users/response/Watc
 import { WatchedShowsResponseMock } from '$mocks/data/users/response/WatchedShowsResponseMock.ts';
 import { DROP_URL } from '$mocks/data/users/DROP_URL.ts';
 import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
+import { HISTORY_EPISODES_URL } from '$mocks/data/users/HISTORY_EPISODES_URL.ts';
+import { HISTORY_MOVIES_URL } from '$mocks/data/users/HISTORY_MOVIES_URL.ts';
+import { HISTORY_SHOWS_URL } from '$mocks/data/users/HISTORY_SHOWS_URL.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
 import { LISTS_URL } from '$mocks/data/users/LISTS_URL.ts';
 import { RESTORE_URL } from '$mocks/data/users/RESTORE_URL.ts';
 import { USER_FAVORITES_URL } from '$mocks/data/users/USER_FAVORITES_URL.ts';
+import { USER_RATINGS_URL } from '$mocks/data/users/USER_RATINGS_URL.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
+import { USER_STATS_URL } from '$mocks/data/users/USER_STATS_URL.ts';
 import { USER_WATCHLIST_URL } from '$mocks/data/users/USER_WATCHLIST_URL.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
 import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
@@ -60,7 +66,7 @@ export const users = [
   http.get(USER_SETTINGS_URL, () => {
     return HttpResponse.json(ExtendedUserSettingsResponseMock);
   }),
-  http.get('http://localhost/users/me/stats', () => {
+  http.get(USER_STATS_URL, () => {
     return HttpResponse.json(UserStatsResponseMock);
   }),
   http.get(
@@ -129,6 +135,18 @@ export const users = [
       { headers: pageHeaders() },
     );
   }),
+  // Before the seasons glob below, which would answer a typed seasons read too.
+  http.get(USER_RATINGS_URL, ({ params }) => {
+    const ratings = String(params.rating).split(',');
+
+    return HttpResponse.json(
+      UserRatingsResponseMock.filter(({ type, rating }) =>
+        (params.type === 'all' || params.type === toListTypeSegment(type)) &&
+        ratings.includes(String(rating))
+      ),
+      { headers: pageHeaders() },
+    );
+  }),
   http.get('http://localhost/users/me/ratings/movies', () => {
     return HttpResponse.json(RatedMoviesResponseMock);
   }),
@@ -144,7 +162,7 @@ export const users = [
   // Before the movies and shows globs below, which would answer it too.
   http.get(USER_FAVORITES_URL, ({ params }) => {
     const favorites = FavoritedMediaResponseMock.filter(({ type }) =>
-      params.type === 'all' || params.type === `${type}s`
+      params.type === 'all' || params.type === toListTypeSegment(type)
     );
 
     return HttpResponse.json(favorites, { headers: pageHeaders() });
@@ -162,13 +180,17 @@ export const users = [
         headers: pageHeaders(),
       }),
   ),
-  http.get('http://localhost/users/me/history/shows*', () => {
-    return HttpResponse.json(ShowActivityHistoryResponseMock);
+  http.get(HISTORY_SHOWS_URL, () => {
+    return HttpResponse.json(ShowActivityHistoryResponseMock, {
+      headers: pageHeaders(),
+    });
   }),
-  http.get('http://localhost/users/me/history/movies*', () => {
-    return HttpResponse.json(MovieActivityHistoryResponseMock);
+  http.get(HISTORY_MOVIES_URL, () => {
+    return HttpResponse.json(MovieActivityHistoryResponseMock, {
+      headers: pageHeaders(),
+    });
   }),
-  http.get('http://localhost/users/me/history/episodes*', () => {
+  http.get(HISTORY_EPISODES_URL, () => {
     return HttpResponse.json(EpisodeActivityHistoryResponseMock);
   }),
   // Before the broad lists handler below, which would answer it too.

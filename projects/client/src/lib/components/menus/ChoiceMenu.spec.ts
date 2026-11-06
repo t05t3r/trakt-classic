@@ -1,8 +1,8 @@
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { render, screen, within } from '@testing-library/svelte';
-import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChoiceMenu from './ChoiceMenu.svelte';
 import type { ChoiceMenuProps } from './_internal/ChoiceMenuProps.ts';
@@ -26,10 +26,7 @@ function renderMenu(props: Partial<ChoiceMenuProps<Kind>> = {}) {
   return { onChange };
 }
 
-async function openMenu(name: string) {
-  await userEvent.click(screen.getByRole('button', { name }));
-  return screen.findByRole('menu', { name: 'Type' });
-}
+const openMenu = (name: string) => openMenuByClick(name, 'Type');
 
 beforeEach(() => {
   stubClientRects();
@@ -72,6 +69,28 @@ describe('component: ChoiceMenu', () => {
     await waitNegativeClaim();
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('should call onRepick when the current choice is picked again', async () => {
+    const onRepick = vi.fn();
+    const { onChange } = renderMenu({ onRepick });
+    await openMenu('Type: Shows');
+
+    await pickMenuRadio('Shows');
+
+    expect(onRepick).toHaveBeenCalledOnce();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('should not call onRepick when another choice is picked', async () => {
+    const onRepick = vi.fn();
+    const { onChange } = renderMenu({ onRepick });
+    await openMenu('Type: Shows');
+
+    await pickMenuRadio('Movies');
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('movie');
+    expect(onRepick).not.toHaveBeenCalled();
   });
 
   it('should pass its font to the trigger', () => {

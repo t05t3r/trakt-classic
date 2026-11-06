@@ -16,6 +16,8 @@ import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { movieListItem } from '$test/beds/request/movieListItem.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
@@ -82,19 +84,14 @@ describe('store: useListMembership', () => {
   });
 
   it('should read a listed season by its own id, not its show', async () => {
-    server.use(
-      http.get(
-        `http://localhost/users/me/lists/${LIST.id}/items*`,
-        () =>
-          pagedResponse({
-            body: [{
-              type: 'season',
-              season: { number: 1, ids: { trakt: SILO_SEASON.id } },
-              show: { title: 'Silo', ids: { trakt: SILO.id } },
-            }],
-          }),
-      ),
-    );
+    servePaged({
+      url: `${ITEMS_URL}*`,
+      body: [{
+        type: 'season',
+        season: { number: 1, ids: { trakt: SILO_SEASON.id } },
+        show: { title: 'Silo', ids: { trakt: SILO.id } },
+      }],
+    });
     const season = await renderBound({ list: LIST, ...SILO_SEASON });
     const show = await renderBound({ list: LIST, ...SILO });
 
@@ -119,12 +116,10 @@ describe('store: useListMembership', () => {
   });
 
   it('should read membership per list', async () => {
-    server.use(
-      http.get(
-        `http://localhost/users/me/lists/${OTHER_LIST.id}/items*`,
-        () => pagedResponse({ body: [showItem(SILO.id)] }),
-      ),
-    );
+    servePaged({
+      url: `http://localhost/users/me/lists/${OTHER_LIST.id}/items*`,
+      body: [showItem(SILO.id)],
+    });
     const inList = await renderBound({ list: LIST, ...MATRIX });
     const inOtherList = await renderBound({ list: OTHER_LIST, ...MATRIX });
     const otherListSilo = await renderBound({ list: OTHER_LIST, ...SILO });
@@ -136,7 +131,7 @@ describe('store: useListMembership', () => {
 
   it('should show the addition while the request is in flight, then keep it from the refetch', async () => {
     const items: unknown[] = [movieListItem(MATRIX.id)];
-    server.use(http.get(`${ITEMS_URL}*`, () => pagedResponse({ body: items })));
+    servePaged({ url: `${ITEMS_URL}*`, body: items });
     const { add, isListed, isUpdating } = await renderBound({
       list: LIST,
       ...SILO,
@@ -305,13 +300,7 @@ describe('store: useListMembership', () => {
 
   it('should add a season with a season body', async () => {
     const { add } = await renderBound({ list: LIST, ...SILO_SEASON });
-    const bodies: unknown[] = [];
-    server.use(
-      http.post(ITEMS_URL, async ({ request }) => {
-        bodies.push(await request.json());
-        return new HttpResponse(null, { status: 201 });
-      }),
-    );
+    const bodies = recordBodies(ITEMS_URL, { status: 201 });
 
     await add();
 

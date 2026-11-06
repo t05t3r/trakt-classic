@@ -1,14 +1,16 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { controlledBy } from '$test/beds/dom/controlledBy.ts';
+import { closeFromOutside } from '$test/beds/menus/closeFromOutside.ts';
+import { openDialogByClick } from '$test/beds/menus/openDialogByClick.ts';
 import PopoverHost from '$test/beds/menus/PopoverHost.svelte';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 
 const trigger = () => screen.getByRole('button', { name: 'Rate' });
 const dialog = () => screen.queryByRole('dialog', { name: 'Your rating' });
 const openPopover = async () => {
-  await userEvent.click(trigger());
-  const opened = await screen.findByRole('dialog', { name: 'Your rating' });
+  const opened = await openDialogByClick('Rate', 'Your rating');
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Weak' })).toHaveFocus()
   );
@@ -25,10 +27,7 @@ describe('component: Popover', () => {
 
     expect(dialog()).not.toBeInTheDocument();
 
-    await userEvent.click(trigger());
-
-    expect(await screen.findByRole('dialog', { name: 'Your rating' }))
-      .toBeVisible();
+    expect(await openDialogByClick('Rate', 'Your rating')).toBeVisible();
     expect(trigger()).toHaveAttribute('aria-expanded', 'true');
   });
 
@@ -36,10 +35,8 @@ describe('component: Popover', () => {
     render(PopoverHost);
 
     const opened = await openPopover();
-    const controlled = trigger().getAttribute('aria-controls');
 
-    expect(controlled).toBeTruthy();
-    expect(document.getElementById(controlled ?? '')).toBe(opened);
+    expect(controlledBy(trigger())).toBe(opened);
   });
 
   it.each([['Enter', '{Enter}'], ['Space', ' ']])(
@@ -81,12 +78,7 @@ describe('component: Popover', () => {
     render(PopoverHost);
     await openPopover();
 
-    // bits-ui counts a press within the box's rect as inside, and jsdom puts that rect at 0,0.
-    // It also drops a press made before it re-attaches its listener, just after the open.
-    await waitFor(() => {
-      fireEvent.pointerDown(document.body, { clientX: 1, clientY: 1 });
-      expect(dialog()).not.toBeInTheDocument();
-    });
+    await closeFromOutside(dialog);
     expect(trigger()).toHaveFocus();
   });
 
@@ -110,5 +102,17 @@ describe('component: Popover', () => {
     render(PopoverHost, { props: { side } });
 
     expect(await openPopover()).toHaveAttribute('data-side', placed);
+  });
+
+  it.each(
+    [
+      [undefined, 'default'],
+      ['default', 'default'],
+      ['flush', 'flush'],
+    ] as const,
+  )('should take variant %s as %s', async (variant, shown) => {
+    render(PopoverHost, { props: { variant } });
+
+    expect(await openPopover()).toHaveAttribute('data-variant', shown);
   });
 });

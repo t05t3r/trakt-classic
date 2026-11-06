@@ -6,6 +6,7 @@ import { ShowSiloSeasonsMappedMock } from '$mocks/data/summary/shows/silo/mapped
 import { ShowSiloSeasonsWithSpecialsMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonsWithSpecialsMappedMock.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, within } from '@testing-library/svelte';
@@ -93,10 +94,7 @@ describe('component: SeasonsBlock', () => {
     openAt(SHOW_PATH);
     await renderBlock();
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Sort by: Number' }),
-    );
-    const menu = await screen.findByRole('menu', { name: 'Sort by' });
+    const menu = await openMenuByClick('Sort by: Number', 'Sort by');
 
     expect(
       within(menu).getAllByRole('menuitemradio').map((row) =>
@@ -183,7 +181,7 @@ describe('component: SeasonsBlock', () => {
     });
 
     expect(
-      within(specialsCard).getAllByRole('button').map((icon) =>
+      [...specialsCard.querySelectorAll('.trakt-quick-icon')].map((icon) =>
         icon.getAttribute('aria-label')
       ),
     ).toEqual([

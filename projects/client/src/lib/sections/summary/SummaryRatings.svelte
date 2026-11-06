@@ -3,13 +3,14 @@
   import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
   import { useDisplayEarlyRatings } from '$lib/features/auth/stores/useDisplayEarlyRatings.ts';
   import * as m from '$lib/features/i18n/messages.ts';
+  import HasPlay from '$lib/features/media-actions/components/HasPlay.svelte';
   import RatingPopover from '$lib/features/media-actions/components/RatingPopover.svelte';
   import { toPlayGate } from '$lib/features/media-actions/toPlayGate.ts';
+  import { toRateThisLabel } from '$lib/features/media-actions/toRateThisLabel.ts';
   import ContainerPage from '$lib/sections/layout/ContainerPage.svelte';
   import IconHeart from '@tabler/icons-svelte/icons/heart';
   import IconHeartFilled from '@tabler/icons-svelte/icons/heart-filled';
   import ExternalRating from './_internal/ExternalRating.svelte';
-  import HasPlay from './_internal/HasPlay.svelte';
   import { toCommunityCounters } from './_internal/toCommunityCounters.ts';
   import { toExternalRatings } from './_internal/toExternalRatings.ts';
   import type { SummaryRatingsProps } from './SummaryRatingsProps.ts';
@@ -17,14 +18,7 @@
   const { target, rating, stats, earliestReleaseDate }: SummaryRatingsProps =
     $props();
 
-  const RATE_THIS = {
-    movie: m.text_rate_this_movie,
-    show: m.text_rate_this_show,
-    season: m.text_rate_this_season,
-    episode: m.text_rate_this_episode,
-  };
-
-  const rateThis = $derived(RATE_THIS[target.type]());
+  const rateThis = $derived(toRateThisLabel(target.type));
 
   const yourRatingId = $props.id();
 

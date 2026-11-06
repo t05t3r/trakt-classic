@@ -4,6 +4,7 @@ import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
 import { getGlobalFilterDependencies } from '$lib/requests/_internal/getGlobalFilterDependencies.ts';
 import { mapToListItem } from '$lib/requests/_internal/mapToListItem.ts';
 import { WATCHLIST_INVALIDATIONS } from '$lib/requests/_internal/WATCHLIST_INVALIDATIONS.ts';
+import { withoutNullSeasonAirDate } from '$lib/requests/_internal/withoutNullSeasonAirDate.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import type { FilterParams } from '$lib/requests/models/FilterParams.ts';
 import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
@@ -30,19 +31,6 @@ type WatchlistParams =
   & Pick<PaginationParams, 'page'>
   & ApiParams
   & FilterParams;
-
-// Trakt sends a season it has no date for as `null`, which the SDK refuses.
-const NullAiredSeasonRowSchema = z.object({
-  season: z.object({ first_aired: z.null() }).passthrough(),
-}).passthrough();
-
-function withoutNullSeasonAirDate(row: unknown): unknown {
-  const parsed = NullAiredSeasonRowSchema.safeParse(row);
-  if (!parsed.success) return row;
-
-  const { season } = parsed.data;
-  return { ...parsed.data, season: { ...season, first_aired: undefined } };
-}
 
 const ListedRowSchema = z.preprocess(
   withoutNullSeasonAirDate,

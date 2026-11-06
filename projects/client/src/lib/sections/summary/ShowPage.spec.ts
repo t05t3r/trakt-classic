@@ -107,6 +107,20 @@ describe('component: ShowPage', () => {
       .toBeNull();
   });
 
+  it('should show the tagline above the overview', async () => {
+    renderPage();
+
+    const tagline = await screen.findByText(ShowSiloResponseMock.tagline ?? '');
+    const overview = await screen.findByText(
+      ShowSiloResponseMock.overview ?? '',
+    );
+
+    expect(
+      tagline.compareDocumentPosition(overview) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   // The next show's summary is in the cache, as a navigation's load leaves it.
   it("should start the next show's overview clamped", async () => {
     setLayout('desktop');

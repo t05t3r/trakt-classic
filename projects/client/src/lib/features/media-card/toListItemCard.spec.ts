@@ -1,6 +1,20 @@
+import type { ListItem } from '$lib/requests/models/ListItem.ts';
 import { itemOfType } from '$test/beds/dashboard/itemOfType.ts';
 import { describe, expect, it } from 'vitest';
 import { toListItemCard } from './toListItemCard.ts';
+import type { MediaCardInput } from './toMediaCard.ts';
+
+const MOVIE = itemOfType('movie');
+const SHOW = itemOfType('show');
+const SEASON = itemOfType('season');
+const EPISODE = itemOfType('episode');
+
+const INPUTS: ReadonlyArray<{ item: ListItem; input: MediaCardInput }> = [
+  { item: MOVIE, input: { type: 'movie', movie: MOVIE.entry } },
+  { item: SHOW, input: { type: 'show', show: SHOW.entry } },
+  { item: SEASON, input: { type: 'season', ...SEASON.entry } },
+  { item: EPISODE, input: { type: 'episode', ...EPISODE.entry } },
+];
 
 describe('toListItemCard', () => {
   it('should map a movie to its own card, poster and quick-icons Target', () => {
@@ -16,6 +30,7 @@ describe('toListItemCard', () => {
         id: 259852,
         title: 'The Batman',
         airDate: new Date('2022-03-04T00:00:00.000Z'),
+        runtime: 177,
       },
       rating: {
         value: 0.7999,
@@ -97,11 +112,31 @@ describe('toListItemCard', () => {
         number: 1,
         show: { id: 154574, title: 'House of the Dragon' },
         airDate: new Date('2022-08-22T01:00:00.000Z'),
+        runtime: 66,
       },
       rating: {
         value: 0.7969,
         earliestReleaseDate: new Date('2022-08-22T01:00:00.000Z'),
       },
     });
+  });
+
+  it.each(INPUTS)(
+    'should map a $item.type given as a media card input to the same card',
+    ({ item, input }) => {
+      expect(toListItemCard(input)).toEqual(toListItemCard(item));
+    },
+  );
+
+  it("should take a played episode's air date from the play", () => {
+    const playedAt = new Date('2020-01-01T00:00:00.000Z');
+
+    const { target } = toListItemCard({
+      type: 'episode',
+      ...EPISODE.entry,
+      playedAt,
+    });
+
+    expect(target.airDate).toEqual(playedAt);
   });
 });

@@ -88,6 +88,70 @@ describe('component: MenuCheckboxRow', () => {
     expect(onToggle).toHaveBeenCalledOnce();
   });
 
+  describe('with the button role', () => {
+    const pressable = () => screen.getByRole('button', { name: 'Watchlist' });
+
+    it.each(
+      [
+        { checked: true, ariaPressed: 'true' },
+        { checked: false, ariaPressed: 'false' },
+      ] as const,
+    )(
+      'should read aria-pressed $ariaPressed when checked is $checked',
+      ({ checked, ariaPressed }) => {
+        render(MenuCheckboxRow, {
+          props: {
+            role: 'button',
+            checked,
+            onToggle: vi.fn(),
+            children: menuLabel,
+          },
+        });
+
+        expect(pressable()).toHaveAttribute('aria-pressed', ariaPressed);
+      },
+    );
+
+    it('should carry no role and no aria-checked', () => {
+      render(MenuCheckboxRow, {
+        props: {
+          role: 'button',
+          checked: true,
+          onToggle: vi.fn(),
+          children: menuLabel,
+        },
+      });
+
+      expect(pressable()).not.toHaveAttribute('role');
+      expect(pressable()).not.toHaveAttribute('aria-checked');
+    });
+
+    it('should show the check in the check slot', () => {
+      const { container } = render(MenuCheckboxRow, {
+        props: {
+          role: 'button',
+          checked: true,
+          onToggle: vi.fn(),
+          children: menuLabel,
+        },
+      });
+
+      expect(glyphClasses(container)).toEqual([
+        expect.stringContaining('tabler-icon-check'),
+      ]);
+    });
+  });
+
+  it('should keep the checkbox role and no aria-pressed by default', () => {
+    render(MenuCheckboxRow, {
+      props: { checked: true, onToggle: vi.fn(), children: menuLabel },
+    });
+
+    expect(row()).toHaveAttribute('role', 'checkbox');
+    expect(row()).toHaveAttribute('aria-checked', 'true');
+    expect(row()).not.toHaveAttribute('aria-pressed');
+  });
+
   it.each([
     { name: 'Enter', key: '{Enter}' },
     { name: 'Space', key: ' ' },

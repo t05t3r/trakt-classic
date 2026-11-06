@@ -4,7 +4,7 @@
   import * as m from '$lib/features/i18n/messages.ts';
   import MediaPosterCard from '$lib/features/media-card/components/MediaPosterCard.svelte';
   import UserRatingCorner from '$lib/features/media-card/components/UserRatingCorner.svelte';
-  import { toMediaCard } from '$lib/features/media-card/toMediaCard.ts';
+  import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
   import type { Season } from '$lib/requests/models/Season.ts';
   import { countText } from '$lib/utils/formatting/number/countText.ts';
   import { isProgressComplete } from '$lib/utils/media/isProgressComplete.ts';
@@ -72,7 +72,7 @@
 >
   {#snippet item(season)}
     {@const watched = progressOf(season)}
-    {@const card = toMediaCard({ type: 'season', show, season })}
+    {@const card = toListItemCard({ type: 'season', show, season })}
     {#snippet seasonProgress()}
       {#if watched && watched.completed > 0}
         {@const progressLabel = m.progress_label_episodes_watched({
@@ -89,8 +89,8 @@
     {/snippet}
     <MediaPosterCard
       {card}
-      poster={season.poster ?? show.poster}
-      posterTitle={show.title}
+      poster={card.poster}
+      posterTitle={card.posterTitle}
       progress={seasonProgress}
     >
       {#snippet badges()}

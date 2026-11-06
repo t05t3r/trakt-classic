@@ -1,3 +1,5 @@
+import type { RatingFilter } from '$lib/features/media-actions/RATING_VALUES.ts';
+import type { RatingsTypeFilter } from '$lib/features/ratings/RATINGS_TYPES.ts';
 import { setTimeZone } from '$test/beds/date/setTimeZone.ts';
 import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
 import { describe, expect, expectTypeOf, it } from 'vitest';
@@ -137,13 +139,60 @@ describe('util: UrlBuilder', () => {
       expectTypeOf(UrlBuilder.progress).returns
         .toEqualTypeOf<'/users/me/progress'>();
       expectTypeOf(UrlBuilder.ratings).returns
-        .toEqualTypeOf<'/users/me/ratings'>();
+        .toEqualTypeOf<
+          | '/users/me/ratings'
+          | `/users/me/ratings/${RatingsTypeFilter}/${RatingFilter}`
+        >();
       expectTypeOf(UrlBuilder.lists.home).returns
         .toEqualTypeOf<'/users/me/lists'>();
     });
   });
 
+  describe('ratings', () => {
+    it.each(
+      [
+        { name: 'no argument', params: undefined, path: '/users/me/ratings' },
+        {
+          name: 'both all',
+          params: { type: 'all', rating: 'all' },
+          path: '/users/me/ratings',
+        },
+        {
+          name: 'the type only',
+          params: { type: 'movies' },
+          path: '/users/me/ratings/movies/all',
+        },
+        {
+          name: 'the rating only',
+          params: { rating: '8' },
+          path: '/users/me/ratings/all/8',
+        },
+        {
+          name: 'both set',
+          params: { type: 'seasons', rating: '10' },
+          path: '/users/me/ratings/seasons/10',
+        },
+      ] as const,
+    )('should build $path from $name', ({ params, path }) => {
+      expect(UrlBuilder.ratings(params)).toBe(path);
+    });
+  });
+
   describe('history', () => {
+    it.each(
+      [
+        { type: 'movie', url: '/users/me/history?movie=12' },
+        { type: 'episode', url: '/users/me/history?episode=12' },
+        { type: 'show', url: '/users/me/history/episodes?show=12' },
+        { type: 'season', url: '/users/me/history/episodes?season=12' },
+      ] as const,
+    )(
+      "should open a $type's plays at Classic's URL",
+      ({ type, url }) => {
+        expect(UrlBuilder.history.item({ type, id: 12 })).to.equal(url);
+      },
+    );
+
     it('should narrow the history to episodes', () => {
       expect(UrlBuilder.history.home('episodes'))
         .to.equal('/users/me/history/episodes');

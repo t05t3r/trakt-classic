@@ -1,4 +1,4 @@
-import type { LocalDay } from '$lib/utils/date/bucketByWindowDay.ts';
+import type { LocalDay } from '$lib/utils/date/toLocalDay.ts';
 import type { Count } from '$lib/utils/formatting/number/countText.ts';
 
 export type PlayCount = Count;

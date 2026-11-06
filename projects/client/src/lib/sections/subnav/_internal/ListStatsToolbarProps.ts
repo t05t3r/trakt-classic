@@ -1,6 +1,7 @@
 import type { ListDisplayType } from '$lib/features/lists/LIST_TYPES.ts';
 import type { ListParams } from '$lib/features/lists/stores/useListParams.ts';
 import type { WatchedPercentage } from '$lib/features/lists/stores/useWatchedPercentage.ts';
+import type { ToolbarControls } from '$lib/sections/lists/ListItemsSectionProps.ts';
 
 export type ListStatsToolbarProps<T extends ListDisplayType> = {
   // The screen's own instance, so the toolbar adds no second one.
@@ -12,10 +13,6 @@ export type ListStatsToolbarProps<T extends ListDisplayType> = {
   minutes?: number;
   // Past one page, the loaded items are not the List, so no runtime shows.
   pageCount?: number;
-  // On phones, whether the options panel shows.
-  isPanelOpen: boolean;
-  // The options panel's id, for the control that opens it.
-  panelId: string;
-  // Called after a choice in the options that changes a value.
-  onChoose: () => void;
+  // Its `close` runs after a choice in the options that changes a value.
+  controls: ToolbarControls;
 };

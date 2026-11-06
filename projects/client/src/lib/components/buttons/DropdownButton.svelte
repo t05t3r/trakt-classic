@@ -5,6 +5,7 @@
   const {
     label,
     selected = false,
+    selectedTint = 'selected',
     variant = 'default',
     font = 'body',
     children,
@@ -18,6 +19,7 @@
   type="button"
   class="trakt-dropdown-button"
   class:is-selected={selected}
+  data-selected-tint={selectedTint}
   data-variant={variant}
   data-font={font}
   aria-label={label}
@@ -35,7 +37,7 @@
     background: none;
     color: var(--color-text-primary);
     font-family: var(--font-family-body);
-    font-size: var(--font-size-button);
+    font-size: var(--dropdown-button-font-size, var(--font-size-button));
     font-weight: var(--font-weight-body);
     line-height: var(--line-height-text);
     white-space: nowrap;
@@ -55,8 +57,12 @@
       color: var(--color-text-tertiary);
     }
 
-    &.is-selected {
+    &.is-selected[data-selected-tint='selected'] {
       color: var(--color-toggle-selected);
+    }
+
+    &.is-selected[data-selected-tint='accent'] {
+      color: var(--color-accent);
     }
 
     :global(.dropdown-button-caret) {

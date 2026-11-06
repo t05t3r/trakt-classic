@@ -1,7 +1,9 @@
 <script lang="ts">
   import Popover from '$lib/components/menus/Popover.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
+  import { RATING_VALUES } from '$lib/features/media-actions/RATING_VALUES.ts';
   import { useRating } from '$lib/features/media-actions/stores/useRating.ts';
+  import { toRatingLabel } from '$lib/features/media-actions/toRatingLabel.ts';
   import { toRovingIndex } from '$lib/utils/events/toRovingIndex.ts';
   import IconHeartFilled from '@tabler/icons-svelte/icons/heart-filled';
   import type {
@@ -9,22 +11,10 @@
     ShownRating,
   } from './_internal/RatingPopoverProps.ts';
 
-  const LABELS = [
-    m.text_rating_1,
-    m.text_rating_2,
-    m.text_rating_3,
-    m.text_rating_4,
-    m.text_rating_5,
-    m.text_rating_6,
-    m.text_rating_7,
-    m.text_rating_8,
-    m.text_rating_9,
-    m.text_rating_10,
-  ];
+  const HEARTS = RATING_VALUES.map(Number);
 
-  const HEARTS = LABELS.map((_, index) => index + 1);
-
-  const { target, label, trigger: face }: RatingPopoverProps = $props();
+  const { target, label, side = 'top', trigger: face }: RatingPopoverProps =
+    $props();
 
   // The caller keys this popover by its target, so the store made here serves its whole life.
   // svelte-ignore state_referenced_locally
@@ -42,14 +32,12 @@
     focused = null;
   };
 
-  const labelOf = (value: number) => LABELS.at(value - 1)?.() ?? '';
-
   const toShown = (
     value: number,
     kind: ShownRating['kind'],
   ): ShownRating => ({
     value,
-    label: labelOf(value),
+    label: toRatingLabel(value),
     kind,
   });
 
@@ -99,7 +87,7 @@
   };
 
   const heartName = (value: number) => {
-    const label = labelOf(value);
+    const label = toRatingLabel(value);
     return value === 1
       ? m.label_rating_heart_one({ label })
       : m.label_rating_heart_other({ count: value, label });
@@ -108,7 +96,7 @@
 
 <Popover
   {label}
-  side="top"
+  {side}
   bind:open={() => open, setOpen}
 >
   {#snippet trigger({ props })}

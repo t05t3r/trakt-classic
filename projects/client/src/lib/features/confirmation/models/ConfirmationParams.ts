@@ -8,4 +8,9 @@ export type ConfirmationParams =
     title: string;
     count: number;
   }
-  | { type: typeof ConfirmationType.RestoreShow; title: string };
+  | {
+    type:
+      | typeof ConfirmationType.RemovePlay
+      | typeof ConfirmationType.RestoreShow;
+    title: string;
+  };

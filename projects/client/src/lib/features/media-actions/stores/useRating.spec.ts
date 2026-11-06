@@ -7,6 +7,7 @@ import { server } from '$mocks/server.ts';
 import { createRenderBound } from '$test/beds/media-actions/createRenderBound.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { screen, within } from '@testing-library/svelte';
 import { http, HttpResponse } from 'msw';
 import { filter, firstValueFrom } from 'rxjs';
@@ -151,13 +152,7 @@ describe('store: useRating', () => {
 
     it('should post a top-level season rating and refetch the season ratings', async () => {
       const { rate } = await renderBound(SILO_SEASON);
-      const bodies: unknown[] = [];
-      server.use(
-        http.post(SYNC_RATINGS_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return new HttpResponse(null, { status: 201 });
-        }),
-      );
+      const bodies = recordBodies(SYNC_RATINGS_URL, { status: 201 });
 
       const requests = await captureRequests(() => rate(7));
 
@@ -169,13 +164,7 @@ describe('store: useRating', () => {
 
     it('should remove a top-level season rating', async () => {
       const { remove } = await renderBound(SILO_SEASON);
-      const bodies: unknown[] = [];
-      server.use(
-        http.post(SYNC_RATINGS_REMOVE_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return new HttpResponse(null, { status: 200 });
-        }),
-      );
+      const bodies = recordBodies(SYNC_RATINGS_REMOVE_URL);
 
       await remove();
 

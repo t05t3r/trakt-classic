@@ -12,6 +12,7 @@ function renderActionButton(
     isInert?: boolean;
     blockedReason?: string;
     underInfo?: string;
+    percent?: number;
   } = {},
 ) {
   const onclick = vi.fn();
@@ -37,6 +38,28 @@ describe('component: ActionButton', () => {
 
     expect(mainButton()).toHaveTextContent('Add to history');
     expect(root).toHaveAttribute('data-color', 'watch');
+  });
+
+  it.each([
+    { percent: 83, valueNow: '83' },
+    { percent: 0, valueNow: '0' },
+    { percent: undefined, valueNow: undefined },
+  ])(
+    'should draw a bar at $valueNow given the percent $percent',
+    ({ percent, valueNow }) => {
+      const { root } = renderActionButton({ selected: true, percent });
+
+      expect(
+        root?.querySelector('[role="progressbar"]')
+          ?.getAttribute('aria-valuenow'),
+      ).toBe(valueNow);
+    },
+  );
+
+  it('should leave the bar to the label for a screen reader', () => {
+    renderActionButton({ selected: true, percent: 83 });
+
+    expect(screen.queryByRole('progressbar')).toBeNull();
   });
 
   it.each([

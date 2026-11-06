@@ -3,9 +3,18 @@ import { toMediaCard } from '$lib/features/media-card/toMediaCard.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
 import { MovieHereticMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticMappedMock.ts';
+import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
+import { HISTORY_ID } from '$mocks/data/users/HISTORY_ID.ts';
+import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
+import { waitForEnabled } from '$test/beds/buttons/waitForEnabled.ts';
+import { settledButton } from '$test/beds/buttons/settledButton.ts';
 import { itemOfType } from '$test/beds/dashboard/itemOfType.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { cardLines } from '$test/beds/media-card/cardLines.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet } from 'svelte';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import MediaPosterCard from './MediaPosterCard.svelte';
@@ -67,7 +76,7 @@ async function renderCard(props: MediaPosterCardProps) {
   await userLoaded;
 
   return waitFor(() => {
-    const root = container.querySelector('.trakt-poster-card');
+    const root = container.querySelector<HTMLElement>('.trakt-poster-card');
     if (!root) throw new Error('MediaPosterCard rendered no poster card');
 
     return root;
@@ -168,6 +177,114 @@ describe('component: MediaPosterCard', () => {
     expect(strip.querySelector('[data-action="favorite"]')).toBeNull();
   });
 
+  it('should hand the history id to the strip, whose remove asks about that Play', async () => {
+    const root = await renderCard({ ...HERETIC, historyId: HISTORY_ID });
+
+    const strip = await findPart(root, '.trakt-quick-actions');
+    const watch = await settledButton(
+      'Remove "Heretic" from your History',
+      strip,
+    );
+    await userEvent.click(watch);
+
+    expect(await screen.findByRole('button', { name: 'Only this play' }))
+      .toBeVisible();
+  });
+
+  it('should hand hasPlay to the strip, whose watch reads selected', async () => {
+    const root = await renderCard({ ...SHOW, hasPlay: true });
+
+    const strip = await findPart(root, '.trakt-quick-actions');
+
+    expect(
+      await settledButton('Remove "Slow Horses" from your History', strip),
+    ).toHaveClass('is-selected');
+  });
+
+  describe('fanart', () => {
+    const FANART = {
+      src: '/img/episodes/005/165/667/screenshots/thumb/e035db5f06.jpg.webp',
+      alt: 'Silo 1x01 screenshot',
+    };
+
+    it('should draw the fanart in place of the poster, inside the poster link', async () => {
+      const root = await renderCard({ ...DRAGON_EPISODE, fanart: FANART });
+
+      const image = screen.getByRole('img', { name: FANART.alt });
+      expect(image).toHaveAttribute('src', FANART.src);
+      expect(root.querySelector('a.poster')).toContainElement(image);
+      expect(root.querySelector('.trakt-lazy-image'))
+        .toHaveAttribute('data-kind', 'fanart');
+      expect(screen.queryByRole('img', { name: /poster/ })).toBeNull();
+    });
+
+    it('should keep the poster without fanart', async () => {
+      const root = await renderCard(DRAGON_EPISODE);
+
+      expect(root.querySelector('.trakt-lazy-image'))
+        .toHaveAttribute('data-kind', 'poster');
+    });
+
+    it('should keep the quick-icons and rate from the percentage', async () => {
+      stubClientRects();
+      const root = await renderCard({ ...HERETIC, fanart: FANART });
+
+      expect(await settledButton('Remove "Heretic" from your History'))
+        .toBeInTheDocument();
+      await userEvent.click(
+        await within(root).findByRole('button', { name: /^\d+%/ }),
+      );
+
+      expect(await screen.findByRole('dialog', { name: 'Rate this movie' }))
+        .toBeVisible();
+    });
+  });
+
+  describe('the rating control', () => {
+    const UNRATED = {
+      ...HERETIC,
+      card: {
+        ...HERETIC.card,
+        target: { ...HERETIC.card.target, id: MATRIX.id },
+      },
+    };
+
+    const control = (root: HTMLElement) =>
+      within(root).findByRole('button', { name: /^\d+%/ });
+
+    it("should rate the card's own Target, opening below the card", async () => {
+      stubClientRects();
+      const button = await control(await renderCard(HERETIC));
+
+      await userEvent.hover(button);
+      await waitFor(() =>
+        expect(button).toHaveAccessibleDescription('Change your rating')
+      );
+      await userEvent.click(button);
+
+      expect(await screen.findByRole('dialog', { name: 'Rate this movie' }))
+        .toHaveAttribute('data-side', 'bottom');
+    });
+
+    it.each(
+      [
+        ['historyId', { historyId: HISTORY_ID }],
+        ['hasPlay', { hasPlay: true }],
+      ] as const,
+    )(
+      'should hand the rating control its %s, so a slow history cannot block the card',
+      async (_, play) => {
+        stubClientRects();
+        holdRequest({ method: 'get', url: WATCHED_MOVIES_URL });
+        const button = await control(await renderCard({ ...UNRATED, ...play }));
+
+        await userEvent.click(await waitForEnabled(button));
+
+        expect(await screen.findByRole('dialog')).toBeVisible();
+      },
+    );
+  });
+
   it('should set the progress in the titles', async () => {
     const root = await renderCard({ ...HERETIC, progress });
 
@@ -208,12 +325,12 @@ describe('component: MediaPosterCard', () => {
   });
 
   it("should draw no show line unless the caller passes the card's show link", async () => {
-    await renderCard(DRAGON_EPISODE);
+    const root = await renderCard(DRAGON_EPISODE);
 
     expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(
       'The Heirs of the Dragon',
     );
-    expect(screen.queryAllByRole('heading', { level: 4 })).toEqual([]);
+    expect(cardLines(root)).toEqual([]);
   });
 
   describe('dropped', () => {

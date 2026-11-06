@@ -1,5 +1,6 @@
 import RadioMenuHost from '$test/beds/menus/RadioMenuHost.svelte';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
@@ -8,10 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const trigger = () => screen.getByRole('button', { name: 'Rank' });
 const row = (name: string) => screen.getByRole('menuitemradio', { name });
-const openMenu = async () => {
-  await userEvent.click(trigger());
-  return screen.findByRole('menu', { name: 'Sort by' });
-};
+const openMenu = () => openMenuByClick('Rank', 'Sort by');
 
 beforeEach(() => {
   stubClientRects();

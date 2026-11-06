@@ -20,7 +20,7 @@ const READY = { kind: 'ready', data: ENTRIES } as const;
 
 const DEVS = { id: 3, title: 'Devs' };
 
-const gear = () => screen.getByRole('button', { name: 'List options' });
+const gear = () => screen.getByRole('button', { name: 'Options' });
 const toolbar = () => screen.getByTestId('toolbar');
 const blurFocused = () => {
   if (document.activeElement instanceof HTMLElement) {
@@ -338,6 +338,186 @@ describe('section: ListItemsSection', () => {
 
       expect(outside).toHaveFocus();
     });
+  });
+
+  describe('without a title bar', () => {
+    const UNTITLED = { status: READY, isTitled: false };
+    const spinner = (container: HTMLElement) =>
+      container.querySelector('.trakt-subnav-toolbar .trakt-pending-spinner');
+
+    it.each(
+      [
+        { kind: 'loading' },
+        { kind: 'empty' },
+        { kind: 'error', retry: vi.fn() },
+        READY,
+      ] as const,
+    )(
+      'should keep the toolbar and show no title or description while $kind',
+      (status) => {
+        render(ListItemsSectionHost, { props: { status, isTitled: false } });
+
+        expect(toolbar()).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+        expect(screen.queryByText('Movies I plan to watch.')).toBeNull();
+      },
+    );
+
+    it('should show the pending spinner in the toolbar while loading', () => {
+      const { container } = render(ListItemsSectionHost, {
+        props: { status: { kind: 'loading' }, isTitled: false },
+      });
+
+      expect(spinner(container)).not.toBeNull();
+    });
+
+    it('should show no pending spinner in the toolbar once ready', () => {
+      const { container } = render(ListItemsSectionHost, { props: UNTITLED });
+
+      expect(spinner(container)).toBeNull();
+    });
+
+    it("should open and close the panel on the toolbar's gear", async () => {
+      const { container } = render(ListItemsSectionHost, { props: UNTITLED });
+
+      expect(container.querySelector('.trakt-subnav-toolbar'))
+        .toContainElement(gear());
+      await userEvent.click(gear());
+      expect(toolbar()).toHaveTextContent('Panel open');
+      expect(gear()).toHaveAttribute('aria-expanded', 'true');
+
+      await userEvent.click(gear());
+      expect(toolbar()).toHaveTextContent('Panel closed');
+      expect(gear()).toHaveFocus();
+    });
+
+    it("should move the focus to the panel's first control when the gear opens it", async () => {
+      render(ListItemsSectionHost, { props: UNTITLED });
+
+      await userEvent.click(gear());
+
+      expect(within(toolbar()).getByRole('button', { name: 'Rank' }))
+        .toHaveFocus();
+    });
+
+    it('should close the panel on Escape and return the focus to the gear', async () => {
+      render(ListItemsSectionHost, { props: UNTITLED });
+
+      await userEvent.click(gear());
+      await userEvent.keyboard('{Escape}');
+
+      expect(toolbar()).toHaveTextContent('Panel closed');
+      expect(gear()).toHaveFocus();
+    });
+
+    it('should close the panel on a choice in it and return the focus to the gear', async () => {
+      stubClientRects();
+      render(ListItemsSectionHost, { props: UNTITLED });
+
+      await userEvent.click(gear());
+      const rank = within(toolbar()).getByRole('button', { name: 'Rank' });
+      await openMenuFromKeyboard(rank, 'Added Date');
+      await userEvent.keyboard('{Enter}');
+
+      await waitFor(() =>
+        expect(screen.queryByRole('menu', { name: 'Sort by' }))
+          .not.toBeInTheDocument()
+      );
+      await waitNegativeClaim();
+      expect(toolbar()).toHaveTextContent('Panel closed');
+      expect(gear()).toHaveFocus();
+    });
+
+    it('should offer a retry described by no title when the items fail', () => {
+      render(ListItemsSectionHost, {
+        props: { status: { kind: 'error', retry: vi.fn() }, isTitled: false },
+      });
+
+      expect(screen.getByRole('button', { name: 'Retry' }))
+        .not.toHaveAttribute('aria-describedby');
+    });
+  });
+
+  describe('a grid snippet of several grids', () => {
+    it.each(REMOVALS)(
+      'should move the focus to the next card in the next grid, where removal $removal',
+      async ({ emulate }) => {
+        const { container, rerender } = render(ListItemsSectionHost, {
+          props: {
+            status: { kind: 'ready', data: [...ENTRIES, DEVS] },
+            isSplit: true,
+          },
+        });
+        emulate();
+
+        expect(container.querySelectorAll('.trakt-poster-grid')).toHaveLength(
+          2,
+        );
+        screen.getByRole('button', { name: 'Silo' }).focus();
+        await rerender({
+          status: { kind: 'ready', data: [assertDefined(ENTRIES.at(0)), DEVS] },
+          isSplit: true,
+        });
+
+        expect(screen.getByRole('button', { name: 'Devs' })).toHaveFocus();
+      },
+    );
+  });
+
+  describe('a divided grid', () => {
+    const july12 = new Date('2026-07-12T12:00:00.000Z');
+    const july11 = new Date('2026-07-11T12:00:00.000Z');
+    const july10 = new Date('2026-07-10T12:00:00.000Z');
+
+    const previousDay = [
+      { id: 1, title: 'Heretic', at: july12 },
+      { id: 2, title: 'Silo', at: july12 },
+    ];
+    const onlyCard = { ...DEVS, at: july11 };
+    const nextDay = [
+      { id: 4, title: 'Arcane', at: july10 },
+      { id: 5, title: 'Dune', at: july10 },
+    ];
+
+    const removeOnlyCard = async (
+      { after, emulate }: {
+        after: ReadonlyArray<typeof onlyCard>;
+        emulate: () => void;
+      },
+    ) => {
+      const props = (data: ReadonlyArray<typeof onlyCard>) => ({
+        status: { kind: 'ready', data },
+        isDivided: true,
+      } as const);
+      const { rerender } = render(ListItemsSectionHost, {
+        props: props([...previousDay, onlyCard, ...after]),
+      });
+      emulate();
+
+      const devs = screen.getByRole('button', { name: 'Devs' });
+      expect(devs.closest('.trakt-poster-grid')?.querySelectorAll('li'))
+        .toHaveLength(1);
+      devs.focus();
+      await rerender(props([...previousDay, ...after]));
+    };
+
+    it.each(REMOVALS)(
+      "should move the focus to the next day's first card when a middle day's only card leaves, where removal $removal",
+      async ({ emulate }) => {
+        await removeOnlyCard({ after: nextDay, emulate });
+
+        expect(screen.getByRole('button', { name: 'Arcane' })).toHaveFocus();
+      },
+    );
+
+    it.each(REMOVALS)(
+      "should move the focus to the previous day's last card when the last day's only card leaves, where removal $removal",
+      async ({ emulate }) => {
+        await removeOnlyCard({ after: [], emulate });
+
+        expect(screen.getByRole('button', { name: 'Silo' })).toHaveFocus();
+      },
+    );
   });
 
   describe('pagination', () => {

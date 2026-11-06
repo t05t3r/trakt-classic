@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PosterGrid from '$lib/components/media/PosterGrid.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import ListGridCard from '$lib/features/lists/components/ListGridCard.svelte';
   import {
@@ -14,16 +15,19 @@
   import type { WatchedPercentage } from '$lib/features/lists/stores/useWatchedPercentage.ts';
   import UserCoverPage from '$lib/sections/layout/UserCoverPage.svelte';
   import ListStatsToolbar from '$lib/sections/subnav/ListStatsToolbar.svelte';
+  import { createKeyedReader } from '$lib/utils/store/createKeyedReader.ts';
   import {
-    BehaviorSubject,
     combineLatest,
+    distinctUntilChanged,
     EMPTY,
+    map,
     type Observable,
+    type ObservedValueOf,
     of,
-    switchMap,
+    scan,
   } from 'rxjs';
   import { BUILT_IN_LISTS } from './_internal/BUILT_IN_LISTS.ts';
-  import ListReader from './_internal/ListReader.svelte';
+  import ListReader from './ListReader.svelte';
   import ListItemsSection from './ListItemsSection.svelte';
 
   type BuiltInListPageProps = {
@@ -33,7 +37,22 @@
 
   const { list, slug }: BuiltInListPageProps = $props();
 
-  const LOADING = { kind: 'loading' } as const;
+  type WatchedRead = {
+    set: string;
+    read: Observable<WatchedPercentage | undefined>;
+  };
+  type WatchedReading = { set: string; value: WatchedPercentage | undefined };
+
+  // A sort or page pick over the same items and count keeps the last share until the new read lands.
+  function keepWhilePending(
+    previous: WatchedReading,
+    next: WatchedReading,
+  ): WatchedReading {
+    if (next.value !== undefined) return next;
+    if (next.set !== previous.set) return next;
+
+    return previous;
+  }
 
   // Each route passes a constant list, so the params made here serve the page's whole life.
   // svelte-ignore state_referenced_locally
@@ -46,13 +65,23 @@
     page: params.page,
   });
 
-  const items = new BehaviorSubject<ListItems | undefined>(undefined);
-  const reading = items.pipe(switchMap((current) => current?.reading ?? EMPTY));
+  const { latest: items, reading } = createKeyedReader<
+    ListItems | undefined,
+    ObservedValueOf<ListItems['reading']>
+  >({ initial: undefined, read: (current) => current?.reading ?? EMPTY });
 
-  const watchedReads = new BehaviorSubject<
-    Observable<WatchedPercentage | undefined>
-  >(of(undefined));
-  const watched = watchedReads.pipe(switchMap((current) => current));
+  const { latest: watchedReads, reading: watchedReading } = createKeyedReader<
+    WatchedRead,
+    WatchedReading
+  >({
+    initial: { set: '', read: of(undefined) },
+    read: ({ set, read }) => read.pipe(map((value) => ({ set, value }))),
+  });
+  const watched = watchedReading.pipe(
+    scan(keepWhilePending),
+    map(({ value }) => value),
+    distinctUntilChanged(),
+  );
 
   const valuesKey = $derived(JSON.stringify($values));
   const itemCount = $derived($reading?.itemCount);
@@ -70,51 +99,55 @@
   {#if $items && itemCount !== undefined}
     {@const reader = $items}
     {@const count = itemCount}
+    {@const set = JSON.stringify({
+      type: current.type,
+      genre: current.genre,
+      count,
+    })}
     {#key `${valuesKey}:${count}`}
       <ListReader
         read={() => reader.watched(count)}
-        onread={(next) => watchedReads.next(next)}
+        onread={(next) => watchedReads.next({ set, read: next })}
       />
     {/key}
   {/if}
 
   <UserCoverPage cover={$reading?.cover} selected="lists">
     <ListItemsSection
-      status={$reading?.status ?? LOADING}
-      key={(row: ListItemsRow) => row.entry.key}
-      pages={{
-        current: $reading?.pages.current ?? current.page,
-        total: $reading?.pages.total ?? 1,
+      reading={$reading}
+      heading={{
+        title: built.title(),
+        href: built.href(slug),
+        description: built.description(),
       }}
-      title={built.title()}
-      href={built.href(slug)}
-      description={built.description()}
       emptyText={$reading?.isFiltered
         ? m.text_lists_empty_filtered()
         : built.emptyText()}
     >
-      {#snippet toolbar({ open, panelId, close })}
+      {#snippet toolbar(controls)}
         <ListStatsToolbar
           {params}
           watched={itemCount === undefined ? undefined : $watched}
           {itemCount}
           minutes={$reading?.minutes}
           pageCount={$reading?.pages.total}
-          isPanelOpen={open}
-          {panelId}
-          onChoose={close}
+          {controls}
         />
       {/snippet}
-      {#snippet item(row: ListItemsRow)}
-        <ListGridCard
-          entry={row.entry}
-          card={row.card}
-          droppedAt={row.droppedAt}
-          isFaded={row.isFaded}
-          sortBy={current.sort.by}
-          hasRank={built.hasRank}
-          favorite={built.hasFavorite}
-        />
+      {#snippet grid(rows: ReadonlyArray<ListItemsRow>)}
+        <PosterGrid items={rows} key={(row) => row.entry.key}>
+          {#snippet item(row)}
+            <ListGridCard
+              entry={row.entry}
+              card={row.card}
+              droppedAt={row.droppedAt}
+              isFaded={row.isFaded}
+              sortBy={current.sort.by}
+              hasRank={built.hasRank}
+              favorite={built.hasFavorite}
+            />
+          {/snippet}
+        </PosterGrid>
       {/snippet}
     </ListItemsSection>
   </UserCoverPage>
