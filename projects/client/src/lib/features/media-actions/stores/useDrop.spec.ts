@@ -13,6 +13,7 @@ import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
@@ -74,6 +75,20 @@ describe('store: useDrop', () => {
         'GET /users/hidden/dropped',
       ]);
       expect(await firstValueFrom(isUpdating)).toBe(false);
+    });
+
+    it('should send the time it is given', async () => {
+      const bodies = recordBodies(DROP_URL, { status: 201 });
+      const { drop } = await renderBound(SILO_DROP_SHOW);
+
+      expect(await drop(new Date('2026-01-15T12:00:00.000Z'))).toBe(true);
+
+      expect(bodies).toEqual([{
+        shows: [{
+          ids: { trakt: SILO_DROP_SHOW.id },
+          hidden_at: '2026-01-15T12:00:00.000Z',
+        }],
+      }]);
     });
 
     it('should roll back and show the error toast when the request fails', async () => {

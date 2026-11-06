@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import ActionSideIcon from '$lib/components/buttons/ActionSideIcon.svelte';
+  import DateTimePopover from '$lib/components/forms/DateTimePopover.svelte';
   import Menu from '$lib/components/menus/Menu.svelte';
   import MenuItem from '$lib/components/menus/MenuItem.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
@@ -21,13 +22,23 @@
 
   const retention = createFocusRetention();
   const pressHold = createPressHold();
-  let control: HTMLElement | undefined;
+  let control = $state<HTMLElement>();
+  let isFieldOpen = $state(false);
   let strip: HTMLElement | null = null;
 
   const holdControl: Attachment<HTMLElement> = (element) => {
     control = element;
     strip = element.parentElement;
+
+    return () => {
+      if (control === element) control = undefined;
+    };
   };
+
+  // The field writes through onDrop, so it has nothing left to apply without it.
+  $effect(() => {
+    if (!onDrop) isFieldOpen = false;
+  });
 
   // A restore that ends lets go, so a later emptying leaves focus alone.
   const pressRestore = (restore: () => Promise<unknown>) => () =>
@@ -49,7 +60,11 @@
 </script>
 
 {#if hasRows}
-  <Menu label={m.button_label_more_actions()} align="end">
+  <Menu
+    label={m.button_label_more_actions()}
+    align="end"
+    isInert={isFieldOpen}
+  >
     {#snippet trigger({ props })}
       <ActionSideIcon
         icon={IconDots}
@@ -65,7 +80,7 @@
       </MenuItem>
     {/if}
     {#if onDrop}
-      <MenuItem onSelect={onDrop}>
+      <MenuItem onSelect={() => (isFieldOpen = true)}>
         {m.button_text_drop_show()}
       </MenuItem>
     {/if}
@@ -76,3 +91,10 @@
     {/if}
   </Menu>
 {/if}
+
+<DateTimePopover
+  label={m.label_drop_show_at()}
+  anchor={control}
+  onApply={(at) => onDrop?.(at)}
+  bind:open={isFieldOpen}
+/>

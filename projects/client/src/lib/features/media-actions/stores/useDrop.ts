@@ -4,6 +4,7 @@ import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { dropShowRequest } from '$lib/requests/queries/users/dropShowRequest.ts';
 import { restoreShowRequest } from '$lib/requests/queries/users/restoreShowRequest.ts';
 import { toBulkPayload } from '$lib/requests/sync/toBulkPayload.ts';
+import { toDropPayload } from '$lib/requests/sync/toDropPayload.ts';
 import { toTargetKey } from '../_internal/toTargetKey.ts';
 import { useOptimisticWrite } from '../_internal/useOptimisticWrite.ts';
 import { useIsDropped } from './_internal/useIsDropped.ts';
@@ -17,11 +18,15 @@ export function useDrop({ id, title }: DropStoreProps) {
   const { confirmAsync } = useConfirm();
   const { isDropped, isUpdating } = useIsDropped({ id });
 
-  const drop = () =>
+  const drop = (at?: Date) =>
     run({
       keys: [key],
       value: true,
-      task: (params) => dropShowRequest({ body, ...params }),
+      task: (params) =>
+        dropShowRequest({
+          body: at ? toDropPayload(id, at) : body,
+          ...params,
+        }),
       invalidation: InvalidateAction.Drop('show'),
     });
 

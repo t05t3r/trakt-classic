@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DateTimePopover from '$lib/components/forms/DateTimePopover.svelte';
   import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
   import Menu from '$lib/components/menus/Menu.svelte';
   import MenuItem from '$lib/components/menus/MenuItem.svelte';
@@ -20,7 +21,8 @@
 
   const retention = createFocusRetention();
   const pressHold = createPressHold();
-  let control: HTMLElement | undefined;
+  let control = $state<HTMLElement>();
+  let isFieldOpen = $state(false);
 
   // A press swaps Drop and Restore, and a write that fails or is ignored swaps them back,
   // so the control that comes in takes the focus of the one that left.
@@ -48,6 +50,11 @@
 
   // Unknown or saving, a press would act on a state the viewer cannot see yet.
   const isInert = $derived($isDropped === undefined || $isUpdating);
+  // The field writes a drop, which a dropped show or a state the viewer cannot see yet takes away.
+  $effect(() => {
+    if (isFieldOpen && ($isDropped || isInert)) isFieldOpen = false;
+  });
+
   const restoreProps = $derived(
     withFocusHold(
       isInert
@@ -97,7 +104,7 @@
 {#if $isDropped}
   {@render restoreButton({ props: restoreProps })}
 {:else}
-  <Menu label={m.label_drop_show_at()} {isInert}>
+  <Menu label={m.label_drop_show_at()} isInert={isInert || isFieldOpen}>
     {#snippet trigger({ props })}
       {@render dropButton({ props: withFocusHold(props) })}
     {/snippet}
@@ -105,8 +112,18 @@
     <MenuItem onSelect={pressed(drop)}>
       {m.button_text_drop_show_now()}
     </MenuItem>
+    <MenuItem onSelect={() => (isFieldOpen = true)}>
+      {m.button_text_other_date()}
+    </MenuItem>
   </Menu>
 {/if}
+
+<DateTimePopover
+  label={m.label_drop_show_at()}
+  anchor={control}
+  onApply={(at) => pressHold.press(control, () => drop(at))}
+  bind:open={isFieldOpen}
+/>
 
 <style lang="scss">
   @use '$style/scss/mixins/index' as *;

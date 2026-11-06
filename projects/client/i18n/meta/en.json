@@ -4447,7 +4447,7 @@
     },
     "button_text_cancel": {
       "default": "Cancel",
-      "description": "Text for cancelling an action in confirmation dialogs."
+      "description": "Text for cancelling an action."
     },
     "button_label_cancel": {
       "default": "Cancel",
@@ -4980,11 +4980,11 @@
     },
     "label_mark_as_watched_at": {
       "default": "When did you watch this?",
-      "description": "Accessible label for the menu that asks when a movie, show or episode was watched: just now or on its release date."
+      "description": "Accessible label for the menu that asks when a movie, show or episode was watched, and label for the date and time field its Other date row opens, as a dialog and a field."
     },
     "label_drop_show_at": {
       "default": "When did you drop this?",
-      "description": "Accessible label for the menu that asks when the user dropped a show, opened from the drop icon beside the show's name."
+      "description": "Accessible label for the menu that asks when the user dropped a show, and label for the date and time field that asks the same, as a dialog and a field."
     },
     "button_text_drop_show_now": {
       "default": "Right now",
@@ -5085,9 +5085,9 @@
         }
       }
     },
-    "button_text_mark_as_watched_other_date": {
+    "button_text_other_date": {
       "default": "Other date",
-      "description": "Text for the button that allows users to mark a movie or episode as watched on a custom date."
+      "description": "Text for the menu item that opens a date and time field, when dropping a show or marking a movie, show, season or episode as watched."
     },
     "button_label_mark_as_watched_other_date": {
       "default": "Other date",

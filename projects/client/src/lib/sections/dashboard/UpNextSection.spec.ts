@@ -672,6 +672,31 @@ describe('section: UpNextSection', () => {
       },
     );
 
+    it.each(REMOVALS)(
+      'should hand the focus to the section when Other date is applied, where removal $removal',
+      async ({ emulate }) => {
+        holdDrop();
+        const { region, silo } = await openSiloDropMenu();
+        emulate();
+
+        await userEvent.click(
+          screen.getByRole('menuitem', { name: 'Other date' }),
+        );
+        const dialog = await screen.findByRole('dialog', {
+          name: 'When did you drop this?',
+        });
+        const apply = within(dialog).getByRole('button', { name: 'Apply' });
+        await waitFor(() =>
+          expect(dialog.contains(document.activeElement)).toBe(true)
+        );
+        await userEvent.click(apply);
+
+        await waitFor(() => expect(silo.isConnected).toBe(false));
+        await waitFor(() => expect(dialog).not.toBeInTheDocument());
+        await waitFor(() => expect(document.activeElement).toBe(region));
+      },
+    );
+
     it('should hand the focus to the section when a card leaves after an outside click closed its menu', async () => {
       const { region, silo, trigger } = await openSiloDropMenu();
       const watch = await readyDevsWatchButton(region, silo);
