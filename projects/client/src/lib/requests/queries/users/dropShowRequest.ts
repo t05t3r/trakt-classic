@@ -1,8 +1,9 @@
 import { api, type ApiParams } from '$lib/requests/api.ts';
+import type { DropPayload } from '$lib/requests/sync/toDropPayload.ts';
 import type { HiddenMediaRequest } from '@trakt/api';
 
 type DropShowRequest = {
-  body: HiddenMediaRequest;
+  body: HiddenMediaRequest | DropPayload;
 } & ApiParams;
 
 export function dropShowRequest(

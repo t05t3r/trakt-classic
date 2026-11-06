@@ -1,5 +1,6 @@
 import { useHistoryParams } from '$lib/features/history/stores/useHistoryParams.ts';
 import { HISTORY_PATH } from '$mocks/data/users/HISTORY_PATH.ts';
+import { fixNow } from '$test/beds/date/fixNow.ts';
 import { setTimeZone } from '$test/beds/date/setTimeZone.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
 import { openDialogByClick } from '$test/beds/menus/openDialogByClick.ts';
@@ -12,7 +13,7 @@ import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DateRangeButton from './DateRangeButton.svelte';
 
 const TRIGGER_NAME = /^Date Range/;
@@ -36,14 +37,6 @@ const openPopover = () => openDialogByClick(TRIGGER_NAME, 'Date Range');
 async function closePopover() {
   await userEvent.keyboard('{Escape}');
   await waitFor(() => expect(dialog()).not.toBeInTheDocument());
-}
-
-function fixToday(today: Date) {
-  vi.useFakeTimers({ toFake: ['Date'] });
-  vi.setSystemTime(today);
-  onTestFinished(() => {
-    vi.useRealTimers();
-  });
 }
 
 beforeEach(() => {
@@ -169,7 +162,7 @@ describe('section: DateRangeButton', () => {
 
   describe('the presets', () => {
     it("should reach back from today's date", async () => {
-      fixToday(new Date(2026, 5, 15));
+      fixNow(new Date(2026, 5, 15));
       await renderButton();
       await openPopover();
 
@@ -182,7 +175,7 @@ describe('section: DateRangeButton', () => {
     });
 
     it('should read today on each open', async () => {
-      fixToday(new Date(2026, 5, 15));
+      fixNow(new Date(2026, 5, 15));
       await renderButton();
       await openPopover();
       await closePopover();
@@ -198,7 +191,7 @@ describe('section: DateRangeButton', () => {
     });
 
     it('should tick the preset on the range once it lands', async () => {
-      fixToday(new Date(2026, 5, 15));
+      fixNow(new Date(2026, 5, 15));
       followReplaces(HISTORY_PATH);
       await renderButton();
       await openPopover();

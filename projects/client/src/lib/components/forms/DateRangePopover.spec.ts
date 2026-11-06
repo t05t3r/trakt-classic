@@ -286,6 +286,13 @@ describe('component: DateRangePopover', () => {
 
       expect(field()).toHaveAttribute('max', '9999-12-31');
     });
+
+    it('should leave that cap to the browser, whose validation stays on', async () => {
+      renderPopover();
+      await openPopover();
+
+      expect(startField().closest('form')).not.toHaveAttribute('novalidate');
+    });
   });
 
   it('should call onClear on Clear and close', async () => {

@@ -29,6 +29,8 @@ import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
+import { applyDateField } from '$test/beds/forms/applyDateField.ts';
+import { dateField } from '$test/beds/forms/dateField.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
 import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
@@ -42,7 +44,7 @@ import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { serveHeaderlessPages } from '$test/beds/request/serveHeaderlessPages.ts';
 import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
 import { bodyUnlocked } from '$test/beds/scroll-lock/bodyUnlocked.ts';
-import { screen, waitFor, within } from '@testing-library/svelte';
+import { fireEvent, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -63,6 +65,8 @@ const SILO_PLAYED = '27 Dec 2024 16:13';
 const DEVS_PLAYED = '27 Dec 2024 16:28';
 
 const REMOVE_PROMPT = 'Remove from history?';
+const DROP_PROMPT = 'When did you drop this?';
+const WATCH_PROMPT = 'When did you watch this?';
 
 const NOT_WATCHED = {
   label: 'Add to history',
@@ -130,6 +134,12 @@ const readMoreRows = async () => {
 };
 
 const pathOf = (url: string) => new URL(url).pathname;
+
+const applyField = async (name: string, value?: string) => {
+  await waitFor(() => expect(dateField(name)).toHaveFocus());
+  if (value) await fireEvent.input(dateField(name), { target: { value } });
+  await applyDateField();
+};
 
 const historyButton = (container: HTMLElement) => readButtons(container).at(0);
 
@@ -1083,7 +1093,7 @@ describe('component: ActionColumn', () => {
         .toBeNull();
     });
 
-    it('should drop the show from Drop show', async () => {
+    it('should drop the show at the date its field applies, and at no other time', async () => {
       const bodies = recordBodies(DROP_URL, { status: 201 });
       const writes = recordWrites();
       renderComponent(ActionColumn, { props: PARTLY_WATCHED });
@@ -1092,9 +1102,19 @@ describe('component: ActionColumn', () => {
       await userEvent.click(
         screen.getByRole('menuitem', { name: 'Drop show' }),
       );
+      await waitNegativeClaim();
+
+      expect(writes).toEqual([]);
+
+      await applyField(DROP_PROMPT, '2026-01-15T12:00');
 
       await waitFor(() => expect(writes).toEqual([DROP_WRITE]));
-      expect(bodies).toEqual([{ shows: [{ ids: { trakt: SILO.id } }] }]);
+      expect(bodies).toEqual([{
+        shows: [{
+          ids: { trakt: SILO.id },
+          hidden_at: '2026-01-15T12:00:00.000Z',
+        }],
+      }]);
     });
 
     it('should write only once Restore show is confirmed', async () => {
@@ -1148,6 +1168,7 @@ describe('component: ActionColumn', () => {
       await userEvent.click(
         screen.getByRole('menuitem', { name: 'Drop show' }),
       );
+      await applyField(DROP_PROMPT);
       await saving.requested;
       await bodyUnlocked();
 
@@ -1195,6 +1216,7 @@ describe('component: ActionColumn', () => {
       await userEvent.click(
         screen.getByRole('menuitem', { name: 'Drop show' }),
       );
+      await applyField(DROP_PROMPT);
       await waitFor(() => expect(bodies).toHaveLength(1));
       await bodyUnlocked();
 
@@ -1202,12 +1224,13 @@ describe('component: ActionColumn', () => {
     });
 
     describe('where the focus lands', () => {
-      it('should return to the trigger after Drop show closes the menu', async () => {
+      it('should land on the field from Drop show, then return to the trigger on Apply', async () => {
         holdRequest({ method: 'post', url: DROP_URL });
         renderComponent(ActionColumn, { props: PARTLY_WATCHED });
         await openMenuFromKeyboard(await settledSide(MORE), 'View history');
 
         await userEvent.keyboard('{ArrowDown}{Enter}');
+        await applyField(DROP_PROMPT);
 
         await waitFor(() => expect(moreTrigger()).toHaveFocus());
       });
@@ -1503,6 +1526,75 @@ describe('component: ActionColumn', () => {
       });
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(writes).toEqual(['POST /sync/history']);
+    });
+  });
+
+  describe('Other date on the add icon', () => {
+    const openOtherDate = async () => {
+      await userEvent.click(await settledSide('Add another play'));
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: 'Other date' }),
+      );
+    };
+
+    it("should post a movie's Play at the date applied, and return to the icon", async () => {
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      const { container } = renderComponent(ActionColumn, {
+        props: { target: HERETIC_ACTIONS_TARGET },
+      });
+      await settledMain(container, 0);
+
+      await openOtherDate();
+      await applyField(WATCH_PROMPT, '2026-01-15T12:00');
+
+      await waitFor(() =>
+        expect(bodies).toEqual([{
+          movies: [{
+            ids: { trakt: HERETIC_ACTIONS_TARGET.id },
+            watched_at: '2026-01-15T12:00:00.000Z',
+          }],
+        }])
+      );
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Add another play' }))
+          .toHaveFocus()
+      );
+    });
+
+    it("should keep a show's date through its count dialog", async () => {
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      renderComponent(ActionColumn, {
+        props: { target: SILO_ACTIONS_TARGET, progress: progressOf(11, 17) },
+      });
+
+      await openOtherDate();
+      await applyField(WATCH_PROMPT, '2026-01-15T12:00');
+      await answerDialog('Mark as watched?', 'Mark as Watched');
+
+      await waitFor(() =>
+        expect(bodies).toEqual([{
+          shows: [{
+            ids: { trakt: SILO.id },
+            watched_at: '2026-01-15T12:00:00.000Z',
+          }],
+        }])
+      );
+    });
+
+    it('should write nothing when the count dialog declines a dated add', async () => {
+      const writes = recordWrites();
+      renderComponent(ActionColumn, {
+        props: { target: SILO_ACTIONS_TARGET, progress: progressOf(11, 17) },
+      });
+
+      await openOtherDate();
+      await applyField(WATCH_PROMPT, '2026-01-15T12:00');
+      await answerDialog('Mark as watched?', 'Cancel');
+      await waitNegativeClaim();
+
+      expect(writes).toEqual([]);
+      expect(screen.getByRole('button', { name: 'Add another play' }))
+        .toHaveFocus();
     });
   });
 

@@ -1,11 +1,14 @@
 <script lang="ts">
+  import { FOCUSABLE_CONTROLS } from '$lib/utils/focus/FOCUSABLE_CONTROLS.ts';
   import { getDocumentDirection } from '$lib/utils/intl/getDocumentDirection.ts';
   import { Popover } from 'bits-ui';
   import type { PopoverProps } from './_internal/PopoverProps.ts';
+  import { holdOpenMenu } from './openMenus.ts';
 
   let {
     label,
     trigger,
+    anchor,
     children,
     side = 'bottom',
     variant = 'default',
@@ -13,21 +16,75 @@
   }: PopoverProps = $props();
   // The content drops its own id, so the dialog carries the one the trigger's aria-controls names.
   const id = $props.id();
+
+  let triggerRef = $state<HTMLElement | null>(null);
+  let contentRef = $state<HTMLElement | null>(null);
+  let pressedControl: HTMLElement | null = null;
+
+  // Read at the close, since the parent's anchor follows its current control.
+  const ownControl = $derived(anchor ?? triggerRef);
+
+  // The cleanup releases the hold on a close and on a destroy while open.
+  $effect(() => {
+    if (trigger || !open || !anchor) return;
+
+    return holdOpenMenu({
+      trigger: anchor,
+      contains: (node) => !!contentRef?.contains(node),
+      close: () => (open = false),
+    });
+  });
+
+  // The target says what was pressed, since Safari does not focus a pressed button.
+  const otherControlAt = (target: EventTarget | null) => {
+    if (!(target instanceof Element) || ownControl?.contains(target)) {
+      return null;
+    }
+    return target.closest<HTMLElement>(FOCUSABLE_CONTROLS);
+  };
+
+  const handleOutsidePress = ({ target }: PointerEvent) => {
+    pressedControl = otherControlAt(target);
+    // bits-ui leaves a press on the anchor to a trigger, and here there is none.
+    if (!trigger) open = false;
+  };
+
+  // The trap can hold the focus in the content through a press, so that is not taken.
+  const isFocusTaken = () => {
+    const active = document.activeElement;
+    return !!active && active !== document.body &&
+      !contentRef?.contains(active);
+  };
+
+  const returnFocus = (event: Event) => {
+    event.preventDefault();
+    const pressed = pressedControl;
+    pressedControl = null;
+    // A menu the press opened may already hold the focus.
+    if (pressed && isFocusTaken()) return;
+    (pressed ?? ownControl)?.focus({ preventScroll: true });
+  };
 </script>
 
 <Popover.Root bind:open>
-  <Popover.Trigger>
-    {#snippet child({ props })}
-      {@render trigger({ props })}
-    {/snippet}
-  </Popover.Trigger>
+  {#if trigger}
+    <Popover.Trigger bind:ref={triggerRef}>
+      {#snippet child({ props })}
+        {@render trigger({ props })}
+      {/snippet}
+    </Popover.Trigger>
+  {/if}
   <Popover.Portal>
     <!-- The arrow's base sits on the box's border, so its height overshoots the gap by that border. -->
     <Popover.Content
+      bind:ref={contentRef}
       {id}
       {side}
       sideOffset={-1}
       dir={getDocumentDirection()}
+      customAnchor={anchor}
+      onInteractOutside={handleOutsidePress}
+      onCloseAutoFocus={returnFocus}
     >
       {#snippet child({ wrapperProps, props })}
         <div {...wrapperProps}>
