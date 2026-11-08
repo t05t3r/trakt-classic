@@ -228,6 +228,122 @@ describe('CommentCard', () => {
       expect(spoilerContent(container)).toHaveFocus();
     });
 
+    describe('with a GIF', () => {
+      const GIF_URL = 'https://static.klipy.com/ii/abc/ea/72/gif.webp';
+
+      function commentWithGif(overrides: Partial<MediaComment> = {}) {
+        return { ...mediaComment({ id: 1 }), gif: GIF_URL, ...overrides };
+      }
+
+      function gif() {
+        return screen.queryByRole('img', {
+          name: 'GIF attached to the comment',
+        });
+      }
+
+      it('should show the GIF under the words', () => {
+        const { container } = renderCard({ comment: commentWithGif() });
+
+        expect(gif()).toHaveAttribute('src', GIF_URL);
+        expect(container.querySelector('.trakt-comment-markdown'))
+          .toBeInTheDocument();
+      });
+
+      it('should send KLIPY no referrer', () => {
+        renderCard({ comment: commentWithGif() });
+
+        expect(gif()).toHaveAttribute('referrerpolicy', 'no-referrer');
+      });
+
+      it('should show the GIF alone when the comment has no words', () => {
+        const { container } = renderCard({
+          comment: commentWithGif({ comment: ' ' }),
+        });
+
+        expect(gif()).toBeInTheDocument();
+        expect(container.querySelector('.trakt-comment-markdown'))
+          .not.toBeInTheDocument();
+      });
+
+      it("should keep a spoiler's GIF behind the reveal", () => {
+        const { container } = renderCard({
+          comment: commentWithGif({ isSpoiler: true }),
+        });
+
+        const concealed = spoilerContent(container);
+        expect(concealed).toHaveClass('is-blurred');
+        expect(concealed?.querySelector('img')).toHaveAttribute('src', GIF_URL);
+      });
+
+      describe('beside an inline spoiler', () => {
+        const WITH_TAG = 'Before [spoiler]he dies[/spoiler] after';
+
+        function gifContent(container: HTMLElement) {
+          return container.querySelector(
+            '.comment-gif-reveal .spoiler-content',
+          );
+        }
+
+        function gifRevealButton(container: HTMLElement) {
+          return assertDefined(
+            container.querySelector<HTMLElement>(
+              '.comment-gif-reveal .reveal-button',
+            ),
+            'The GIF has no reveal button.',
+          );
+        }
+
+        it('should conceal the GIF of a comment not flagged', () => {
+          const { container } = renderCard({
+            comment: commentWithGif({ comment: WITH_TAG }),
+          });
+
+          const concealed = gifContent(container);
+          expect(concealed).toHaveClass('is-blurred');
+          expect(concealed?.querySelector('img')).toHaveAttribute(
+            'src',
+            GIF_URL,
+          );
+        });
+
+        it('should reveal the GIF and leave the words concealed', async () => {
+          const { container } = renderCard({
+            comment: commentWithGif({ comment: WITH_TAG }),
+          });
+
+          await userEvent.click(gifRevealButton(container));
+
+          expect(gifContent(container)).not.toHaveClass('is-blurred');
+          expect(inlineSpoilerState(container)).toBe('concealed');
+        });
+
+        it('should keep the GIF concealed on a watched Target, like the words', () => {
+          const { container } = renderCard({
+            comment: commentWithGif({ comment: WITH_TAG, isSpoiler: true }),
+            revealSpoilers: true,
+          });
+
+          expect(gifContent(container)).toHaveClass('is-blurred');
+          expect(inlineSpoilerState(container)).toBe('concealed');
+        });
+
+        it('should give a comment with a tag left open no reveal', () => {
+          const { container } = renderCard({
+            comment: commentWithGif({ comment: 'Before [spoiler]he dies' }),
+          });
+
+          expect(gifContent(container)).not.toBeInTheDocument();
+          expect(gif()).toHaveAttribute('src', GIF_URL);
+        });
+      });
+
+      it('should show no GIF on a comment without one', () => {
+        renderCard();
+
+        expect(gif()).not.toBeInTheDocument();
+      });
+    });
+
     it('should hold a body that spoils nothing behind no reveal', () => {
       const { container } = renderCard();
 

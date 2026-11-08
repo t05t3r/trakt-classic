@@ -283,15 +283,15 @@ describe('component: EpisodePage', () => {
   });
 
   describe('the season poster', () => {
-    it("should show the viewer's season rating in both poster corners", async () => {
+    it("should show the viewer's episode rating in both poster corners", async () => {
       renderPage();
 
       await waitFor(() =>
-        expect(cornerNames()).toEqual(['Your rating: 8', 'Your rating: 8'])
+        expect(cornerNames()).toEqual(['Your rating: 10', 'Your rating: 10'])
       );
     });
 
-    it('should leave the corners out when the seasons fail', async () => {
+    it("should keep the episode's corners on the show's poster when the seasons fail", async () => {
       const showPoster =
         `a.sidebar-poster img[src="${ShowSiloMappedMock.poster.url.thumb}"]`;
       server.use(http.get(SILO_SEASONS_URL, notFound));
@@ -300,9 +300,10 @@ describe('component: EpisodePage', () => {
       await waitFor(() =>
         expect(container.querySelector(showPoster)).not.toBeNull()
       );
-      await waitNegativeClaim();
 
-      expect(cornerNames()).toEqual([]);
+      await waitFor(() =>
+        expect(cornerNames()).toEqual(['Your rating: 10', 'Your rating: 10'])
+      );
     });
 
     it('should link the phone poster to the season', async () => {

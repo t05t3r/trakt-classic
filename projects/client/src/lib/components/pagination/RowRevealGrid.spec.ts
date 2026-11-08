@@ -44,7 +44,6 @@ async function renderGrid(
     variant,
     bottomGap,
     phoneRows,
-    phoneCellGap,
   }: {
     count: number;
     rowCount: number;
@@ -52,7 +51,6 @@ async function renderGrid(
     variant?: 'posters' | 'fanart';
     bottomGap?: 'default' | 'none';
     phoneRows?: 'desktop' | 'mobile';
-    phoneCellGap?: 'default' | 'none';
   },
 ) {
   const { userLoaded } = renderComponent(RowRevealGrid<Poster>, {
@@ -67,7 +65,6 @@ async function renderGrid(
       variant,
       bottomGap,
       phoneRows,
-      phoneCellGap,
     },
   });
   await userLoaded;
@@ -330,22 +327,6 @@ describe('component: RowRevealGrid', () => {
       });
       const grid = document.querySelector('.trakt-row-reveal-grid');
       expect(grid).toHaveAttribute('data-bottom-gap', marked);
-    },
-  );
-
-  // The 20px above each cell on a phone is CSS keyed on this mark.
-  it.each(
-    [
-      [undefined, 'default'],
-      ['default', 'default'],
-      ['none', 'none'],
-    ] as const,
-  )(
-    'should mark phone cell gap %s as %s',
-    async (phoneCellGap, marked) => {
-      await renderGrid({ count: 6, rowCount: 1, phoneCellGap });
-      const grid = document.querySelector('.trakt-row-reveal-grid');
-      expect(grid).toHaveAttribute('data-phone-cell-gap', marked);
     },
   );
 

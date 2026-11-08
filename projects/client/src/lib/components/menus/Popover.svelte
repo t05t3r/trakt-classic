@@ -20,6 +20,7 @@
   let triggerRef = $state<HTMLElement | null>(null);
   let contentRef = $state<HTMLElement | null>(null);
   let pressedControl: HTMLElement | null = null;
+  let pressPointer = '';
 
   // Read at the close, since the parent's anchor follows its current control.
   const ownControl = $derived(anchor ?? triggerRef);
@@ -42,6 +43,38 @@
     }
     return target.closest<HTMLElement>(FOCUSABLE_CONTROLS);
   };
+
+  // Out of the tab order, so not a control the close hands the focus to, yet a press still focuses it.
+  const takesFocusOnly = (target: EventTarget | null) =>
+    target instanceof Element && !!target.closest('[tabindex="-1"]');
+
+  const notePressPointer = ({ pointerType }: PointerEvent) => {
+    pressPointer = pointerType;
+  };
+
+  // Chromium scrolls a date input the trap pulls the focus back to, even with preventScroll,
+  // so a mouse press on another control doesn't move the focus: the close hands it over.
+  const holdFocusThroughPress = (event: MouseEvent) => {
+    if (pressPointer !== 'mouse') return;
+    if (event.target instanceof Node && contentRef?.contains(event.target)) {
+      return;
+    }
+    if (otherControlAt(event.target) || takesFocusOnly(event.target)) {
+      event.preventDefault();
+    }
+  };
+
+  $effect(() => {
+    if (!open) return;
+
+    document.addEventListener('pointerdown', notePressPointer, true);
+    document.addEventListener('mousedown', holdFocusThroughPress, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', notePressPointer, true);
+      document.removeEventListener('mousedown', holdFocusThroughPress, true);
+    };
+  });
 
   const handleOutsidePress = ({ target }: PointerEvent) => {
     pressedControl = otherControlAt(target);

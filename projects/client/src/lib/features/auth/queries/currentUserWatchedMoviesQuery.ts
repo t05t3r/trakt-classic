@@ -1,4 +1,6 @@
 import { defineInfiniteQuery } from '$lib/features/query/defineQuery.ts';
+import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
@@ -7,9 +9,6 @@ import { api, type ApiParams } from '$lib/requests/api.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { WatchedMediaSchema } from './_internal/WatchedHistorySchema.ts';
 import { getLastWatchedAt } from './_internal/getLastWatchedAt.ts';
-import { minimalPageMeta } from './_internal/minimalPageMeta.ts';
-
-const DEFAULT_LIMIT = 250;
 
 export const WatchMovieSchema = WatchedMediaSchema.extend({
   watchedDates: z.array(z.date()),
@@ -30,7 +29,7 @@ function mapWatchedMovieResponse(
 type CurrentUserWatchedMoviesParams = PaginationParams & ApiParams;
 
 const currentUserWatchedMoviesRequest = (
-  { fetch, page = 1, limit = DEFAULT_LIMIT }: CurrentUserWatchedMoviesParams,
+  { fetch, page = 1, limit = MAX_PAGE_LIMIT }: CurrentUserWatchedMoviesParams,
 ) => {
   const pagination = {
     page,
@@ -57,19 +56,11 @@ export const currentUserWatchedMoviesQuery = defineInfiniteQuery({
   ],
   dependencies: (params) => [params.limit],
   request: currentUserWatchedMoviesRequest,
-  mapper: (response, { page = 1, limit = DEFAULT_LIMIT }) => {
-    const entries = Object.entries(response.body).map(mapWatchedMovieResponse);
-
-    return {
-      entries,
-      page: minimalPageMeta({
-        headers: response.headers,
-        entryCount: entries.length,
-        page,
-        limit,
-      }),
-    };
-  },
+  // Trakt sends these pages without page headers, so paging ends at an empty one.
+  mapper: (response) => ({
+    entries: Object.entries(response.body).map(mapWatchedMovieResponse),
+    page: extractPageMeta(response.headers),
+  }),
   schema: PaginatableSchemaFactory(WatchMovieSchema),
   ttl: time.hours(12),
 });

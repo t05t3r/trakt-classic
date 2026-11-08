@@ -1,6 +1,10 @@
 import type { UserStatsResponse } from '@trakt/api';
 
 export const UserStatsResponseMock: UserStatsResponse = {
+  lists: 3,
+  progress: { started: 40, finished: 30, dropped: 2 },
+  total_minutes: 90_000,
+  total_plays: 2_000,
   seasons: { ratings: 10, comments: 2 },
   shows: { ratings: 100, comments: 5, watched: 269, collected: 40 },
   movies: {

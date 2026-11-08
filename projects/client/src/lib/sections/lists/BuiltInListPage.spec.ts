@@ -320,7 +320,9 @@ describe('section: BuiltInListPage', () => {
             });
           }
           if (search.get('limit') === String(MAX_PAGE_LIMIT)) {
-            return genreCount.answer();
+            return search.get('page') === '1'
+              ? genreCount.answer()
+              : pagedResponse({ body: [] });
           }
           return pagedResponse({
             body: WatchlistPreviewResponseMock.slice(0, 2),

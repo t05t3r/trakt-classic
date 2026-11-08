@@ -9,6 +9,7 @@ import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { movieListItem } from '$test/beds/request/movieListItem.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
+import { serveHeaderlessPages } from '$test/beds/request/serveHeaderlessPages.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { idsOf } from '$test/beds/store/idsOf.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
@@ -17,10 +18,6 @@ import { watchlistGenreCountQuery } from './watchlistGenreCountQuery.ts';
 import type { WatchlistType } from './watchlistQuery.ts';
 
 const DRAMA = { filter: { genres: 'drama' } };
-const FULL_PAGE = Array.from(
-  { length: MAX_PAGE_LIMIT },
-  (_, index) => movieListItem(index + 1),
-);
 
 type CountParams = {
   type?: WatchlistType;
@@ -44,29 +41,25 @@ function requestCount(params: CountParams) {
 }
 
 describe('watchlistGenreCountQuery', () => {
-  it('should read every page until a short one', async () => {
-    serveTwoPages({
+  it('should read on past a short page until an empty one', async () => {
+    serveHeaderlessPages({
       url: USER_WATCHLIST_URL,
-      first: FULL_PAGE,
-      second: () =>
-        pagedResponse({ body: [movieListItem(481)], page: 2, pageCount: 2 }),
+      pages: [[movieListItem(481)], [movieListItem(482)], []],
     });
 
-    const ids = await readCount(DRAMA);
-
-    expect(ids).toHaveLength(MAX_PAGE_LIMIT + 1);
-    expect(ids.at(-1)).toBe(481);
+    expect(await readCount(DRAMA)).toEqual([481, 482]);
   });
 
-  it('should stop at an empty page after a full one', async () => {
+  // Under a genre filter, both page headers count the whole watchlist.
+  it('should stop at an empty page whatever its page headers say', async () => {
     serveTwoPages({
       url: USER_WATCHLIST_URL,
-      first: FULL_PAGE,
-      second: () => pagedResponse({ body: [], page: 2, pageCount: 2 }),
+      first: [movieListItem(481)],
+      second: () => pagedResponse({ body: [], page: 2, pageCount: 9 }),
     });
 
     const requests = await captureRequests(async () => {
-      expect(await readCount(DRAMA)).toHaveLength(MAX_PAGE_LIMIT);
+      expect(await readCount(DRAMA)).toEqual([481]);
     }, { pathIncludes: '/watchlist/' });
 
     expect(requests).toEqual([
@@ -75,29 +68,19 @@ describe('watchlistGenreCountQuery', () => {
     ]);
   });
 
-  // Under a genre filter, both page headers count the whole watchlist.
-  it('should stop at a short page whatever its page headers say', async () => {
-    serveTwoPages({
-      url: USER_WATCHLIST_URL,
-      first: [movieListItem(481)],
-      second: () =>
-        pagedResponse({ body: [movieListItem(482)], page: 2, pageCount: 2 }),
-    });
-
-    expect(await readCount(DRAMA)).toEqual([481]);
-  });
-
   it.each(WATCHLIST_SEGMENTS)(
     'should ask for the %s of the genre by rank',
     async (type) => {
+      // The read ends at the empty page after the only one with items.
       expect(await requestCount({ type, ...DRAMA })).toEqual([
+        `GET /users/me/watchlist/${type}/rank/asc`,
         `GET /users/me/watchlist/${type}/rank/asc`,
       ]);
     },
   );
 
   it('should ask for 250 items of the genre without extended info', async () => {
-    const searches = recordSearches(USER_WATCHLIST_URL, [movieListItem(481)]);
+    const searches = recordSearches(USER_WATCHLIST_URL, []);
 
     await readCount(DRAMA);
 

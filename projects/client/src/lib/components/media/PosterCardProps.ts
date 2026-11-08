@@ -24,12 +24,12 @@ export type PosterCardSubtitles =
       | readonly [Snippet | undefined]
       | readonly [Snippet | undefined, Snippet | undefined];
   }
-  // The show line, on a season or episode card, takes the first line.
+  // The show line, on a season or episode card, leaves room for one more.
   | {
     showHref?: Pathname;
     showLead?: Snippet;
     subtitle?: never;
-    lines?: readonly [Snippet | undefined, undefined];
+    lines?: readonly [Snippet | undefined];
   };
 
 export type PosterCardProps =

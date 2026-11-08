@@ -13,7 +13,7 @@ export type ActionButtonProps = {
   isUpdating?: boolean;
   // Ignores clicks but keeps showing `selected`, as while a value it needs loads.
   isInert?: boolean;
-  // Ignores clicks, dimmed, with the reason as its description: the action is not allowed yet.
+  // Ignores clicks and dimmed, with the reason in a tooltip below it and at the end of its name.
   blockedReason?: string;
   onclick: () => void;
   // `ActionSideIcon`s, laid out side by side.

@@ -85,6 +85,18 @@ describe('util: mapToMediaRating', () => {
     expect(result.metascore).to.equal(undefined);
   });
 
+  it('should leave the metascore undefined when its block is null', () => {
+    const result = mapToMediaRating({ ...baseResponse, metascore: null });
+
+    expect(result.metascore).to.equal(undefined);
+  });
+
+  it('should leave the Trakt rating undefined when its block is null', () => {
+    const result = mapToMediaRating({ ...baseResponse, trakt: null });
+
+    expect(result.trakt).to.equal(undefined);
+  });
+
   it('should treat a null MAL rating as absent (non-anime)', () => {
     const result = mapToMediaRating({
       ...baseResponse,

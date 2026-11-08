@@ -5,7 +5,9 @@ import { FILE_STATUSES } from './_internal/FILE_STATUSES.ts';
 import type { FileStatus } from './_internal/FileStatus.ts';
 import { formatStatus } from './_internal/formatStatus.ts';
 import { normalizeClientPath } from './_internal/normalizeClientPath.ts';
+import { overlaySourceBlobs } from './_internal/overlaySourceBlobs.ts';
 import { parseNumstat } from './_internal/parseNumstat.ts';
+import { parseSourceCommits } from './_internal/parseSourceCommits.ts';
 import { relabelDiffHeader } from './_internal/relabelDiffHeader.ts';
 import { verbatimViolations } from './_internal/verbatimViolations.ts';
 
@@ -22,10 +24,17 @@ const USAGE = `usage:
 Paths and prefixes are relative to ${CLIENT_DIR}`;
 
 type BlobMap = ReadonlyMap<string, string>;
+type SourceCommits = ReadonlyMap<string, string>;
 
 type Trees = {
   root: string;
   upstream: string;
+};
+
+type UpstreamSide = {
+  trees: Trees;
+  commits: SourceCommits;
+  overlay: string;
 };
 
 type GitParams = {
@@ -35,9 +44,9 @@ type GitParams = {
   okCodes?: ReadonlyArray<number>;
 };
 
-async function git(
+async function gitBytes(
   { args, cwd, stdin, okCodes = [0] }: GitParams,
-): Promise<string> {
+): Promise<Uint8Array> {
   const child = new Deno.Command('git', {
     args: [...args],
     cwd,
@@ -56,7 +65,11 @@ async function git(
     throw new Error(`git ${args.join(' ')} failed: ${message}`);
   }
 
-  return new TextDecoder().decode(stdout);
+  return stdout;
+}
+
+async function git(params: GitParams): Promise<string> {
+  return new TextDecoder().decode(await gitBytes(params));
 }
 
 async function writeStdin(
@@ -76,14 +89,11 @@ function clientPath(path: string): string {
   return path.slice(CLIENT_DIR.length);
 }
 
-function blobMapFrom(
-  records: ReadonlyArray<string>,
-  blobField: number,
-): BlobMap {
+function blobMapFrom(records: ReadonlyArray<string>): BlobMap {
   return new Map(
     records.map((record) => {
       const [meta = '', path = ''] = record.split('\t');
-      return [clientPath(path), meta.split(' ').at(blobField) ?? ''];
+      return [clientPath(path), meta.split(' ').at(2) ?? ''];
     }),
   );
 }
@@ -98,42 +108,64 @@ async function locateTrees(): Promise<Trees> {
   const found = await Deno.stat(join(upstream, '.git')).catch(() => null);
   if (!found) {
     throw new Error(
-      `Upstream clone not found at ${upstream}: clone trakt/trakt-web there and check out ${UPSTREAM_COMMIT}`,
-    );
-  }
-
-  const head = (await git({ args: ['rev-parse', 'HEAD'], cwd: upstream }))
-    .trim();
-  if (head !== UPSTREAM_COMMIT) {
-    throw new Error(
-      `Upstream clone at ${upstream} is at ${head}, expected ${UPSTREAM_COMMIT}`,
-    );
-  }
-
-  const changed = await git({
-    args: [
-      '--no-optional-locks',
-      'status',
-      '--porcelain',
-      '--untracked-files=no',
-    ],
-    cwd: upstream,
-  });
-  if (changed !== '') {
-    throw new Error(
-      `Upstream clone at ${upstream} differs from ${UPSTREAM_COMMIT} in its index or tracked files:\n${changed}`,
+      `Upstream clone not found at ${upstream}: clone trakt/trakt-web there`,
     );
   }
 
   return { root, upstream };
 }
 
-async function upstreamBlobs(upstream: string): Promise<BlobMap> {
-  const output = await git({
-    args: ['ls-files', '-s', '-z', '--', CLIENT_DIR],
-    cwd: upstream,
+async function sourceCommits(
+  root: string,
+  rev: string,
+): Promise<SourceCommits> {
+  const log = await git({
+    args: [
+      '-c',
+      'core.quotePath=off',
+      'log',
+      '--regexp-ignore-case',
+      '--grep=^Upstream: ',
+      '--format=%x00%(trailers:key=Upstream,valueonly,separator=%x2C)',
+      '--name-only',
+      '--no-renames',
+      '--diff-filter=AM',
+      rev,
+      '--',
+      CLIENT_DIR,
+    ],
+    cwd: root,
   });
-  return blobMapFrom(splitZ(output), 1);
+
+  return new Map(
+    [...parseSourceCommits(log)].map((
+      [path, commit],
+    ) => [clientPath(path), commit]),
+  );
+}
+
+async function blobsAtCommits(
+  upstream: string,
+  commits: SourceCommits,
+): Promise<ReadonlyMap<string, BlobMap>> {
+  const entries = await Promise.all(
+    [...new Set(commits.values())].map(async (commit) =>
+      [commit, await committedBlobs(upstream, commit)] as const
+    ),
+  );
+  return new Map(entries);
+}
+
+async function upstreamBlobs(
+  trees: Trees,
+  commits: SourceCommits,
+): Promise<BlobMap> {
+  const [pinned, atCommit] = await Promise.all([
+    committedBlobs(trees.upstream, UPSTREAM_COMMIT),
+    blobsAtCommits(trees.upstream, commits),
+  ]);
+
+  return overlaySourceBlobs({ pinned, commits, atCommit });
 }
 
 async function workingTreeBlobs(root: string): Promise<BlobMap> {
@@ -164,7 +196,7 @@ async function committedBlobs(root: string, rev: string): Promise<BlobMap> {
     args: ['ls-tree', '-r', '-z', rev, '--', CLIENT_DIR],
     cwd: root,
   });
-  return blobMapFrom(splitZ(output), 2);
+  return blobMapFrom(splitZ(output));
 }
 
 type SideFileParams = {
@@ -177,14 +209,48 @@ function sideFile({ tree, blobs, path }: SideFileParams): string {
   return blobs.has(path) ? join(tree, CLIENT_DIR, path) : EMPTY_FILE;
 }
 
-async function lineCount(trees: Trees, path: string) {
+async function upstreamFile(
+  { trees, commits, overlay }: UpstreamSide,
+  path: string,
+): Promise<string> {
+  const commit = commits.get(path) ?? UPSTREAM_COMMIT;
+  const file = join(overlay, CLIENT_DIR, path);
+  await Deno.mkdir(dirname(file), { recursive: true });
+  await Deno.writeFile(
+    file,
+    await gitBytes({
+      args: ['cat-file', 'blob', `${commit}:${CLIENT_DIR}${path}`],
+      cwd: trees.upstream,
+    }),
+  );
+  return file;
+}
+
+type WithUpstreamSideParams<T> = {
+  trees: Trees;
+  commits: SourceCommits;
+  use: (side: UpstreamSide) => Promise<T>;
+};
+
+async function withUpstreamSide<T>(
+  { trees, commits, use }: WithUpstreamSideParams<T>,
+): Promise<T> {
+  const overlay = await Deno.makeTempDir({ prefix: 'upstream-overlay-' });
+  try {
+    return await use({ trees, commits, overlay });
+  } finally {
+    await Deno.remove(overlay, { recursive: true });
+  }
+}
+
+async function lineCount(side: UpstreamSide, path: string) {
   const output = await git({
     args: [
       'diff',
       '--no-index',
       '--numstat',
-      join(trees.upstream, CLIENT_DIR, path),
-      join(trees.root, CLIENT_DIR, path),
+      await upstreamFile(side, path),
+      join(side.trees.root, CLIENT_DIR, path),
     ],
     okCodes: [0, 1],
   });
@@ -202,16 +268,14 @@ function batches<T>(
 }
 
 async function lineCounts(
-  trees: Trees,
+  side: UpstreamSide,
   paths: ReadonlyArray<string>,
 ): Promise<ReadonlyMap<string, number | undefined>> {
   const counts = await batches(paths, NUMSTAT_BATCH).reduce(
     async (done, batch) => [
       ...await done,
       ...await Promise.all(
-        batch.map(async (path) =>
-          [path, await lineCount(trees, path)] as const
-        ),
+        batch.map(async (path) => [path, await lineCount(side, path)] as const),
       ),
     ],
     Promise.resolve<ReadonlyArray<readonly [string, number | undefined]>>([]),
@@ -234,17 +298,23 @@ async function runStatus(
 ): Promise<number> {
   const status = parseStatusFilter(statusFlag);
   const trees = await locateTrees();
+  const commits = await sourceCommits(trees.root, 'HEAD');
   const [ours, upstream] = await Promise.all([
     workingTreeBlobs(trees.root),
-    upstreamBlobs(trees.upstream),
+    upstreamBlobs(trees, commits),
   ]);
   const classified = classifyFiles({ ours, upstream });
-  const counts = await lineCounts(
+  const counts = await withUpstreamSide({
     trees,
-    classified
-      .filter((entry) => entry.status === 'modified')
-      .map((entry) => entry.path),
-  );
+    commits,
+    use: (side) =>
+      lineCounts(
+        side,
+        classified
+          .filter((entry) => entry.status === 'modified')
+          .map((entry) => entry.path),
+      ),
+  });
   const entries = classified.map((entry) => ({
     ...entry,
     lines: counts.get(entry.path),
@@ -268,9 +338,10 @@ async function runDiff(positional: ReadonlyArray<string>): Promise<number> {
   if (!path) throw new Error(USAGE);
 
   const trees = await locateTrees();
+  const commits = await sourceCommits(trees.root, 'HEAD');
   const [ours, upstream] = await Promise.all([
     workingTreeBlobs(trees.root),
-    upstreamBlobs(trees.upstream),
+    upstreamBlobs(trees, commits),
   ]);
   const found = classifyFiles({ ours, upstream })
     .find((entry) => entry.path === path);
@@ -283,18 +354,26 @@ async function runDiff(positional: ReadonlyArray<string>): Promise<number> {
     return 0;
   }
 
-  const diff = await git({
-    args: [
-      'diff',
-      '--no-index',
-      sideFile({ tree: trees.upstream, blobs: upstream, path }),
-      sideFile({ tree: trees.root, blobs: ours, path }),
-    ],
-    okCodes: [0, 1],
-  });
-  const dirs = [join(trees.upstream, CLIENT_DIR), join(trees.root, CLIENT_DIR)];
+  const use = async (side: UpstreamSide) => {
+    const diff = await git({
+      args: [
+        'diff',
+        '--no-index',
+        upstream.has(path) ? await upstreamFile(side, path) : EMPTY_FILE,
+        sideFile({ tree: trees.root, blobs: ours, path }),
+      ],
+      okCodes: [0, 1],
+    });
+    const dirs = [
+      join(trees.root, CLIENT_DIR),
+      join(side.overlay, CLIENT_DIR),
+    ];
 
-  console.log(relabelDiffHeader({ diff, dirs }).replace(/\n$/, ''));
+    return relabelDiffHeader({ diff, dirs });
+  };
+  const report = await withUpstreamSide({ trees, commits, use });
+
+  console.log(report.replace(/\n$/, ''));
   return 0;
 }
 
@@ -340,10 +419,11 @@ async function runVerbatim(
 
   const end = rangeEnd(range);
   const trees = await locateTrees();
+  const commits = await sourceCommits(trees.root, end);
   const [paths, atEnd, upstream] = await Promise.all([
     changedPaths(trees.root, range),
     committedBlobs(trees.root, end),
-    upstreamBlobs(trees.upstream),
+    upstreamBlobs(trees, commits),
   ]);
   const changed = new Map(
     paths.map((path) => [path, atEnd.get(path) ?? ''] as const),

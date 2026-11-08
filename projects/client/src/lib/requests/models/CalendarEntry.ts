@@ -14,6 +14,8 @@ const CalendarEpisodeEntrySchema = z.object({
 const CalendarMovieEntrySchema = z.object({
   kind: z.literal('movie'),
   movie: MovieEntrySchema,
+  // A `yyyy-MM-dd` the mapper checked with `parseDateOnly`, kept as text: a stored
+  // Date would hold one zone's midnight and shift a day in another.
   releasedOn: z.string(),
 });
 

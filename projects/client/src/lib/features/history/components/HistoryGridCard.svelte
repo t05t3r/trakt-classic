@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { PosterCardSubtitles } from '$lib/components/media/PosterCardProps.ts';
   import FormattedDate from '$lib/components/stats/FormattedDate.svelte';
   import type { HistoryRow } from '$lib/features/history/stores/useHistoryItems.ts';
   import UserGridCard from '$lib/features/media-card/components/UserGridCard.svelte';
@@ -19,12 +18,6 @@
 
   // A play's day is the viewer's, which the server cannot know.
   const line = $derived($hydrated ? watched : undefined);
-
-  const subtitles: PosterCardSubtitles = $derived(
-    fanart
-      ? { showHref: row.card.showHref, lines: [line, undefined] }
-      : { lines: [line] },
-  );
 </script>
 
 {#snippet watched()}
@@ -43,5 +36,6 @@
   playedAt={row.entry.watchedAt}
   hasPlay
   isFaded={row.isFaded}
-  {...subtitles}
+  showHref={fanart ? row.card.showHref : undefined}
+  lines={[line]}
 />

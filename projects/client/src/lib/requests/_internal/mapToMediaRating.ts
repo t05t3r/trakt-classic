@@ -63,7 +63,7 @@ export function mapToMediaRating(
 
   const mapMetascore = () => {
     const { metascore } = ratings;
-    if (metascore.rating == null) {
+    if (metascore?.rating == null) {
       return;
     }
 
@@ -73,12 +73,21 @@ export function mapToMediaRating(
     };
   };
 
+  const mapTrakt = () => {
+    const { trakt } = ratings;
+    if (!trakt) {
+      return;
+    }
+
+    return {
+      rating: mapToTraktRating(trakt.rating),
+      votes: trakt.votes,
+      distribution: trakt.distribution,
+    };
+  };
+
   return {
-    trakt: {
-      rating: mapToTraktRating(ratings.trakt.rating),
-      votes: ratings.trakt.votes,
-      distribution: ratings.trakt.distribution,
-    },
+    trakt: mapTrakt(),
     imdb: mapImdbRating(),
     tmdb: mapExternalRating(ratings.tmdb),
     rotten: mapRottenRating(),

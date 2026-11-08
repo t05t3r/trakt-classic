@@ -175,7 +175,7 @@ describe('component: DropMenu', () => {
           }],
         }])
       );
-      expect(fieldDialog()).not.toBeInTheDocument();
+      await waitFor(() => expect(fieldDialog()).not.toBeInTheDocument());
     });
 
     it('should send a past date on Apply', async () => {

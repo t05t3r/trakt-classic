@@ -233,20 +233,20 @@ describe('section: WatchlistSection', () => {
       ]);
     });
 
-    it('should give a movie or show card two empty lines', async () => {
+    it('should give a movie or show card no line under its title', async () => {
       const { movie, show } = await readyFixtureCards();
 
-      expect(subtitleLines(movie)).toEqual(['\u00a0', '\u00a0']);
-      expect(subtitleLines(show)).toEqual(['\u00a0', '\u00a0']);
+      expect(subtitleLines(movie)).toEqual([]);
+      expect(subtitleLines(show)).toEqual([]);
     });
 
-    it('should give a season or episode card its show link on the first line, the second empty', async () => {
+    it('should give a season or episode card its show link as its one line', async () => {
       const { season, episode } = await readyFixtureCards();
 
-      expect(subtitleLines(season)).toEqual(['Silo', '\u00a0']);
+      expect(subtitleLines(season)).toEqual(['Silo']);
       expect(within(season).getByRole('link', { name: 'Silo' }))
         .toHaveAttribute('href', '/shows/silo');
-      expect(subtitleLines(episode)).toEqual(['House of the Dragon', '\u00a0']);
+      expect(subtitleLines(episode)).toEqual(['House of the Dragon']);
       expect(within(episode).getByRole('link', { name: 'House of the Dragon' }))
         .toHaveAttribute('href', '/shows/house-of-the-dragon');
     });
@@ -415,12 +415,12 @@ describe('section: WatchlistSection', () => {
   });
 
   describe('rows', () => {
-    it('should lay the cards out as a poster grid of six, four and two up, with no gap below', async () => {
+    it('should lay the cards out as a poster grid of six, four and two up, with the gap below', async () => {
       const { region } = await readyFixtureCards();
 
       const grid = region.querySelector('.trakt-row-reveal-grid');
       expect(grid).toHaveAttribute('data-variant', 'posters');
-      expect(grid).toHaveAttribute('data-bottom-gap', 'none');
+      expect(grid).toHaveAttribute('data-bottom-gap', 'default');
       expect(grid?.getAttribute('style')).toBe(
         '--row-reveal-columns-desktop: 6; --row-reveal-columns-tablet: 4; --row-reveal-columns-mobile: 2;',
       );

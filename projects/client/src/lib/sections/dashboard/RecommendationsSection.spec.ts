@@ -204,20 +204,6 @@ describe('section: RecommendationsSection', () => {
     ).toEqual(['compact', 'compact']);
   });
 
-  it('should drop the gap above each card on phones', async () => {
-    const { shows, movies } = await renderRegions();
-    await readyCells(shows, 1);
-    await readyCells(movies, 1);
-
-    expect(
-      [shows, movies].map((region) =>
-        region.querySelector('.trakt-row-reveal-grid')?.getAttribute(
-          'data-phone-cell-gap',
-        )
-      ),
-    ).toEqual(['none', 'none']);
-  });
-
   it('should link each column to its recommendations page by a name holding its visible text', async () => {
     const { shows, movies } = await renderRegions();
 

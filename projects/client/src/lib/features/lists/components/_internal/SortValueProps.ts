@@ -1,9 +1,5 @@
-import type { RatingStoreProps } from '$lib/features/media-actions/stores/useRating.ts';
-import type { SortBy } from '$lib/models/SortBy.ts';
-import type { ListEntry } from '$lib/features/lists/ListEntry.ts';
+import type { FormattedSortValue } from '$lib/features/lists/formatSortValue.ts';
 
 export type SortValueProps = {
-  item: ListEntry;
-  sortBy: SortBy;
-  target: RatingStoreProps;
+  value: FormattedSortValue | undefined;
 };

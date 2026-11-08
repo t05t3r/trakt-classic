@@ -34,32 +34,7 @@ describe('toRecentlyWatchedCard', () => {
       releaseDate: HERETIC_RELEASE_DATE,
     },
   ])(
-    'should date $play by its play when the play comes before the air date, leaving the effective release date for the rating',
-    ({ entry, releaseDate }) => {
-      const watchedAt = new Date('2000-01-01T00:00:00.000Z');
-
-      const card = toRecentlyWatchedCard({ ...entry, watchedAt });
-
-      expect(card.target.airDate).toEqual(watchedAt);
-      expect(card.rating.earliestReleaseDate).toEqual(releaseDate);
-    },
-  );
-
-  it.each([
-    {
-      play: 'an episode',
-      entry: EPISODE_PLAY,
-      airDate: SILO_AIR_DATE,
-      releaseDate: SILO_EFFECTIVE_RELEASE_DATE,
-    },
-    {
-      play: 'a movie',
-      entry: MOVIE_PLAY,
-      airDate: HERETIC_RELEASE_DATE,
-      releaseDate: HERETIC_RELEASE_DATE,
-    },
-  ])(
-    'should keep the air date of $play when the play comes after it',
+    'should keep the air date of $play, leaving the effective release date for the rating',
     ({ entry, airDate, releaseDate }) => {
       const card = toRecentlyWatchedCard(entry);
 

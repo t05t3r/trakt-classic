@@ -19,7 +19,7 @@ function mapToActionType(action: string): NowPlayingAction {
   switch (action) {
     case 'checkin':
     case 'scrobble':
-      return action as NowPlayingAction;
+      return action;
     default:
       throw new Error(`Unknown action type: ${action}`);
   }

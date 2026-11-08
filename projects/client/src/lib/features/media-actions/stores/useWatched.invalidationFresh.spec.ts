@@ -41,8 +41,11 @@ describe('store: useWatched, invalidation hook on a fresh module', () => {
     const post = requests.indexOf('POST /sync/history');
     expect(post).toBeGreaterThan(-1);
     // The load's requests race, so their order is not checked.
+    // Each watched read ends at an empty page.
     expect(requests.slice(0, post).toSorted()).toEqual([
       'GET /users/me/watched/movies',
+      'GET /users/me/watched/movies',
+      'GET /users/me/watched/shows',
       'GET /users/me/watched/shows',
       'GET /users/settings',
     ]);

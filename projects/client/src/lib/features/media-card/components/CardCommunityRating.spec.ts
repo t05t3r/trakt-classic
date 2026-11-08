@@ -7,6 +7,7 @@ import {
   InvalidateAction,
   type InvalidateActionOptions,
 } from '$lib/requests/models/InvalidateAction.ts';
+import { HERETIC_RELEASES_URL } from '$mocks/data/movies/HERETIC_RELEASES_URL.ts';
 import { HISTORY_ID } from '$mocks/data/users/HISTORY_ID.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
@@ -374,6 +375,70 @@ describe('component: CardCommunityRating', () => {
       });
     });
 
+    describe("a movie's earliest release", () => {
+      const RELEASES = 'releases';
+      const UNRELEASED_MOVIE = { ...UNRELEASED, movieSlug: 'heretic-2024' };
+
+      it('should show a rating its own date hides once an earlier release is in', async () => {
+        const requests = await captureRequests(async () => {
+          renderComponent(CardCommunityRating, {
+            props: {
+              rating: UNRELEASED_MOVIE,
+              target: HERETIC_ACTIONS_TARGET,
+              hasPlay: true,
+            },
+          });
+          expect(await screen.findByRole('button', { name: /^81%,/ }))
+            .toBeVisible();
+        }, { pathIncludes: RELEASES });
+
+        expect(requests).toEqual(['GET /movies/heretic-2024/releases']);
+      });
+
+      it('should keep the rating hidden while every release is still ahead', async () => {
+        server.use(
+          http.get(
+            HERETIC_RELEASES_URL,
+            () => HttpResponse.json([{ release_date: '2999-01-01' }]),
+          ),
+        );
+        const requests = await captureRequests(async () => {
+          renderComponent(CardCommunityRating, {
+            props: {
+              rating: UNRELEASED_MOVIE,
+              target: HERETIC_ACTIONS_TARGET,
+              hasPlay: true,
+            },
+          });
+          await waitNegativeClaim();
+        }, { pathIncludes: RELEASES });
+
+        expect(requests).toHaveLength(1);
+        expect(screen.queryByRole('button', { name: /^81%,/ })).toBeNull();
+      });
+
+      it.each([
+        {
+          when: 'it is already released',
+          rating: { ...RELEASED, movieSlug: 'heretic-2024' },
+        },
+        {
+          when: 'it has no rating',
+          rating: { ...UNRELEASED_MOVIE, value: null },
+        },
+        { when: 'it is not a movie', rating: UNRELEASED },
+      ])('should read no releases when $when', async ({ rating }) => {
+        const requests = await captureRequests(async () => {
+          renderComponent(CardCommunityRating, {
+            props: { rating, target: HERETIC_ACTIONS_TARGET, hasPlay: true },
+          });
+          await waitNegativeClaim();
+        }, { pathIncludes: RELEASES });
+
+        expect(requests).toEqual([]);
+      });
+    });
+
     it('should read each request once for three cards', async () => {
       const requests = await captureRequests(async () => {
         renderComponent(CardCommunityRatingHost, {
@@ -391,7 +456,13 @@ describe('component: CardCommunityRating', () => {
         );
       }, { pathIncludes: '/' });
 
-      expect(requests.toSorted()).toEqual([...new Set(requests)].toSorted());
+      // Only the watched reads repeat: each ends at an empty page.
+      const sorted = requests.toSorted();
+      expect(sorted.filter((request, index) => sorted[index - 1] === request))
+        .toEqual([
+          'GET /users/me/watched/movies',
+          'GET /users/me/watched/shows',
+        ]);
     });
 
     it('should render no control when no percentage shows', async () => {

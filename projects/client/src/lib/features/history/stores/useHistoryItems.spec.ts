@@ -1,5 +1,5 @@
 import { useUser } from '$lib/features/auth/stores/useUser.ts';
-import { toHistoryCard } from '$lib/features/history/toHistoryCard.ts';
+import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
 import { toListItemCover } from '$lib/features/media-card/toListItemCover.ts';
 import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
@@ -11,6 +11,7 @@ import { ShowSiloResponseMock } from '$mocks/data/summary/shows/silo/response/Sh
 import { DROPPED_AT } from '$mocks/data/users/DROPPED_AT.ts';
 import { HISTORY_EPISODES_URL } from '$mocks/data/users/HISTORY_EPISODES_URL.ts';
 import { HISTORY_MOVIES_URL } from '$mocks/data/users/HISTORY_MOVIES_URL.ts';
+import { WATCHED_PROGRESS_URL } from '$mocks/data/sync/WATCHED_PROGRESS_URL.ts';
 import { HISTORY_SHOWS_URL } from '$mocks/data/users/HISTORY_SHOWS_URL.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
 import { ActivityHistoryMappedMock } from '$mocks/data/users/mapped/ActivityHistoryMappedMock.ts';
@@ -20,10 +21,12 @@ import { SILO_PLAY_RESPONSE } from '$mocks/data/users/SILO_PLAY_RESPONSE.ts';
 import { HISTORY_SEASONS_URL } from '$mocks/data/users/HISTORY_SEASONS_URL.ts';
 import { kindsOf } from '$test/beds/query/kindsOf.ts';
 import { nextOf } from '$test/beds/query/nextOf.ts';
+import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
+import { watchedProgressRow } from '$test/beds/request/watchedProgressRow.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { describePagedReads } from '$test/beds/store/describePagedReads.ts';
@@ -70,6 +73,8 @@ const LATER = '2025-01-30T20:00:00.000Z';
 const EARLIEST = '2025-01-02T08:30:00.000Z';
 
 const DEVS_ROW = { ...SILO_PLAY_RESPONSE, id: 2, show: ShowDevsResponseMock };
+
+const GROUPED = { type: 'shows', genres: 'drama' } as const;
 
 function historyItems(values: Partial<HistoryItemsValues>) {
   const replacePage = vi.fn();
@@ -147,7 +152,7 @@ describe('store: useHistoryItems', () => {
       expect(kinds).toEqual(['loading', 'ready']);
       expect(ready.data.map((row) => row.entry)).toEqual(mapped);
       expect(ready.data.map((row) => row.card)).toEqual(
-        mapped.map(toHistoryCard),
+        mapped.map(toListItemCard),
       );
     });
   });
@@ -234,7 +239,7 @@ describe('store: useHistoryItems', () => {
     });
   });
 
-  describe('type shows', () => {
+  describe('type shows, under a genre or a date range', () => {
     it("should read loading, then a row for each show, dated by its latest play, with the show's card and no history id", async () => {
       servePaged({
         url: HISTORY_SHOWS_URL,
@@ -244,7 +249,7 @@ describe('store: useHistoryItems', () => {
           { ...SILO_PLAY_RESPONSE, id: 3, watched_at: EARLIEST },
         ],
       });
-      const { store } = historyItems({ type: 'shows' });
+      const { store } = historyItems({ ...GROUPED });
       const { reading } = await renderStore(store);
       const kinds = kindsOf(statusOf(reading));
 
@@ -276,7 +281,7 @@ describe('store: useHistoryItems', () => {
         }],
         itemCount: 2,
       });
-      const { store } = historyItems({ type: 'shows' });
+      const { store } = historyItems({ ...GROUPED });
       const { reading } = await renderStore(store);
 
       const ready = await nextOf(statusOf(reading), 'ready');
@@ -300,7 +305,7 @@ describe('store: useHistoryItems', () => {
             pageCount: 2,
           }),
       });
-      const { store } = historyItems({ type: 'shows' });
+      const { store } = historyItems({ ...GROUPED });
       const { reading } = await renderStore(store);
 
       const ready = await nextOf(statusOf(reading), 'ready');
@@ -328,7 +333,7 @@ describe('store: useHistoryItems', () => {
         'should read $shown shows on page $page',
         async ({ page, shown, firstId }) => {
           servePaged({ url: HISTORY_SHOWS_URL, body: ROWS });
-          const { store } = historyItems({ type: 'shows', page });
+          const { store } = historyItems({ ...GROUPED, page });
           const { reading } = await renderStore(store);
 
           const ready = await nextOf(statusOf(reading), 'ready');
@@ -345,7 +350,7 @@ describe('store: useHistoryItems', () => {
 
       it('should clamp a page past the last', async () => {
         servePaged({ url: HISTORY_SHOWS_URL, body: ROWS });
-        const { store, replacePage } = historyItems({ type: 'shows', page: 3 });
+        const { store, replacePage } = historyItems({ ...GROUPED, page: 3 });
         const { reading } = await renderStore(store);
         const kinds = kindsOf(statusOf(reading));
 
@@ -361,7 +366,7 @@ describe('store: useHistoryItems', () => {
         first: [SILO_PLAY_RESPONSE],
         second: notFound,
       });
-      const { store } = historyItems({ type: 'shows' });
+      const { store } = historyItems({ ...GROUPED });
       const { reading } = await renderStore(store);
 
       const failed = await nextOf(statusOf(reading), 'error');
@@ -410,6 +415,97 @@ describe('store: useHistoryItems', () => {
 
     it("should carry a dropped show's date on the row whose target is that show", async () => {
       servePaged({ url: HISTORY_SHOWS_URL, body: [DEVS_ROW] });
+      const { reading, dropped } = await renderSettledHistory(() => ({
+        ...historyItems({ ...GROUPED }).store(),
+        dropped: useUser().dropped,
+      }));
+      await readKnown(dropped);
+
+      const ready = await nextOf(statusOf(reading), 'ready');
+
+      expect(ready.data.map(({ card, droppedAt }) => [
+        card.target.id,
+        droppedAt,
+      ])).toEqual([[ShowDevsMappedMock.id, DROPPED_AT]]);
+    });
+  });
+
+  describe('type shows, with no filter', () => {
+    it("should read a row per show with a Play from the progress route, the latest first, dated by it, with the show's card and no history id", async () => {
+      servePaged({
+        url: WATCHED_PROGRESS_URL,
+        body: [
+          watchedProgressRow(ShowDevsResponseMock, LATER),
+          watchedProgressRow(
+            {
+              ...ShowSiloResponseMock,
+              ids: { ...ShowSiloResponseMock.ids, trakt: 99 },
+            },
+            null,
+          ),
+          watchedProgressRow(ShowSiloResponseMock, LATEST),
+        ],
+      });
+      const { store } = historyItems({ type: 'shows' });
+      const requests = await captureRequests(async () => {
+        const { reading, waitForLateRequests } = await renderStore(() => ({
+          ...store(),
+          waitForLateRequests: useWaitForLateRequests(),
+        }));
+        const kinds = kindsOf(statusOf(reading));
+
+        const ready = await nextOf(statusOf(reading), 'ready');
+        await waitForLateRequests();
+
+        expect(kinds).toEqual(['loading', 'ready']);
+        expect(ready.data.map(({ entry }) => entry.watchedAt)).toEqual([
+          new Date(LATEST),
+          new Date(LATER),
+        ]);
+        expect(ready.data.map(({ entry }) => entry.id)).toEqual([
+          undefined,
+          undefined,
+        ]);
+        expect(ready.data.map(({ card }) => [card.target.type, card.target.id]))
+          .toEqual([
+            ['show', ShowSiloMappedMock.id],
+            ['show', ShowDevsMappedMock.id],
+          ]);
+        expect(await readingOf(reading, 'itemCount')).toBe(2);
+      }, { pathIncludes: '/history' });
+
+      expect(requests).toEqual([]);
+    });
+
+    it.each(
+      [
+        { name: 'a genre', values: { genres: 'drama' } },
+        { name: 'a start', values: { range: { startDate: START_DATE } } },
+        { name: 'an end', values: { range: { endDate: END_DATE } } },
+      ],
+    )(
+      'should read the Plays, not the progress route, under $name',
+      async ({ values }) => {
+        const progress = recordSearches(WATCHED_PROGRESS_URL, []);
+        const searches = recordSearches(HISTORY_SHOWS_URL, []);
+        const { reading, waitForLateRequests } = await renderStore(() => ({
+          ...historyItems({ type: 'shows', ...values }).store(),
+          waitForLateRequests: useWaitForLateRequests(),
+        }));
+
+        await readingOf(reading, 'entries');
+        await waitForLateRequests();
+
+        expect(searches).toHaveLength(1);
+        expect(progress).toEqual([]);
+      },
+    );
+
+    it("should carry a dropped show's date on its row", async () => {
+      servePaged({
+        url: WATCHED_PROGRESS_URL,
+        body: [watchedProgressRow(ShowDevsResponseMock, LATER)],
+      });
       const { reading, dropped } = await renderSettledHistory(() => ({
         ...historyItems({ type: 'shows' }).store(),
         dropped: useUser().dropped,

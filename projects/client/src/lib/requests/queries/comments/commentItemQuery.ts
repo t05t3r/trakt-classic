@@ -4,6 +4,7 @@ import {
   type DirectCommentTarget,
   DirectCommentTargetSchema,
 } from '$lib/requests/models/DirectCommentTarget.ts';
+import { withoutNullSeasonAirDate } from '$lib/requests/_internal/withoutNullSeasonAirDate.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import {
   episodeResponseSchema,
@@ -61,7 +62,9 @@ const commentItemRequest = async ({ fetch, id }: CommentItemParams) => {
   }
 
   return {
-    body: CommentItemResponseSchema.parse(await response.json()),
+    body: CommentItemResponseSchema.parse(
+      withoutNullSeasonAirDate(await response.json()),
+    ),
     status: response.status,
   };
 };

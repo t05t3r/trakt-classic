@@ -13,6 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-This program is derived from trakt/trakt-web at commit f04c707
-(https://github.com/trakt/trakt-web) and has been modified since 2026-09-18.
+This program is derived from trakt/trakt-web
+(https://github.com/trakt/trakt-web), starting at commit f04c707, with code
+ported from later commits, and has been modified since 2026-09-18.
 The licence text is in LICENSE.

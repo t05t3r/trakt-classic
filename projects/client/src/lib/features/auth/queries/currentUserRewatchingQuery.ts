@@ -1,5 +1,6 @@
 import { defineQuery } from '$lib/features/query/defineQuery.ts';
 import { type ApiParams, rawApiFetch } from '$lib/requests/api.ts';
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { z } from 'zod';
@@ -25,9 +26,11 @@ export const UserRewatchingSchema = z.object({
 export type UserRewatching = z.infer<typeof UserRewatchingSchema>;
 
 const currentUserRewatchingRequest = async ({ fetch }: ApiParams) => {
+  // One page is enough: nobody rewatches more shows at once than a page holds.
   const response = await rawApiFetch({
     fetch,
-    path: '/users/hidden/progress_watched_reset?type=show&limit=1000',
+    path:
+      `/users/hidden/progress_watched_reset?type=show&limit=${MAX_PAGE_LIMIT}`,
   });
 
   if (!response.ok) {

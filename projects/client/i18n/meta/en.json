@@ -981,11 +981,19 @@
     },
     "tooltip_text_watch_first_to_favorite": {
       "default": "Watch it first to favorite it",
-      "description": "Tooltip and accessible description of a blocked Add to Favorites control, on a detail page or a card, whose title the user has not watched yet."
+      "description": "Tooltip and end of the accessible name of a blocked Add to Favorites control, on a detail page or a card, whose title the user has not watched yet."
+    },
+    "tooltip_text_not_released_yet": {
+      "default": "Not released yet",
+      "description": "Tooltip and part of the accessible name of a blocked watch control: the title has not been released, so it cannot be marked as watched yet."
+    },
+    "button_label_blocked_action": {
+      "default": "{action}, {reason}",
+      "description": "Accessible name of a blocked control: its usual name, then the tooltip's reason, as in 'Add to history, Not released yet'."
     },
     "tooltip_text_watch_first_to_rate": {
       "default": "Watch it first to rate it",
-      "description": "Tooltip and accessible description of the blocked rating slot on a detail page, or of a card's blocked community percentage, whose title the user has neither watched nor rated yet."
+      "description": "Tooltip and end of the accessible name of the blocked rating slot on a detail page, or of a card's blocked community percentage, whose title the user has neither watched nor rated yet."
     },
     "button_label_card_rating": {
       "default": "{percent}, {action}",
@@ -1006,6 +1014,24 @@
     "tooltip_text_add_to_watched_history": {
       "default": "Add to watched history",
       "description": "Hover text of a card's watch icon on a title with no plays."
+    },
+    "tooltip_text_added_to_watchlist_on": {
+      "default": "Added to Watchlist on <b>{date}</b>",
+      "description": "Hover text of a card's list icon while the title is on the watchlist, giving the date it was added.",
+      "variables": {
+        "date": {
+          "type": "string"
+        }
+      }
+    },
+    "tooltip_text_added_to_favorites_on": {
+      "default": "Added to Favorites on <b>{date}</b>",
+      "description": "Hover text of a card's favorite icon while the title is a favorite, giving the date it was added.",
+      "variables": {
+        "date": {
+          "type": "string"
+        }
+      }
     },
     "tooltip_text_watched_on": {
       "default": "Watched on <b>{date}</b>",
@@ -1987,7 +2013,7 @@
     },
     "button_text_add_to_favorites": {
       "default": "Add to Favorites",
-      "description": "Text for the button that allows users to add a movie or show to their favorites."
+      "description": "Text for the button that allows users to add a movie or show to their favorites, and the tooltip of a card's favorite icon while it is not a favorite."
     },
     "button_text_remove_from_favorites": {
       "default": "Remove from Favorites",
@@ -2089,6 +2115,10 @@
     "label_list_item_count": {
       "default": "{count} items",
       "description": "Accessible label / tooltip for the item count shown next to a list."
+    },
+    "image_alt_comment_gif": {
+      "default": "GIF attached to the comment",
+      "description": "Alt text for the GIF rendered underneath a posted comment."
     },
     "image_alt_user_avatar": {
       "default": "{username}'s avatar",
@@ -5004,15 +5034,15 @@
     },
     "button_text_in_watchlist": {
       "default": "In watchlist",
-      "description": "Text for a detail page's watchlist button while the movie, show, season or episode is on the watchlist; a click removes it."
+      "description": "Text for a detail page's watchlist button while the movie, show, season or episode is on the watchlist; a click removes it. Also a card's list icon tooltip when the date it was added is not known."
     },
     "button_text_favorited": {
       "default": "Favorited",
-      "description": "Text for a detail page's favorites button while the movie or show is a favorite; a click removes it from the favorites."
+      "description": "Text for a detail page's favorites button while the movie or show is a favorite; a click removes it from the favorites. Also a card's favorite icon tooltip when the date it was added is not known."
     },
     "button_label_add_to_list": {
       "default": "Add to list",
-      "description": "Tooltip and aria-label for the side icon of a detail page's watchlist button that opens the menu of lists."
+      "description": "Tooltip and aria-label for the side icon of a detail page's watchlist button that opens the menu of lists, and the tooltip of a card's list icon."
     },
     "text_action_counts_dropped": {
       "default": "{counts} · {dropped}",

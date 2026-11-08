@@ -3,8 +3,7 @@ import type {
   CrewMember,
   MediaCrew,
 } from '$lib/requests/models/MediaCrew.ts';
-import type { PeopleGuestStarsResponse } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
-import type { CastResponse, CrewResponse } from '@trakt/api';
+import type { CastResponse, CrewResponse, PeopleResponse } from '@trakt/api';
 import { mapToHeadshot } from './mapToHeadshot.ts';
 
 function toMember(response: CrewResponse | CastResponse) {
@@ -40,7 +39,7 @@ function toCastMember(
 }
 
 export function mapToMediaCrew(
-  response: PeopleGuestStarsResponse | undefined,
+  response: PeopleResponse | undefined,
 ): MediaCrew {
   if (response == null) {
     throw new Error('People response body is missing');

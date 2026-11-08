@@ -32,6 +32,7 @@ import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
+import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -85,7 +86,7 @@ describe('component: QuickActions', () => {
       selected: ['Add or remove "The Matrix" from lists'],
       unselected: [
         'Mark "The Matrix" as watched',
-        'Add "The Matrix" to your Favorites',
+        'Add "The Matrix" to your Favorites, Watch it first to favorite it',
       ],
     },
   ])(
@@ -101,6 +102,35 @@ describe('component: QuickActions', () => {
           expect(button(name)).not.toHaveClass('is-selected')
         );
       });
+    },
+  );
+
+  it.each([
+    {
+      target: HERETIC_ACTIONS_TARGET,
+      name: 'Add or remove "Heretic" from lists',
+      text: 'Add to list',
+    },
+    {
+      target: HERETIC_ACTIONS_TARGET,
+      name: 'Remove "Heretic" from your Favorites',
+      text: 'Added to Favorites on 16 Jan 2025',
+    },
+    {
+      target: MATRIX_ACTIONS_TARGET,
+      name: 'Add or remove "The Matrix" from lists',
+      text: /^Added to Watchlist on \d{1,2} [A-Z][a-z]{2} \d{4}$/,
+    },
+  ])(
+    'should read $text on hover over $name',
+    async ({ target, name, text }) => {
+      renderComponent(QuickActions, { props: { target, favorite: true } });
+      const icon = await settledButton(name);
+
+      await userEvent.hover(icon);
+
+      await waitFor(() => expect(icon).toHaveAccessibleDescription(text));
+      expect(icon).not.toHaveAttribute('title');
     },
   );
 
@@ -287,6 +317,32 @@ describe('component: QuickActions', () => {
       renderComponent(QuickActions, {
         props: { target: MATRIX_ACTIONS_TARGET, historyId: HISTORY_ID },
       });
+
+    it.each([
+      { kind: 'movie', target: { ...MATRIX_ACTIONS_TARGET, airDate: UNAIRED } },
+      {
+        kind: 'movie with no date',
+        target: { ...MATRIX_ACTIONS_TARGET, airDate: MAX_DATE },
+      },
+      {
+        kind: 'episode',
+        target: { ...SILO_EPISODE_ACTIONS_TARGET, airDate: UNAIRED },
+      },
+    ])(
+      'should leave an unaired $kind selected and unblocked',
+      async ({ target }) => {
+        serveMoviePlays([]);
+        renderComponent(QuickActions, {
+          props: { target, historyId: HISTORY_ID },
+        });
+        const icon = await settledButton(
+          `Remove "${target.title}" from your History`,
+        );
+
+        expect(icon).toHaveClass('is-selected');
+        expect(icon).not.toHaveClass('is-blocked');
+      },
+    );
 
     it('should read selected with the remove label though the history reads the Target unwatched', async () => {
       renderPlay();
@@ -721,22 +777,49 @@ describe('component: QuickActions', () => {
     expect(spinnerOf(icon)).toBeNull();
   });
 
-  it.each([
-    { airDate: UNAIRED, when: 'unaired' },
-    { airDate: null, when: 'with no air date' },
-  ])('should render no watch icon for a Target $when', async ({ airDate }) => {
-    serveMoviePlays([]);
-    renderComponent(QuickActions, {
-      props: { target: { ...MATRIX_ACTIONS_TARGET, airDate }, favorite: true },
-    });
-    const favorite = await screen.findByRole('button', {
-      name: 'Add "The Matrix" to your Favorites',
+  describe('a Target that has not been released', () => {
+    const BLOCKED = 'Mark "The Matrix" as watched, Not released yet';
+
+    it.each([
+      { airDate: UNAIRED, when: 'unaired' },
+      { airDate: null, when: 'with no air date' },
+      { airDate: MAX_DATE, when: 'with an unknown release date' },
+    ])('should block the watch icon of a Target $when', async ({ airDate }) => {
+      serveMoviePlays([]);
+      const writes = recordWrites();
+      renderComponent(QuickActions, {
+        props: { target: { ...MATRIX_ACTIONS_TARGET, airDate } },
+      });
+      const icon = await screen.findByRole('button', { name: BLOCKED });
+
+      await userEvent.click(icon);
+
+      await waitNegativeClaim();
+      expect(icon).toHaveClass('is-blocked');
+      expect(icon).toHaveAttribute('aria-disabled', 'true');
+      expect(icon).toHaveFocus();
+      expect(writes).toEqual([]);
     });
 
-    await waitFor(() => expect(favorite).toHaveClass('is-blocked'));
-    expect(
-      screen.queryByRole('button', { name: 'Mark "The Matrix" as watched' }),
-    ).toBeNull();
+    it('should keep the icon and its focus when removing the only Play blocks it', async () => {
+      renderComponent(QuickActions, {
+        props: { target: { ...HERETIC_ACTIONS_TARGET, airDate: UNAIRED } },
+      });
+      const icon = await settledButton('Remove "Heretic" from your History');
+
+      await userEvent.click(icon);
+      serveMoviePlays([]);
+      await answerDialog('Remove from history?', 'Remove from History');
+
+      await waitFor(() =>
+        expect(icon).toHaveAccessibleName(
+          'Mark "Heretic" as watched, Not released yet',
+        )
+      );
+      expect(icon).toBeInTheDocument();
+      expect(icon).toHaveClass('is-blocked');
+      expect(icon).toHaveFocus();
+    });
   });
 
   describe('a title with Plays and nothing aired, off History', () => {
@@ -935,11 +1018,8 @@ describe('component: QuickActions', () => {
         const writes = recordWrites();
         renderComponent(QuickActions, { props: { target, favorite: true } });
         const icon = await screen.findByRole('button', {
-          name: /to your Favorites/,
+          name: new RegExp(`to your Favorites, ${BLOCKED_REASON}$`),
         });
-        await waitFor(() =>
-          expect(icon).toHaveAttribute('title', BLOCKED_REASON)
-        );
 
         await userEvent.click(icon);
 
@@ -948,9 +1028,32 @@ describe('component: QuickActions', () => {
         expect(icon).toHaveFocus();
         expect(icon).toHaveAttribute('aria-disabled', 'true');
         expect(icon).toHaveClass('is-blocked');
-        expect(icon).toHaveAccessibleDescription(BLOCKED_REASON);
+        expect(icon).not.toHaveAttribute('title');
+        await waitFor(() =>
+          expect(icon).toHaveAccessibleDescription(BLOCKED_REASON)
+        );
       },
     );
+
+    it('should read "Favorited" while an add\'s date is not known yet', async () => {
+      serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
+      const write = holdRequest({ method: 'post', url: SYNC_FAVORITES_URL });
+      renderComponent(QuickActions, {
+        props: { target: MATRIX_ACTIONS_TARGET, favorite: true },
+      });
+
+      await userEvent.click(
+        await settledButton('Add "The Matrix" to your Favorites'),
+      );
+      await write.requested;
+      const icon = button('Remove "The Matrix" from your Favorites');
+      await userEvent.hover(icon);
+
+      await waitFor(() =>
+        expect(icon).toHaveAccessibleDescription('Favorited')
+      );
+      write.release();
+    });
 
     it.each([
       {
@@ -971,7 +1074,6 @@ describe('component: QuickActions', () => {
       await userEvent.click(await settledButton(name));
 
       await waitFor(() => expect(writes).toEqual(['POST /sync/favorites']));
-      expect(button(name)).not.toHaveAttribute('title');
     });
 
     it('should remove a favourite with no Play', async () => {

@@ -118,6 +118,64 @@ describe('component: Popover', () => {
     expect(other).toHaveFocus();
   });
 
+  describe('a press outside the content', () => {
+    const isFocusHeld = async (
+      pressed: Element,
+      keys: '[MouseLeft]' | '[TouchA]',
+    ) => {
+      const { promise, resolve } = Promise.withResolvers<boolean>();
+      pressed.addEventListener(
+        'mousedown',
+        (event) => resolve(event.defaultPrevented),
+        { once: true },
+      );
+      await userEvent.pointer({ keys, target: pressed });
+      return promise;
+    };
+
+    it('should hold the focus through a mouse press on another control', async () => {
+      const other = mountElement('button');
+      render(PopoverHost);
+      await openPopover();
+
+      expect(await isFocusHeld(other, '[MouseLeft]')).toBe(true);
+    });
+
+    it('should hold the focus through a mouse press on what a press alone can focus', async () => {
+      const pane = mountElement('div');
+      pane.tabIndex = -1;
+      const text = mountElement('p', pane);
+      render(PopoverHost);
+      await openPopover();
+
+      expect(await isFocusHeld(text, '[MouseLeft]')).toBe(true);
+    });
+
+    it('should leave a tap on another control to the browser', async () => {
+      const other = mountElement('button');
+      render(PopoverHost);
+      await openPopover();
+
+      expect(await isFocusHeld(other, '[TouchA]')).toBe(false);
+    });
+
+    it('should leave a mouse press on text to the browser', async () => {
+      const text = mountElement('p');
+      render(PopoverHost);
+      await openPopover();
+
+      expect(await isFocusHeld(text, '[MouseLeft]')).toBe(false);
+    });
+
+    it('should leave a mouse press inside the content to the browser', async () => {
+      render(PopoverHost);
+      await openPopover();
+
+      const inside = screen.getByRole('button', { name: 'Strong' });
+      expect(await isFocusHeld(inside, '[MouseLeft]')).toBe(false);
+    });
+  });
+
   it('should leave the focus on what a press on another control moved it to', async () => {
     const other = mountElement('button');
     const taker = mountElement('button');

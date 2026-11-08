@@ -39,8 +39,7 @@
           <PosterGrid
             items={entries}
             key={(entry) => mediaOf(entry).key}
-            phoneDivider="none"
-            gaps="none"
+            gaps="rows"
             tabletLimit={TABLET_LIMIT}
           >
             {#snippet item(entry)}

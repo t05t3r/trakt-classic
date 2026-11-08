@@ -1,3 +1,4 @@
+import { RELATED_LIMIT } from '$lib/requests/RELATED_LIMIT.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { MovieHereticMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticMappedMock.ts';
 import { MovieHereticRelatedMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticRelatedMappedMock.ts';
@@ -36,7 +37,7 @@ describe('movieRelatedQuery', () => {
     expect(searches.map((search) => Object.fromEntries(search))).toEqual([
       expect.objectContaining({
         extended: 'full,images',
-        limit: '6',
+        limit: String(RELATED_LIMIT),
         page: '1',
       }),
     ]);

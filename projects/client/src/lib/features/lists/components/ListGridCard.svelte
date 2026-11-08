@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useRating } from '$lib/features/media-actions/stores/useRating.ts';
   import UserGridCard from '$lib/features/media-card/components/UserGridCard.svelte';
   import { formatSortValue } from '../formatSortValue.ts';
   import type { ListGridCardProps } from './_internal/ListGridCardProps.ts';
@@ -14,23 +15,25 @@
     favorite = false,
   }: ListGridCardProps = $props();
 
-  // Only SortValue reads the viewer's rating, so a my_rating line stays even if it ends empty.
-  const hasSortLine = $derived(
-    sortBy === 'my_rating' ||
-      formatSortValue({ item: entry, sortBy }) !== undefined,
-  );
+  // A grid keys its cards by item, so the target never changes.
+  // svelte-ignore state_referenced_locally
+  const { rating } = useRating(card.target);
+
+  // A card subscribes to the ratings only once it first shows my_rating.
+  const userRating = $derived(sortBy === 'my_rating' ? $rating : undefined);
+  const value = $derived(formatSortValue({ item: entry, sortBy, userRating }));
 </script>
 
 {#snippet sortLine()}
-  <SortValue item={entry} {sortBy} target={card.target} />
+  <SortValue {value} />
 {/snippet}
 
 <UserGridCard
   {card}
   {isFaded}
-  showHref={card.showHref}
   {droppedAt}
   rank={hasRank ? entry.rank : undefined}
   {favorite}
-  lines={[hasSortLine ? sortLine : undefined, undefined]}
+  showHref={card.showHref}
+  lines={value ? [sortLine] : undefined}
 />

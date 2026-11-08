@@ -1,3 +1,4 @@
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { ListItemIdsMappedMock } from '$mocks/data/users/mapped/ListItemIdsMappedMock.ts';
 import { server } from '$mocks/server.ts';
@@ -35,7 +36,7 @@ describe('userListItemIdsQuery', () => {
     expect(requestedUrls.map((url) => url.searchParams.get('page')))
       .toEqual(['1']);
     expect(requestedUrls.map((url) => url.searchParams.get('limit')))
-      .toEqual(['250']);
+      .toEqual([String(MAX_PAGE_LIMIT)]);
     expect(requestedUrls.map((url) => url.searchParams.has('extended')))
       .toEqual([false]);
   });

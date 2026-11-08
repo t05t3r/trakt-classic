@@ -39,6 +39,8 @@ const episodeIntlRequest = (
         id: slug,
         season,
         episode,
+      },
+      query: {
         language,
       },
     });

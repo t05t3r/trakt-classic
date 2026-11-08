@@ -80,7 +80,6 @@
         rowMax={ROW_MAX}
         bind:rowCount={() => $rowCount, setRowCount}
         variant="posters"
-        bottomGap="none"
       >
         {#snippet item(item)}
           {@const card = toListItemCard(item)}
@@ -89,7 +88,6 @@
             poster={card.poster}
             posterTitle={card.posterTitle}
             showHref={card.showHref}
-            lines={[undefined, undefined]}
           >
             {#snippet badges()}
               {#if card.episodeType}

@@ -1,3 +1,4 @@
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { WatchlistAllMappedMock } from '$mocks/data/sync/mapped/WatchlistAllMappedMock.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
@@ -19,7 +20,7 @@ describe('currentUserWatchlistQuery', () => {
     });
 
     expect(searches.map((search) => search.get('limit')))
-      .toEqual(['250']);
+      .toEqual([String(MAX_PAGE_LIMIT)]);
     expect(searches.map((search) => search.has('extended')))
       .toEqual([false]);
   });

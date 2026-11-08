@@ -123,7 +123,13 @@ export const users = [
 
     return HttpResponse.json(WatchedMoviesResponseMock);
   }),
-  http.get(USER_WATCHLIST_URL, ({ params }) => {
+  http.get(USER_WATCHLIST_URL, ({ params, request }) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? 1);
+
+    if (page > 1) {
+      return HttpResponse.json([], { headers: pageHeaders() });
+    }
+
     const listed = LIST_TYPES.watchlist.find((type) =>
       toListTypeSegment(type) === params.type
     );

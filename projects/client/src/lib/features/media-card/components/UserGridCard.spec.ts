@@ -50,7 +50,7 @@ describe('component: UserGridCard', () => {
       const card = toListItemCard(entry);
       const container = await renderCard(entry, {
         showHref: card.showHref,
-        lines: [LINE, undefined],
+        lines: [LINE],
       });
 
       expect(cardLines(container)).toEqual(['House of the Dragon', 'Played']);

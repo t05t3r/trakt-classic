@@ -41,6 +41,13 @@
   }
 }
 
+// 256px is the height WCAG 1.4.10 sets for reflow.
+@mixin for-short-viewport {
+  @media (max-height: 256px) {
+    @content;
+  }
+}
+
 @mixin for-mobile {
   @media (max-width: $breakpoint-mobile) {
     @content;
@@ -216,6 +223,16 @@ $_episode-type-colors: (
   @include for-tablet-lg-and-above {
     grid-column: span var(--summary-info-column-span-desktop) / -1;
   }
+}
+
+// Pulled past its container by half a gutter, which each cell pads back.
+@mixin gutter-grid($columns) {
+  display: grid;
+  grid-template-columns: repeat(
+    $columns,
+    minmax(var(--grid-column-track-min), var(--grid-column-track-max))
+  );
+  margin-inline: var(--gutter-half-negative);
 }
 
 // Phone poster rows run gutterless; the divider overlaps the poster before it,

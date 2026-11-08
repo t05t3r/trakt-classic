@@ -9,12 +9,12 @@
     isSelected,
     isPending = false,
     isInert = false,
-    blockedReason,
+    isBlocked = false,
     onclick,
     ...rest
   }: QuickIconProps = $props();
 
-  const isIgnoringClicks = $derived(isInert || blockedReason !== undefined);
+  const isIgnoringClicks = $derived(isInert || isBlocked);
 
   const handleClick: QuickIconProps['onclick'] = (event) => {
     if (isIgnoringClicks) return;
@@ -30,11 +30,10 @@
   class="trakt-quick-icon"
   data-action={action}
   class:is-selected={isSelected}
-  class:is-blocked={blockedReason !== undefined}
+  class:is-blocked={isBlocked}
   aria-label={label}
   aria-busy={isPending}
   aria-disabled={isIgnoringClicks}
-  title={blockedReason}
   onclick={handleClick}
 >
   {#if isPending}

@@ -1,3 +1,4 @@
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
 import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
@@ -93,7 +94,9 @@ describe('store: useUser', () => {
 
       await readKnown(dropped);
 
-      expect(searches.map((search) => search.get('limit'))).toEqual(['250']);
+      expect(searches.map((search) => search.get('limit'))).toEqual([
+        String(MAX_PAGE_LIMIT),
+      ]);
     });
   });
 });

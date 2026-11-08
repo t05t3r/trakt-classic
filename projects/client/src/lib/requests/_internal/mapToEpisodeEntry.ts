@@ -8,7 +8,7 @@ import type {
   UpNextResponse,
 } from '@trakt/api';
 import type { EpisodeEntry } from '../models/EpisodeEntry.ts';
-import { type EpisodeType, EpisodeUnknownType } from '../models/EpisodeType.ts';
+import { EpisodeUnknownType } from '../models/EpisodeType.ts';
 import { mapToImage } from './mapToImage.ts';
 import { mapToPostCredits } from './mapToPostCredits.ts';
 import { mapToTraktRating } from './mapToTraktRating.ts';
@@ -37,8 +37,7 @@ export function mapToEpisodeEntry(
     id: episode.ids.trakt,
     imdbId: episode.ids.imdb,
     key: `episode-${episode.ids.trakt}`,
-    type: episode.episode_type as EpisodeType ??
-      EpisodeUnknownType.unknown,
+    type: episode.episode_type ?? EpisodeUnknownType.unknown,
     title: episode.title ?? '',
     overview: episode.overview ?? '',
     season: episode.season,

@@ -138,8 +138,9 @@
     &[data-help-text-gap='compact'] .help-text {
       margin-block-end: var(--gap-s);
 
+      // A phone's grid cells bring their own gap above the first row.
       @include for-mobile {
-        margin-block-end: var(--gap-l);
+        margin-block-end: var(--ni-0);
       }
     }
 

@@ -6,8 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { searchMediaQuery } from './searchMediaQuery.ts';
 
 describe('searchMediaQuery', () => {
-  // TODO figure out abortsignal issue
-  it.skip('should query for searched items', async () => {
+  it('should query for searched items', async () => {
     const result = await runQuery({
       factory: () =>
         createTestBedQuery(

@@ -19,7 +19,7 @@ import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/res
 import { SeasonSiloStatsMappedMock } from '$mocks/data/summary/seasons/silo/mapped/SeasonSiloStatsMappedMock.ts';
 import { ShowSiloPeopleMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloPeopleMappedMock.ts';
 import { ShowSiloPeopleResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloPeopleResponseMock.ts';
-import type { PeopleGuestStarsResponse } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
+import type { PeopleResponse } from '@trakt/api';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { ShowSiloSeasonEpisodesMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonEpisodesMappedMock.ts';
 import { ShowSiloSeasonsWithSpecialsResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloSeasonsWithSpecialsResponseMock.ts';
@@ -48,7 +48,7 @@ function serveSeason(body: SeasonsResponse[0]) {
   server.use(http.get(SILO_SEASON_SUMMARY_URL, () => HttpResponse.json(body)));
 }
 
-function servePeople(body: PeopleGuestStarsResponse) {
+function servePeople(body: PeopleResponse) {
   server.use(http.get(SILO_SEASON_PEOPLE_URL, () => HttpResponse.json(body)));
 }
 

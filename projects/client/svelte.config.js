@@ -32,7 +32,11 @@ const config = {
         // inline style attributes, e.g. app.html and LazyImage
         'style-src': ['self', 'unsafe-inline'],
         'connect-src': ['self', 'https://api.trakt.tv'],
-        'img-src': ['self', 'https://secure.gravatar.com'],
+        'img-src': [
+          'self',
+          'https://secure.gravatar.com',
+          'https://static.klipy.com',
+        ],
         'font-src': ['self'],
         'form-action': ['self'],
         'object-src': ['none'],

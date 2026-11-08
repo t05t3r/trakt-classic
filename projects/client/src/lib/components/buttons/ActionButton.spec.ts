@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import IconCheck from '@tabler/icons-svelte/icons/check';
 import { describe, expect, it, vi } from 'vitest';
@@ -123,12 +123,10 @@ describe('component: ActionButton', () => {
   });
 
   describe('while blocked', () => {
-    const REASON = 'Watch it first to favorite it';
-
-    it('should ignore a click and keep the focus, described by its reason under its own name', async () => {
+    it('should ignore a click and keep the focus, with its reason in a tooltip and at the end of its name', async () => {
       const { onclick, root } = renderActionButton({
         selected: false,
-        blockedReason: REASON,
+        blockedReason: 'Not released yet',
       });
 
       await userEvent.click(mainButton());
@@ -136,9 +134,12 @@ describe('component: ActionButton', () => {
       expect(onclick).not.toHaveBeenCalled();
       expect(mainButton()).toHaveFocus();
       expect(mainButton()).toHaveAttribute('aria-disabled', 'true');
-      expect(mainButton()).toHaveAttribute('title', REASON);
-      expect(mainButton()).toHaveAccessibleName('Add to history');
-      expect(mainButton()).toHaveAccessibleDescription(REASON);
+      expect(mainButton()).not.toHaveAttribute('title');
+      expect(mainButton())
+        .toHaveAccessibleName('Add to history, Not released yet');
+      await waitFor(() =>
+        expect(mainButton()).toHaveAccessibleDescription('Not released yet')
+      );
       expect(root).toHaveClass('is-blocked');
     });
 

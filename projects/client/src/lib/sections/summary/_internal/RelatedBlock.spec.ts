@@ -70,16 +70,16 @@ describe('section: RelatedBlock', () => {
       .toEqual(Array(6).fill('smaller'));
   });
 
-  // Hiding the last two on tablets and the flush, undivided rows are CSS keyed on these marks.
-  it('should mark the grid flush and undivided, with the last two cells past the tablet limit', async () => {
+  // Hiding the last two on tablets, the row gaps and the phone divider are CSS keyed on these marks.
+  it('should mark the grid with gaps between rows and the phone divider, with the last two cells past the tablet limit', async () => {
     renderBlock({ kind: 'ready', data: RELATED });
 
     const region = await screen.findByRole('region', { name: REGION_NAME });
     const grid = region.querySelector('.trakt-poster-grid');
     const cells = [...region.querySelectorAll('.poster-grid-cell')];
 
-    expect(grid).toHaveAttribute('data-phone-divider', 'none');
-    expect(grid).toHaveAttribute('data-gaps', 'none');
+    expect(grid).toHaveAttribute('data-phone-divider', 'default');
+    expect(grid).toHaveAttribute('data-gaps', 'rows');
     expect(
       cells.map((cell) => cell.classList.contains('is-past-tablet-limit')),
     ).toEqual([false, false, false, false, true, true]);

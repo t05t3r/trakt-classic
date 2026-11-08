@@ -18,8 +18,6 @@ export type RowRevealGridProps<T> = {
   bottomGap?: 'default' | 'none';
   // Phone rows of `columns.mobile` cards, in place of the desktop count reflowed.
   phoneRows?: 'desktop' | 'mobile';
-  // The 20px above each cell on phones; 'none' sets the rows flush, as Classic's phone grids.
-  phoneCellGap?: 'default' | 'none';
   // Takes the focus from a collapsed cell or a removed cell, navigator or grid,
   // in place of the section that holds the grid.
   fallbackFocus?: (grid: HTMLElement) => HTMLElement | Nil;

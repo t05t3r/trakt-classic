@@ -1,19 +1,32 @@
 <script lang="ts">
+  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
   import type { ActionSideIconProps } from './_internal/ActionSideIconProps.ts';
 
-  const { icon: Glyph, label, ...rest }: ActionSideIconProps = $props();
+  const { icon: Glyph, label, disabled, ...rest }: ActionSideIconProps =
+    $props();
 </script>
 
-<!-- After the spread, so a `Menu`'s untyped trigger props cannot override them. -->
-<button
-  {...rest}
-  type="button"
-  class="trakt-action-side-icon"
-  title={label}
-  aria-label={label}
+<!-- A disabled icon has no tooltip: its button's own says why. -->
+<Tooltip
+  side="bottom"
+  content={label}
+  disabled={disabled ?? false}
+  disableHoverableContent
+  triggerProps={rest}
 >
-  <Glyph class="action-side-glyph" aria-hidden="true" />
-</button>
+  {#snippet trigger({ props })}
+    <!-- After the spread, so a `Menu`'s untyped trigger props cannot override them. -->
+    <button
+      {...props}
+      type="button"
+      class="trakt-action-side-icon"
+      {disabled}
+      aria-label={label}
+    >
+      <Glyph class="action-side-glyph" aria-hidden="true" />
+    </button>
+  {/snippet}
+</Tooltip>
 
 <style lang="scss">
   @use '$style/scss/mixins/index' as *;
@@ -46,12 +59,16 @@
       opacity: 1;
     }
 
+    &:disabled {
+      cursor: not-allowed;
+    }
+
     @include for-mouse {
-      &:hover {
+      &:not(:disabled):hover {
         background: var(--color-action-side-background-hover);
       }
 
-      &:hover :global(.action-side-glyph) {
+      &:not(:disabled):hover :global(.action-side-glyph) {
         opacity: 1;
       }
     }

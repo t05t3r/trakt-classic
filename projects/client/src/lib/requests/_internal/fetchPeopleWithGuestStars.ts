@@ -1,5 +1,5 @@
 import { type ApiParams, rawApiFetch } from '$lib/requests/api.ts';
-import { PeopleGuestStarsResponseSchema } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
+import { peopleResponseSchema } from '@trakt/api';
 
 type PeopleScope =
   | { season?: undefined; episode?: undefined }
@@ -17,7 +17,7 @@ function toScopePath({ season, episode }: PeopleScope) {
   return `/seasons/${season}/episodes/${episode}`;
 }
 
-// The SDK route's `extended` takes `images` only, not `guest_stars`.
+// The SDK's season route doesn't take `guest_stars`, though the API answers it.
 export async function fetchPeopleWithGuestStars(
   { fetch, slug, ...scope }: FetchPeopleWithGuestStarsParams,
 ) {
@@ -29,7 +29,7 @@ export async function fetchPeopleWithGuestStars(
 
   return response.ok
     ? {
-      body: PeopleGuestStarsResponseSchema.parse(await response.json()),
+      body: peopleResponseSchema.parse(await response.json()),
       status: 200,
     }
     : { body: undefined, status: response.status };

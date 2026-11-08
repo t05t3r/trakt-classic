@@ -1,6 +1,7 @@
 <script lang="ts">
   import CommunityRating from '$lib/components/badges/CommunityRating.svelte';
   import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
+  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
   import { useDisplayEarlyRatings } from '$lib/features/auth/stores/useDisplayEarlyRatings.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import HasPlay from '$lib/features/media-actions/components/HasPlay.svelte';
@@ -54,40 +55,57 @@
                       {@const isStored = shown?.kind === 'stored'}
                       <!-- A stored rating or the open picker, opened past the gate, is set: only a first rating needs a Play. -->
                       {@const gate = toPlayGate({ isSet: shown !== null || isOpen, hasPlay })}
-                      <button
-                        type="button"
-                        class="ratings-user"
-                        class:is-rated={isRated}
-                        class:is-blocked={gate === 'blocked'}
-                        aria-describedby={isStored ? yourRatingId : undefined}
-                        title={gate === 'blocked'
-                        ? m.tooltip_text_watch_first_to_rate()
-                        : undefined}
-                        {...props}
-                        {...gate === 'open' ? {} : INERT_TRIGGER_PROPS}
+                      <Tooltip
+                        side="bottom"
+                        content={m.tooltip_text_watch_first_to_rate()}
+                        disabled={gate !== 'blocked'}
+                        disableHoverableContent
+                        keepOpenOnPress={gate === 'blocked'}
+                        triggerProps={{
+                          ...props,
+                          ...(gate === 'open' ? {} : INERT_TRIGGER_PROPS),
+                          // Only a stored rating, whose tooltip is off, takes the tooltip's description slot.
+                          ...(isStored ? { 'aria-describedby': yourRatingId } : {}),
+                        }}
                       >
-                        {#if isRated}
-                          <IconHeartFilled
-                            class="ratings-user-heart"
-                            aria-hidden="true"
-                            data-rating={shown.value}
-                          />
-                        {:else}
-                          <IconHeart class="ratings-user-heart" aria-hidden="true" />
-                        {/if}
-                        <span class="ratings-number">
-                          {#if shown?.kind === 'unrate'}
-                            <span class="ratings-user-question">{m.text_rating_unrate()}</span>
-                            <span class="ratings-caption tag">{shown.label}</span>
-                          {:else if shown}
-                            <span class="ratings-value">{shown.value}</span>
-                            <span class="ratings-caption tag">{shown.label}</span>
-                          {:else}
-                            <span class="ratings-user-question">{rateThis}</span>
-                            <span class="ratings-caption tag">{m.text_rating_prompt()}</span>
-                          {/if}
-                        </span>
-                      </button>
+                        {#snippet trigger({ props })}
+                          <button
+                            type="button"
+                            class="ratings-user"
+                            class:is-rated={isRated}
+                            class:is-blocked={gate === 'blocked'}
+                            aria-label={gate === 'blocked'
+                            ? m.button_label_blocked_action({
+                              action: rateThis,
+                              reason: m.tooltip_text_watch_first_to_rate(),
+                            })
+                            : undefined}
+                            {...props}
+                          >
+                            {#if isRated}
+                              <IconHeartFilled
+                                class="ratings-user-heart"
+                                aria-hidden="true"
+                                data-rating={shown.value}
+                              />
+                            {:else}
+                              <IconHeart class="ratings-user-heart" aria-hidden="true" />
+                            {/if}
+                            <span class="ratings-number">
+                              {#if shown?.kind === 'unrate'}
+                                <span class="ratings-user-question">{m.text_rating_unrate()}</span>
+                                <span class="ratings-caption tag">{shown.label}</span>
+                              {:else if shown}
+                                <span class="ratings-value">{shown.value}</span>
+                                <span class="ratings-caption tag">{shown.label}</span>
+                              {:else}
+                                <span class="ratings-user-question">{rateThis}</span>
+                                <span class="ratings-caption tag">{m.text_rating_prompt()}</span>
+                              {/if}
+                            </span>
+                          </button>
+                        {/snippet}
+                      </Tooltip>
                       <!-- Outside the button, so its name stays the visible text. -->
                       {#if isStored}
                         <span id={yourRatingId} class="ratings-user-description">

@@ -1,5 +1,5 @@
 import { COMMENTS_PAGE_SIZE } from '$lib/features/comments/_internal/COMMENTS_PAGE_SIZE.ts';
-import type { CommentResponseWithGif } from '$lib/requests/models/CommentResponseWithGif.ts';
+import type { CommentResponse } from '@trakt/api';
 import { commentResponse } from '$test/beds/request/commentResponse.ts';
 
 type CommentPageParams = {
@@ -10,7 +10,7 @@ type CommentPageParams = {
 // Ids follow the page size, so a short page leaves no id to the next one.
 export function commentPage(
   { page, count = COMMENTS_PAGE_SIZE }: CommentPageParams,
-): ReadonlyArray<CommentResponseWithGif> {
+): ReadonlyArray<CommentResponse> {
   const first = (page - 1) * COMMENTS_PAGE_SIZE + 1;
 
   return Array.from(

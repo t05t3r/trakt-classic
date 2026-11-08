@@ -1,11 +1,9 @@
 import { defineQuery } from '$lib/features/query/defineQuery.ts';
 import { mapToMovieEntry } from '$lib/requests/_internal/mapToMovieEntry.ts';
+import { RELATED_LIMIT } from '$lib/requests/RELATED_LIMIT.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { MovieEntrySchema } from '$lib/requests/models/MovieEntry.ts';
 import { time } from '$lib/utils/timing/time.ts';
-
-// One row of six; the block never asks for a second page.
-const RELATED_LIMIT = 6;
 
 type MovieRelatedParams = { slug: string } & ApiParams;
 

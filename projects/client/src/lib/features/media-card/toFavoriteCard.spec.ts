@@ -23,6 +23,7 @@ describe('toFavoriteCard', () => {
       rating: {
         value: 0.7218,
         earliestReleaseDate: new Date('2024-11-08T00:00:00.000Z'),
+        movieSlug: 'heretic-2024',
       },
     });
   });
