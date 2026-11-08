@@ -1,4 +1,3 @@
-import type { PeopleGuestStarsResponse } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
 import type { PeopleResponse } from '@trakt/api';
 import { describe, expect, it } from 'vitest';
 import { mapToMediaCrew } from './mapToMediaCrew.ts';
@@ -40,7 +39,7 @@ describe('mapToMediaCrew', () => {
   });
 
   it('should map the guest stars as cast members', () => {
-    const response: PeopleGuestStarsResponse = {
+    const response: PeopleResponse = {
       guest_stars: [
         {
           character: 'Guest Role',

@@ -35,6 +35,7 @@ describe('toListItemCard', () => {
       rating: {
         value: 0.7999,
         earliestReleaseDate: new Date('2022-03-04T00:00:00.000Z'),
+        movieSlug: 'the-batman-2022',
       },
     });
     expect(card).not.toHaveProperty('episodeType');
@@ -127,16 +128,4 @@ describe('toListItemCard', () => {
       expect(toListItemCard(input)).toEqual(toListItemCard(item));
     },
   );
-
-  it("should take a played episode's air date from the play", () => {
-    const playedAt = new Date('2020-01-01T00:00:00.000Z');
-
-    const { target } = toListItemCard({
-      type: 'episode',
-      ...EPISODE.entry,
-      playedAt,
-    });
-
-    expect(target.airDate).toEqual(playedAt);
-  });
 });

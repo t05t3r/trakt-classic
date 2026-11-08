@@ -131,6 +131,17 @@ describe('calendarQuery', () => {
     },
   );
 
+  it.each(['', 'not a date', '0000-01-01'])(
+    'should drop a movie row whose release date %j does not parse',
+    async (released) => {
+      serveCalendarRows([{ ...MOVIE_ROW, released }, EPISODE_ROW]);
+
+      const result = await readCalendar();
+
+      expect(result?.map((entry) => entry.kind)).toEqual(['episode']);
+    },
+  );
+
   it("should air an episode at the row's date over the episode's", async () => {
     serveCalendarRows([{
       ...EPISODE_ROW,

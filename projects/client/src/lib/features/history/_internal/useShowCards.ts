@@ -11,11 +11,13 @@ import type {
   HistoryReading,
   HistoryRow,
 } from '$lib/features/history/stores/useHistoryItems.ts';
-import { toHistoryCard } from '$lib/features/history/toHistoryCard.ts';
+import { toShowPlays } from '$lib/features/history/_internal/toShowPlays.ts';
+import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
 import { toListItemCover } from '$lib/features/media-card/toListItemCover.ts';
 import { withPageClamp } from '$lib/features/paging/withPageClamp.ts';
 import { useSnapshotStatus } from '$lib/features/query/useSnapshot.ts';
 import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
+import { watchedShowsProgressQuery } from '$lib/requests/queries/sync/watchedShowsProgressQuery.ts';
 import {
   type ShowActivityHistoryParams,
   showActivityHistoryQuery,
@@ -37,7 +39,7 @@ function toRow(entry: ShowPlays, dropped: UserDropped | undefined): HistoryRow {
 
   return {
     entry,
-    card: toHistoryCard(entry),
+    card: toListItemCard(entry),
     isFaded: false,
     ...(droppedAt && { droppedAt }),
   };
@@ -79,6 +81,19 @@ function toReading(
   };
 }
 
+// The progress route has one row per show but takes no genre or date, so a filtered view groups every Play.
+function useShowPlays(params: ShowActivityHistoryParams) {
+  return params.filter || params.startDate || params.endDate
+    ? useSnapshotStatus(
+      showActivityHistoryQuery({ ...params, limit: MAX_PAGE_LIMIT }),
+      { select: groupPlaysByShow, isEmpty },
+    )
+    : useSnapshotStatus(
+      watchedShowsProgressQuery(),
+      { select: toShowPlays, isEmpty },
+    );
+}
+
 type UseShowCardsParams = {
   params: ShowActivityHistoryParams;
   page: number;
@@ -88,12 +103,7 @@ type UseShowCardsParams = {
 export function useShowCards(
   { params, page, replacePage }: UseShowCardsParams,
 ): Observable<HistoryReading> {
-  const status = useSnapshotStatus(
-    showActivityHistoryQuery({ ...params, limit: MAX_PAGE_LIMIT }),
-    { select: groupPlaysByShow, isEmpty },
-  );
-
-  const reading = combineLatest([status, useUser().dropped]).pipe(
+  const reading = combineLatest([useShowPlays(params), useUser().dropped]).pipe(
     map(([$status, $dropped]) =>
       toReading({ status: $status, dropped: $dropped, page })
     ),

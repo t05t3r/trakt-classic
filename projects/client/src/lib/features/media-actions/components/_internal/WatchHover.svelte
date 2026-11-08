@@ -17,6 +17,8 @@
     switch (content.kind) {
       case 'add':
         return { main: m.tooltip_text_add_to_watched_history() };
+      case 'unreleased':
+        return { main: m.tooltip_text_not_released_yet() };
       case 'play':
         return {
           main: m.tooltip_text_watched_on({

@@ -16,6 +16,10 @@ describe('component: WatchHover', () => {
     expect(lines({ kind: 'add' })).toEqual(['Add to watched history']);
   });
 
+  it('should say it is not released yet', () => {
+    expect(lines({ kind: 'unreleased' })).toEqual(['Not released yet']);
+  });
+
   it("should read a Play's date, in bold, and its time", () => {
     const shown = lines({ kind: 'play', playedAt: PLAYED_AT, minutes: 53 });
 

@@ -68,7 +68,7 @@ const toBackdrop = (
   return show?.cover.url.full;
 };
 
-type SeasonPoster = { src: ImageUrl; seasonId?: number };
+type SeasonPoster = { src: ImageUrl };
 
 type SeasonPosterInput = {
   params: EpisodeParams;
@@ -89,10 +89,7 @@ const toSeasonPoster = (
     ?.find(({ number }) => number === params.season);
   if (!entry) return { src: show.poster.url.thumb };
 
-  return {
-    src: entry.poster?.url.thumb ?? show.poster.url.thumb,
-    seasonId: entry.id,
-  };
+  return { src: entry.poster?.url.thumb ?? show.poster.url.thumb };
 };
 
 type AdjacentReads = {

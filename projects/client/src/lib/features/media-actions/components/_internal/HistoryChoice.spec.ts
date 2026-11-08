@@ -34,7 +34,7 @@ describe('component: HistoryChoice', () => {
   it('should open from its side icon', async () => {
     render(HistoryChoice, { props: { onAdd: vi.fn() } });
 
-    expect(trigger()).toHaveAttribute('title', 'Add another play');
+    expect(trigger()).toHaveAccessibleName('Add another play');
     expect(menu()).not.toBeInTheDocument();
 
     expect(await openChoice()).toBeVisible();

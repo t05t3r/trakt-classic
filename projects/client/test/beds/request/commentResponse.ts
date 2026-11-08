@@ -1,4 +1,4 @@
-import type { CommentResponseWithGif } from '$lib/requests/models/CommentResponseWithGif.ts';
+import type { CommentResponse } from '@trakt/api';
 
 export type CommentVariant =
   | 'spoiler'
@@ -34,7 +34,7 @@ const XSS_BODY =
 const VARIANTS: Readonly<
   Record<
     CommentVariant,
-    (comment: CommentResponseWithGif) => CommentResponseWithGif
+    (comment: CommentResponse) => CommentResponse
   >
 > = {
   spoiler: (comment) => ({ ...comment, spoiler: true }),
@@ -55,8 +55,8 @@ const VARIANTS: Readonly<
 
 export function commentResponse(
   { id, variant }: CommentResponseParams,
-): CommentResponseWithGif {
-  const comment: CommentResponseWithGif = {
+): CommentResponse {
+  const comment: CommentResponse = {
     id,
     parent_id: 0,
     created_at: '2024-11-08T06:21:26.000Z',

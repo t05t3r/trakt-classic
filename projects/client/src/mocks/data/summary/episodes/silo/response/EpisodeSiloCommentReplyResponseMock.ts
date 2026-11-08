@@ -1,14 +1,17 @@
-import type { CommentResponseWithGif } from '$lib/requests/models/CommentResponseWithGif.ts';
+import type { CommentResponse } from '@trakt/api';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { EpisodeSiloCommentsResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloCommentsResponseMock.ts';
 import { UserProfileHarryResponseMock } from '$mocks/data/users/response/UserProfileHarryResponseMock.ts';
 
-export const EpisodeSiloCommentReplyResponseMock: CommentResponseWithGif[] = [
+export const EpisodeSiloCommentReplyResponseMock: CommentResponse[] = [
   {
     'id': 421,
     'comment': 'This is a reply to another comment.',
-    'gif':
-      'https://static.klipy.com/ii/8ce8357c78ea940b9c2015daf05ce1a5/ea/72/WGDcNWlt.gif',
+    'gif': {
+      'url':
+        'https://static.klipy.com/ii/8ce8357c78ea940b9c2015daf05ce1a5/ea/72/WGDcNWlt.gif',
+      'slug': 'WGDcNWlt',
+    },
     'spoiler': false,
     'review': false,
     'parent_id': assertDefined(EpisodeSiloCommentsResponseMock.at(0)).id,

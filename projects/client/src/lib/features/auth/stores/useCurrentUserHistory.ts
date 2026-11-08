@@ -17,9 +17,6 @@ import {
   type WatchedShow,
 } from '../queries/currentUserWatchedShowsQuery.ts';
 
-const showsHistoryLimit = 1000;
-const moviesHistoryLimit = 10000;
-
 export type UserHistory = {
   movies: Map<number, WatchedMovie>;
   shows: Map<number, WatchedShow>;
@@ -67,10 +64,8 @@ type UseCurrentUserHistoryResult = {
 };
 
 export function useCurrentUserHistory(): UseCurrentUserHistoryResult {
-  const moviesQuery = currentUserWatchedMoviesQuery({
-    limit: moviesHistoryLimit,
-  });
-  const showsQuery = currentUserWatchedShowsQuery({ limit: showsHistoryLimit });
+  const moviesQuery = currentUserWatchedMoviesQuery();
+  const showsQuery = currentUserWatchedShowsQuery();
 
   // A held, partial or failed read could show a watched Target unwatched; a click adds a play.
   const history = combineLatest([

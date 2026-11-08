@@ -50,7 +50,6 @@
   const tooltip = $derived(toCardTooltip(media));
   const heading = $derived(toHeading(media));
   const show = $derived(toShowLine(media, showHref));
-  const shownLines = $derived(show ? lines?.slice(0, 1) : lines);
 </script>
 
 {#snippet showLink(target: { href: Pathname; title: string })}
@@ -104,8 +103,8 @@
         {/if}
       </h4>
     {/if}
-    {#if shownLines}
-      {#each shownLines as line, index (index)}
+    {#if lines}
+      {#each lines as line, index (index)}
         <!-- An empty line is no heading and hidden, so a screen reader announces nothing. -->
         {#if line}
           <h4 class="card-subtitle">{@render line()}</h4>

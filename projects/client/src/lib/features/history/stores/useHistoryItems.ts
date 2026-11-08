@@ -2,8 +2,10 @@ import type { ShowPlays } from '$lib/features/history/_internal/groupPlaysByShow
 import { useShowCards } from '$lib/features/history/_internal/useShowCards.ts';
 import type { HistoryItem } from '$lib/features/history/HISTORY_ITEM_TYPES.ts';
 import type { HistoryTypeFilter } from '$lib/features/history/stores/useHistoryParams.ts';
-import { toHistoryCard } from '$lib/features/history/toHistoryCard.ts';
-import type { ListItemCard } from '$lib/features/media-card/toListItemCard.ts';
+import {
+  type ListItemCard,
+  toListItemCard,
+} from '$lib/features/media-card/toListItemCard.ts';
 import { toListItemCover } from '$lib/features/media-card/toListItemCover.ts';
 import {
   type PagedReading,
@@ -55,7 +57,7 @@ export function useHistoryItems(
     params,
     page,
     pageSize: HISTORY_PAGE_SIZE,
-    toCard: toHistoryCard,
+    toCard: toListItemCard,
     toCover: toListItemCover,
     replacePage,
   };

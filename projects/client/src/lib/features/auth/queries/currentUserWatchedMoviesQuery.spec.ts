@@ -1,5 +1,6 @@
 import { WatchedMoviesMappedMock } from '$mocks/data/users/mapped/WatchedMoviesMappedMock.ts';
 import { WatchedMoviesResponseMock } from '$mocks/data/users/response/WatchedMoviesResponseMock.ts';
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { WATCHED_MOVIES_URL } from '$mocks/data/users/WATCHED_MOVIES_URL.ts';
 import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
 import { renderSnapshot } from '$test/beds/query/renderSnapshot.ts';
@@ -27,7 +28,7 @@ function readAllPages(limit: number) {
 }
 
 describe('currentUserWatchedMoviesQuery', () => {
-  it('should request 250 watched movies by default', async () => {
+  it('should request the most a page holds by default', async () => {
     const searches = recordSearches(WATCHED_MOVIES_URL, {});
 
     await runQuery({
@@ -37,7 +38,7 @@ describe('currentUserWatchedMoviesQuery', () => {
     });
 
     expect(searches.map((search) => search.get('limit')))
-      .to.deep.equal(['250']);
+      .to.deep.equal([String(MAX_PAGE_LIMIT)]);
   });
 
   it('should query for watched movies', async () => {
@@ -51,30 +52,19 @@ describe('currentUserWatchedMoviesQuery', () => {
   });
 
   // Trakt sends this endpoint's pages without pagination headers.
-  it('should send one request when a headerless page is shorter than its limit', async () => {
+  it('should read on past a page shorter than its limit until an empty one', async () => {
     serveHeaderlessPages({
       url: WATCHED_MOVIES_URL,
-      pages: [WatchedMoviesResponseMock, WatchedMoviesResponseMock],
+      pages: [
+        WatchedMoviesResponseMock,
+        { '603': ['2024-12-21T20:00:00.000Z'] },
+      ],
     });
 
     const requests = await readAllPages(MOVIE_COUNT + 1);
 
-    expect(requests).toEqual(['GET /users/me/watched/movies']);
-  });
-
-  it('should request the next page when a headerless page fills its limit', async () => {
-    const fullPage = {
-      ...WatchedMoviesResponseMock,
-      '481': ['2024-12-20T20:00:00.000Z'],
-    };
-    serveHeaderlessPages({
-      url: WATCHED_MOVIES_URL,
-      pages: [fullPage, { '603': ['2024-12-21T20:00:00.000Z'] }],
-    });
-
-    const requests = await readAllPages(Object.keys(fullPage).length);
-
     expect(requests).toEqual([
+      'GET /users/me/watched/movies',
       'GET /users/me/watched/movies',
       'GET /users/me/watched/movies',
     ]);

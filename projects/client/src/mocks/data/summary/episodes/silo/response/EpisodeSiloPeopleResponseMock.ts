@@ -1,7 +1,7 @@
-import type { PeopleGuestStarsResponse } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
+import type { PeopleResponse } from '@trakt/api';
 import { ShowSiloPeopleResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloPeopleResponseMock.ts';
 
-export const EpisodeSiloPeopleResponseMock: PeopleGuestStarsResponse = {
+export const EpisodeSiloPeopleResponseMock: PeopleResponse = {
   'cast': [
     {
       'character': 'Juliette Nichols',

@@ -7,6 +7,7 @@ import { HISTORY_EPISODES_URL } from '$mocks/data/users/HISTORY_EPISODES_URL.ts'
 import { HISTORY_MOVIES_URL } from '$mocks/data/users/HISTORY_MOVIES_URL.ts';
 import { HISTORY_PATH } from '$mocks/data/users/HISTORY_PATH.ts';
 import { HISTORY_SEASONS_URL } from '$mocks/data/users/HISTORY_SEASONS_URL.ts';
+import { WATCHED_PROGRESS_URL } from '$mocks/data/sync/WATCHED_PROGRESS_URL.ts';
 import { HISTORY_SHOWS_URL } from '$mocks/data/users/HISTORY_SHOWS_URL.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
 import { ActivityHistoryResponseMock } from '$mocks/data/users/response/ActivityHistoryResponseMock.ts';
@@ -27,6 +28,7 @@ import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
+import { watchedProgressRow } from '$test/beds/request/watchedProgressRow.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
@@ -71,6 +73,10 @@ const dayDivider = () =>
 
 const dividersToggle = () =>
   screen.getByRole('button', { name: 'Toggle Dividers' });
+
+const SILO_PROGRESS = [
+  watchedProgressRow(SILO_PLAY_RESPONSE.show, SILO_PLAY_RESPONSE.watched_at),
+];
 
 const serveTwoSiloPlays = () =>
   servePaged({
@@ -117,14 +123,14 @@ describe('section: HistoryPage', () => {
 
     it.each(
       [
-        { filters: 'shows', count: 1 },
-        { filters: 'episodes', count: 2 },
+        { filters: 'shows', search: '?genres=drama', count: 1 },
+        { filters: 'episodes', search: '', count: 2 },
       ],
     )(
-      'should show $count cards for two plays of one show under $filters',
-      async ({ filters, count }) => {
+      'should show $count cards for two plays of one show under $filters$search',
+      async ({ filters, search, count }) => {
         serveTwoSiloPlays();
-        const { container } = await renderPage({ filters });
+        const { container } = await renderPage({ filters, search });
 
         await waitFor(() => expect(cells(container)).toHaveLength(count));
       },
@@ -146,7 +152,7 @@ describe('section: HistoryPage', () => {
     });
 
     it('should divide Shows by day, with no time spent', async () => {
-      serveTwoSiloPlays();
+      servePaged({ url: WATCHED_PROGRESS_URL, body: SILO_PROGRESS });
       await renderPage({ filters: 'shows' });
 
       expect(await dayDivider())
@@ -246,8 +252,7 @@ describe('section: HistoryPage', () => {
     it.each(
       [
         { name: 'Movies', filters: 'movies', url: HISTORY_MOVIES_URL },
-        // Shows and Episodes read the same route.
-        { name: 'Shows', filters: 'shows', url: HISTORY_SHOWS_URL },
+        { name: 'Shows', filters: 'shows', url: WATCHED_PROGRESS_URL },
         { name: 'Episodes', filters: 'episodes', url: HISTORY_SHOWS_URL },
         { name: 'a genre', search: '?genres=drama', url: HISTORY_URL },
       ],
@@ -495,8 +500,8 @@ describe('section: HistoryPage', () => {
           view: 'Shows',
           filters: 'shows',
           search: '',
-          url: HISTORY_SHOWS_URL,
-          ...SILO,
+          url: WATCHED_PROGRESS_URL,
+          body: SILO_PROGRESS,
         },
         {
           view: '?movie=',

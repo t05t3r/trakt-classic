@@ -199,7 +199,7 @@ describe('store: useQuery', () => {
       const { invalidate, shows, waitForLateRequests } = await renderStore(
         () => ({
           ...useInvalidator(),
-          shows: useSnapshot(currentUserWatchedShowsQuery({ limit: 1000 }), {
+          shows: useSnapshot(currentUserWatchedShowsQuery(), {
             select: (entries) => entries.length,
             whileUnsettled: 'unknown',
           }),

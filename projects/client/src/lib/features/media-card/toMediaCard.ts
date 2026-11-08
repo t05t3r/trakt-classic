@@ -5,21 +5,15 @@ import type { EpisodeEntry } from '$lib/requests/models/EpisodeEntry.ts';
 import type { MovieEntry } from '$lib/requests/models/MovieEntry.ts';
 import type { Season } from '$lib/requests/models/Season.ts';
 import type { ShowEntry } from '$lib/requests/models/ShowEntry.ts';
-import { isValidDate } from '$lib/utils/date/isValidDate.ts';
 import { seasonLabel } from '$lib/utils/intl/seasonLabel.ts';
 import { toEpisodeRuntime } from '$lib/utils/media/toEpisodeRuntime.ts';
 import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
 
 export type MediaCardInput =
-  | { type: 'movie'; movie: MovieEntry; playedAt?: Date }
-  | { type: 'show'; show: ShowEntry; playedAt?: Date }
+  | { type: 'movie'; movie: MovieEntry }
+  | { type: 'show'; show: ShowEntry }
   | { type: 'season'; show: ShowEntry; season: Season }
-  | {
-    type: 'episode';
-    show: ShowEntry;
-    episode: EpisodeEntry;
-    playedAt?: Date;
-  };
+  | { type: 'episode'; show: ShowEntry; episode: EpisodeEntry };
 
 type MediaCardKind = MediaCardInput['type'];
 
@@ -29,18 +23,15 @@ export type MediaCard<K extends MediaCardKind = MediaCardKind> = K extends
       media: Extract<PosterCardMedia, { type: K }>;
       href: Pathname;
       showHref?: Pathname;
-      rating: { value: number | Nil; earliestReleaseDate: Date };
+      rating: {
+        value: number | Nil;
+        earliestReleaseDate: Date;
+        // A movie's earliest release of any kind may come before `earliestReleaseDate`.
+        movieSlug?: string;
+      };
     }
     & { target: Extract<QuickActionsTarget, { type: K }> }
   : never;
-
-// A play proves the item was out by then, whatever its air date says.
-function toPlayedAirDate(airDate: Date, playedAt: Date | undefined): Date {
-  if (!playedAt || !isValidDate(playedAt)) return airDate;
-  if (!isValidDate(airDate)) return playedAt;
-
-  return playedAt < airDate ? playedAt : airDate;
-}
 
 export function toMediaCard<K extends MediaCardKind>(
   input: Extract<MediaCardInput, { type: K }>,
@@ -60,12 +51,13 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           type: 'movie',
           id: movie.id,
           title: movie.title,
-          airDate: toPlayedAirDate(movie.airDate, input.playedAt),
+          airDate: movie.airDate,
           runtime: movie.runtime,
         },
         rating: {
           value: movie.rating,
           earliestReleaseDate: movie.effectiveReleaseDate,
+          movieSlug: movie.slug,
         },
       };
     }
@@ -79,7 +71,7 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           id: show.id,
           title: show.title,
           slug: show.slug,
-          airDate: toPlayedAirDate(show.airDate, input.playedAt),
+          airDate: show.airDate,
           episode: show.episode,
         },
         rating: {
@@ -126,7 +118,7 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           season: episode.season,
           number: episode.number,
           show: { id: show.id, title: show.title },
-          airDate: toPlayedAirDate(episode.airDate, input.playedAt),
+          airDate: episode.airDate,
           runtime: toEpisodeRuntime({ episode, show }),
         },
         rating: {

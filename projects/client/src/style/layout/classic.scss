@@ -61,12 +61,7 @@ h5 {
 }
 
 [data-layout='grid'] {
-  display: grid;
-  grid-template-columns: repeat(
-    var(--grid-column-count),
-    minmax(var(--grid-column-track-min), var(--grid-column-track-max))
-  );
-  margin-inline: var(--gutter-half-negative);
+  @include gutter-grid(var(--grid-column-count));
 }
 
 [data-layout='grid'] > [data-grid-column] {

@@ -8,10 +8,10 @@ import {
   CalendarEntrySchema,
 } from '$lib/requests/models/CalendarEntry.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import { parseDateOnly } from '$lib/utils/date/parseDateOnly.ts';
 import { parseDateTime } from '$lib/utils/date/parseDateTime.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import type { HotReleaseResponse } from '@trakt/api';
-import { z } from 'zod';
 
 type CalendarTab =
   | 'shows-movies'
@@ -32,18 +32,16 @@ type CalendarParams =
   }
   & ApiParams;
 
-const CalendarDateSchema = z.string().date();
-
 function mapToCalendarMovie(row: HotReleaseResponse): CalendarEntry | null {
   if (row.movie == null) return null;
 
-  const released = CalendarDateSchema.safeParse(row.released);
-  if (!released.success) return null;
+  const releasedOn = row.released;
+  if (!releasedOn || !parseDateOnly(releasedOn)) return null;
 
   return {
     kind: 'movie',
     movie: mapToMovieEntry(row.movie),
-    releasedOn: released.data,
+    releasedOn,
   };
 }
 

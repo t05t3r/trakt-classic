@@ -79,6 +79,11 @@
     return shownProgress?.completed ? true : $hasPlayHeld;
   });
 
+  // Only a known absence of Plays blocks it: an unknown history may hold one.
+  const isHistoryBlocked = $derived(
+    isHistorySelected === false && !isAired,
+  );
+
   // A pending add's counts lag its fill, so it reads Watched with no under line until they arrive.
   const areCountsShown = $derived(
     isHistorySelected && $pendingWatched === undefined,
@@ -146,6 +151,14 @@
   />
 {/snippet}
 
+{#snippet blockedHistorySide()}
+  <ActionSideIcon
+    disabled
+    icon={IconCirclePlus}
+    label={m.button_label_add_play()}
+  />
+{/snippet}
+
 {#snippet watchlistSide()}
   <ListMenu type={target.type} id={target.id}>
     {#snippet trigger({ props })}
@@ -159,20 +172,21 @@
 {/snippet}
 
 <div class="trakt-action-column">
-  {#if isAired || $hasPlayHeld}
-    <ActionButton
-      color="watch"
-      icon={IconCheck}
-      label={historyLabel}
-      underInfo={historyUnderInfo}
-      percent={shownWatchProgress?.percent}
-      selected={isHistorySelected}
-      isUpdating={$isWatchUpdating}
-      isInert={!$isWatchedKnown || $isWatchUpdating}
-      onclick={toggleWatched}
-      side={historySide}
-    />
-  {/if}
+  <ActionButton
+    color="watch"
+    icon={IconCheck}
+    label={historyLabel}
+    underInfo={historyUnderInfo}
+    percent={shownWatchProgress?.percent}
+    selected={isHistorySelected}
+    isUpdating={$isWatchUpdating}
+    isInert={!$isWatchedKnown || $isWatchUpdating}
+    blockedReason={isHistoryBlocked
+    ? m.tooltip_text_not_released_yet()
+    : undefined}
+    onclick={toggleWatched}
+    side={isHistoryBlocked ? blockedHistorySide : historySide}
+  />
   <ActionButton
     color="list"
     icon={IconAlignLeft}

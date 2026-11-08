@@ -19,6 +19,12 @@ const includeMixin = (mixin: string) =>
   compileRule(`@include ${mixin} { color: red; }`);
 
 describe('style: mixins', () => {
+  it('should apply for-short-viewport at heights up to and including 256px', async () => {
+    expect(await includeMixin('for-short-viewport')).toBe(
+      '@media(max-height: 256px){a{color:red}}',
+    );
+  });
+
   it('should apply for-desktop-lg-and-below at widths up to and including 1200px', async () => {
     expect(await includeMixin('for-desktop-lg-and-below')).toBe(
       '@media(max-width: 1200px){a{color:red}}',
@@ -84,6 +90,17 @@ describe('style: mixins', () => {
       ].join(''),
     );
   });
+
+  it('should set a grid of the columns it is given, half a gutter past its container', async () => {
+    expect(await compileRule('@include gutter-grid(var(--columns));')).toBe(
+      [
+        'a{display:grid;',
+        'grid-template-columns:repeat(var(--columns), minmax(var(--grid-column-track-min), var(--grid-column-track-max)));',
+        'margin-inline:var(--gutter-half-negative)}',
+      ].join(''),
+    );
+  });
+
   it('should set phone poster cells gutterless, with a divider before each even cell', async () => {
     expect(await compileRule("@include phone-poster-cells('.cell');")).toBe(
       [

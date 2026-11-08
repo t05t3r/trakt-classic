@@ -51,11 +51,9 @@
 
   const seasonHref = $derived(UrlBuilder.season(slug, season));
 
-  // The season's corner waits for its id, which only the seasons read gives.
-  const seasonRatingTarget: RatingStoreProps | undefined = $derived(
-    $seasonPoster.seasonId === undefined
-      ? undefined
-      : { type: 'season', id: $seasonPoster.seasonId },
+  // The poster is the season's, as Classic's, but its corner rates the page's episode.
+  const episodeRatingTarget: RatingStoreProps | undefined = $derived(
+    $episode ? { type: 'episode', id: $episode.id } : undefined,
   );
 
   const posterTitle = $derived(seasonLabel(season, $show?.title));
@@ -204,7 +202,7 @@
           poster={$seasonPoster.src}
           href={seasonHref}
           title={posterTitle}
-          ratingTarget={seasonRatingTarget}
+          ratingTarget={episodeRatingTarget}
         />
       {/snippet}
       {#snippet ratings()}
@@ -221,7 +219,7 @@
         src: $seasonPoster.src,
         title: posterTitle,
         href: seasonHref,
-        ratingTarget: seasonRatingTarget,
+        ratingTarget: episodeRatingTarget,
       }}
       links={toExternalLinks({
         type: 'episode',

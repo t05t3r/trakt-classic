@@ -300,7 +300,7 @@ describe('component: SummaryRatings', () => {
 
       await write.requested;
       expect(await slot('8 Great')).toHaveFocus();
-      expect(screen.queryByRole('dialog')).toBeNull();
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
     it("should show the new title's own rating once the id changes", async () => {
@@ -321,10 +321,9 @@ describe('component: SummaryRatings', () => {
     it('should open nothing on a press or a key, describing why, while an unrated title has no Play', async () => {
       stubClientRects();
       renderRatings();
-      const trigger = await slot(PROMPT);
-      await waitFor(() =>
-        expect(trigger).toHaveAttribute('title', BLOCKED_REASON)
-      );
+      const trigger = await screen.findByRole('button', {
+        name: `Rate this movie, ${BLOCKED_REASON}`,
+      });
 
       await userEvent.click(trigger);
       await userEvent.keyboard('{Enter}');
@@ -334,7 +333,10 @@ describe('component: SummaryRatings', () => {
       expect(trigger).toHaveFocus();
       expect(trigger).toHaveAttribute('aria-disabled', 'true');
       expect(trigger).toHaveClass('is-blocked');
-      expect(trigger).toHaveAccessibleDescription(BLOCKED_REASON);
+      expect(trigger).not.toHaveAttribute('title');
+      await waitFor(() =>
+        expect(trigger).toHaveAccessibleDescription(BLOCKED_REASON)
+      );
     });
 
     it('should open the picker on a stored rating with no Play', async () => {

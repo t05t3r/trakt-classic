@@ -224,7 +224,6 @@
           variant="posters"
           bottomGap="none"
           phoneRows="mobile"
-          phoneCellGap="none"
         >
           {#snippet item(recommendation)}
             {@render card(recommendation)}

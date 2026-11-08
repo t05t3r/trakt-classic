@@ -1,6 +1,6 @@
-import type { PeopleGuestStarsResponse } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
+import type { PeopleResponse } from '@trakt/api';
 
-export const ShowSiloPeopleResponseMock: PeopleGuestStarsResponse = {
+export const ShowSiloPeopleResponseMock: PeopleResponse = {
   'cast': [
     {
       'character': 'Juliette Nichols',

@@ -49,7 +49,7 @@ const commentReactionsRequest = (
           distribution: {},
           reaction_count: 0,
           user_count: 0,
-        } as ReactionsSummaryResponse;
+        };
       }
 
       return res;

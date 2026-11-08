@@ -8,6 +8,7 @@
   import RatingPopover from '$lib/features/media-actions/components/RatingPopover.svelte';
   import { type PlayGate, toPlayGate } from '$lib/features/media-actions/toPlayGate.ts';
   import { toRateThisLabel } from '$lib/features/media-actions/toRateThisLabel.ts';
+  import MovieEarliestRelease from './_internal/MovieEarliestRelease.svelte';
   import type { CardCommunityRatingProps } from './CardCommunityRatingProps.ts';
 
   const { rating, target, hasPlay, variant }: CardCommunityRatingProps =
@@ -15,13 +16,19 @@
 
   const displayEarlyRatings = useDisplayEarlyRatings();
 
-  const shownRating = $derived(
+  const toShown = (earliestReleaseDate: Date) =>
     toShownRating({
       rating: rating.value,
-      earliestReleaseDate: rating.earliestReleaseDate,
+      earliestReleaseDate,
       displayEarlyRatings: $displayEarlyRatings,
       now: new Date(),
-    }),
+    });
+
+  // Only a rating its movie's own date still hides can gain from an earlier release.
+  const hiddenMovieSlug = $derived(
+    rating.value != null && toShown(rating.earliestReleaseDate) == null
+      ? rating.movieSlug
+      : undefined,
   );
 
   const toHover = (gate: PlayGate, isRated: boolean) => {
@@ -41,48 +48,66 @@
       : m.button_label_card_rating({ percent, action: hover });
 </script>
 
-{#if shownRating != null}
-  {#key target.id}
-    <RatingPopover
-      {target}
-      label={toRateThisLabel(target.type)}
-      side="bottom"
+{#snippet ratingButton(earliestReleaseDate: Date)}
+  {@const shownRating = toShown(earliestReleaseDate)}
+  {#if shownRating != null}
+    {#key target.id}
+      <RatingPopover
+        {target}
+        label={toRateThisLabel(target.type)}
+        side="bottom"
+      >
+        {#snippet trigger({ props, shown, isOpen })}
+          <!-- A stored rating or the open picker, opened past the gate, is set: only a first rating needs a Play. -->
+          {@const gate = toPlayGate({ isSet: shown !== null || isOpen, hasPlay })}
+          {@const hover = toHover(gate, shown !== null)}
+          <!-- The tooltip opens over the card's title, whose click it must not take. -->
+          <Tooltip
+            side="bottom"
+            content={hover}
+            disabled={isOpen || gate === 'unknown'}
+            disableHoverableContent
+            keepOpenOnPress={gate === 'blocked'}
+            triggerProps={gate === 'open'
+            ? props
+            : { ...props, ...INERT_TRIGGER_PROPS }}
+          >
+            {#snippet trigger({ props })}
+              <button
+                type="button"
+                class="trakt-card-community-rating"
+                class:is-blocked={gate === 'blocked'}
+                aria-label={toName({ percent: shownRating.percent, gate, hover })}
+                {...props}
+              >
+                <CommunityRating
+                  rating={rating.value}
+                  {earliestReleaseDate}
+                  displayEarlyRatings={$displayEarlyRatings}
+                  {variant}
+                />
+              </button>
+            {/snippet}
+          </Tooltip>
+        {/snippet}
+      </RatingPopover>
+    {/key}
+  {/if}
+{/snippet}
+
+{#if hiddenMovieSlug}
+  {#key hiddenMovieSlug}
+    <MovieEarliestRelease
+      slug={hiddenMovieSlug}
+      released={rating.earliestReleaseDate}
     >
-      {#snippet trigger({ props, shown, isOpen })}
-        <!-- A stored rating or the open picker, opened past the gate, is set: only a first rating needs a Play. -->
-        {@const gate = toPlayGate({ isSet: shown !== null || isOpen, hasPlay })}
-        {@const hover = toHover(gate, shown !== null)}
-        <!-- The tooltip opens over the card's title, whose click it must not take. -->
-        <Tooltip
-          side="bottom"
-          content={hover}
-          disabled={isOpen || gate === 'unknown'}
-          disableHoverableContent
-          keepOpenOnPress={gate === 'blocked'}
-          triggerProps={gate === 'open'
-          ? props
-          : { ...props, ...INERT_TRIGGER_PROPS }}
-        >
-          {#snippet trigger({ props })}
-            <button
-              type="button"
-              class="trakt-card-community-rating"
-              class:is-blocked={gate === 'blocked'}
-              aria-label={toName({ percent: shownRating.percent, gate, hover })}
-              {...props}
-            >
-              <CommunityRating
-                rating={rating.value}
-                earliestReleaseDate={rating.earliestReleaseDate}
-                displayEarlyRatings={$displayEarlyRatings}
-                {variant}
-              />
-            </button>
-          {/snippet}
-        </Tooltip>
+      {#snippet children(earliestReleaseDate)}
+        {@render ratingButton(earliestReleaseDate)}
       {/snippet}
-    </RatingPopover>
+    </MovieEarliestRelease>
   {/key}
+{:else}
+  {@render ratingButton(rating.earliestReleaseDate)}
 {/if}
 
 <style lang="scss">

@@ -21,7 +21,7 @@ export function toRecentlyWatchedCard(
     const { movie } = entry;
 
     return {
-      ...toMediaCard({ type: 'movie', movie, playedAt: entry.watchedAt }),
+      ...toMediaCard({ type: 'movie', movie }),
       image: movie.cover.url.thumb,
       imageAlt: m.image_alt_media_fanart({ title: movie.title }),
     };
@@ -31,12 +31,7 @@ export function toRecentlyWatchedCard(
   const screenshot = toEpisodeScreenshot({ show, episode });
 
   return {
-    ...toMediaCard({
-      type: 'episode',
-      show,
-      episode,
-      playedAt: entry.watchedAt,
-    }),
+    ...toMediaCard({ type: 'episode', show, episode }),
     image: screenshot.src,
     imageAlt: screenshot.alt,
     episodeType: episode.type,

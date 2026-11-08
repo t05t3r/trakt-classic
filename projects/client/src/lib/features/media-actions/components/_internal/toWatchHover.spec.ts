@@ -2,11 +2,14 @@ import { DEVS_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_SEASO
 import { HERETIC_ACTIONS_TARGET } from '$mocks/data/media-actions/HERETIC_ACTIONS_TARGET.ts';
 import { SILO_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_ACTIONS_TARGET.ts';
 import { SILO_EPISODE_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_EPISODE_ACTIONS_TARGET.ts';
+import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
+import { time } from '$lib/utils/timing/time.ts';
 import { describe, expect, it } from 'vitest';
 import type { QuickActionsTarget } from '../QuickActionsProps.ts';
 import { toWatchHover } from './toWatchHover.ts';
 
 const PLAYED_AT = new Date('2026-11-04T22:19:00.000Z');
+const UNAIRED = new Date(Date.now() + time.weeks(1));
 
 const MOVIE = { ...HERETIC_ACTIONS_TARGET, runtime: 53 };
 const EPISODE = { ...SILO_EPISODE_ACTIONS_TARGET, runtime: 53 };
@@ -33,6 +36,25 @@ const played = (
   });
 
 describe('util: toWatchHover', () => {
+  it.each([
+    { type: 'an unaired movie', target: { ...MOVIE, airDate: UNAIRED } },
+    { type: 'an undated movie', target: { ...MOVIE, airDate: MAX_DATE } },
+    {
+      type: 'a show with no aired episode',
+      target: { ...SHOW, episode: { count: 0 } },
+    },
+  ])('should say $type not played is not released yet', ({ target }) => {
+    expect(
+      toWatchHover({
+        target,
+        isPlayed: false,
+        playedAt: undefined,
+        plays: 0,
+        watchedEpisodes: 0,
+      }),
+    ).toEqual({ kind: 'unreleased' });
+  });
+
   it.each([MOVIE, EPISODE, SHOW, SEASON])(
     'should offer the add on a $type not played',
     (target) => {

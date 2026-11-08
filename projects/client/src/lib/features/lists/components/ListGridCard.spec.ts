@@ -1,3 +1,4 @@
+import { HERETIC } from '$mocks/data/media-actions/HERETIC.ts';
 import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
 import type { ListItem } from '$lib/requests/models/ListItem.ts';
 import type { SortBy } from '$lib/models/SortBy.ts';
@@ -5,7 +6,8 @@ import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { itemOfType } from '$test/beds/dashboard/itemOfType.ts';
 import { blankCardLines } from '$test/beds/media-card/blankCardLines.ts';
 import { cardLines } from '$test/beds/media-card/cardLines.ts';
-import { screen } from '@testing-library/svelte';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { screen, waitFor } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import ListGridCard from './ListGridCard.svelte';
 
@@ -51,7 +53,7 @@ describe('component: ListGridCard', () => {
           title,
         );
         expect(cardLines(container)).toEqual([line]);
-        expect(blankCardLines(container)).toHaveLength(1);
+        expect(blankCardLines(container)).toHaveLength(0);
       },
     );
 
@@ -80,19 +82,49 @@ describe('component: ListGridCard', () => {
       },
     );
 
-    it('should hold both lines of a movie card blank under rank', async () => {
+    it('should give a movie card no line under rank', async () => {
       const container = await renderCard({ entry: itemOfType('movie') });
 
       expect(cardLines(container)).toEqual([]);
-      expect(blankCardLines(container)).toHaveLength(2);
+      expect(blankCardLines(container)).toHaveLength(0);
     });
 
-    it('should hold the line under the show line blank under rank', async () => {
+    it('should give a season card only its show line under rank', async () => {
       const container = await renderCard({ entry: itemOfType('season') });
 
       expect(cardLines(container)).toEqual(['Silo']);
-      expect(blankCardLines(container)).toHaveLength(1);
+      expect(blankCardLines(container)).toHaveLength(0);
     });
+
+    it("should set the viewer's rating on the first line under my_rating", async () => {
+      const movie = itemOfType('movie');
+      const container = await renderCard({
+        entry: { ...movie, entry: { ...movie.entry, id: HERETIC.id } },
+        sortBy: 'my_rating',
+      });
+
+      await waitFor(() => expect(cardLines(container)).toEqual(['10']));
+      expect(blankCardLines(container)).toHaveLength(0);
+    });
+
+    it.each(
+      [
+        { type: 'movie', lines: [] },
+        { type: 'season', lines: ['Silo'] },
+      ] as const,
+    )(
+      'should give an unrated $type card no sort line under my_rating',
+      async ({ type, lines }) => {
+        const container = await renderCard({
+          entry: itemOfType(type),
+          sortBy: 'my_rating',
+        });
+        await waitNegativeClaim();
+
+        expect(cardLines(container)).toEqual(lines);
+        expect(blankCardLines(container)).toHaveLength(0);
+      },
+    );
   });
 
   describe('rank', () => {

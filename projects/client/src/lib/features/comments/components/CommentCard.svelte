@@ -9,8 +9,10 @@
   import { useHydrated } from '$lib/utils/hydration/hydration.ts';
   import { toDisplayableName } from '$lib/utils/profile/toDisplayableName.ts';
   import IconCheck from '@tabler/icons-svelte/icons/check';
+  import { hasSpoilerTag } from '../_internal/marked/hasSpoilerTag.ts';
   import { toWatchedStat } from '../_internal/toWatchedStat.ts';
   import type { CommentCardProps } from './_internal/CommentCardProps.ts';
+  import CommentGif from './_internal/CommentGif.svelte';
   import CommentMarkdown from './_internal/CommentMarkdown.svelte';
   import SpoilerReveal from './_internal/SpoilerReveal.svelte';
 
@@ -33,6 +35,8 @@
   );
   const isReply = $derived(placement === 'reply');
   const isSpoiler = $derived(comment.isSpoiler || treatAsSpoiler);
+  // A GIF can be the whole comment.
+  const hasText = $derived(comment.comment.trim().length > 0);
   const kindLine = $derived(
     comment.isReview
       ? m.text_comment_review({ name })
@@ -82,19 +86,31 @@
     </div>
   </header>
 
-  {#snippet clampedBody()}
-    <ClampedText>
-      <CommentMarkdown markdown={comment.comment} />
-    </ClampedText>
+  {#snippet body()}
+    {#if hasText}
+      <ClampedText>
+        <CommentMarkdown markdown={comment.comment} />
+      </ClampedText>
+    {/if}
+    {#if comment.gif && hasSpoilerTag(comment.comment)}
+      <!-- A tag may leave the comment unflagged, and the GIF may show what it hides. -->
+      <div class="comment-gif-reveal">
+        <SpoilerReveal display="block">
+          <CommentGif url={comment.gif} />
+        </SpoilerReveal>
+      </div>
+    {:else if comment.gif}
+      <CommentGif url={comment.gif} />
+    {/if}
   {/snippet}
 
   <div class="comment-body">
     {#if isSpoiler}
       <SpoilerReveal display="block" revealed={revealSpoilers}>
-        {@render clampedBody()}
+        {@render body()}
       </SpoilerReveal>
     {:else}
-      {@render clampedBody()}
+      {@render body()}
     {/if}
   </div>
 
@@ -200,6 +216,12 @@
     .comment-body {
       padding: var(--ni-20);
       overflow-wrap: break-word;
+    }
+
+    .comment-gif-reveal {
+      width: fit-content;
+      max-width: 100%;
+      margin-block-start: var(--ni-10);
     }
 
     .comment-footer {

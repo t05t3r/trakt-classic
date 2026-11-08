@@ -20,7 +20,7 @@ import { ShowSiloSeasonsEmptySeasonTwoResponseMock } from '$mocks/data/summary/s
 import { isPlaceholder } from '$lib/features/image/isPlaceholder.ts';
 import { PLACEHOLDERS } from '$lib/features/image/placeholders.ts';
 import type { CastMember } from '$lib/requests/models/MediaCrew.ts';
-import type { PeopleGuestStarsResponse } from '$lib/requests/models/PeopleGuestStarsResponse.ts';
+import type { PeopleResponse } from '@trakt/api';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { SILO_SEASON_ONE_EPISODES_URL } from '$mocks/data/shows/SILO_SEASON_ONE_EPISODES_URL.ts';
@@ -65,7 +65,7 @@ function serveEpisode(body: EpisodeResponse) {
   server.use(http.get(SILO_EPISODE_SUMMARY_URL, () => HttpResponse.json(body)));
 }
 
-function servePeople(body: PeopleGuestStarsResponse) {
+function servePeople(body: PeopleResponse) {
   server.use(http.get(SILO_EPISODE_PEOPLE_URL, () => HttpResponse.json(body)));
 }
 
@@ -192,7 +192,7 @@ function readsAfterChange<T>(
 }
 
 function readLoadedPoster(
-  seasonPoster: Observable<{ src: string; seasonId?: number }>,
+  seasonPoster: Observable<{ src: string }>,
 ) {
   return firstValueFrom(
     seasonPoster.pipe(filter(({ src }) => !isPlaceholder(src))),
@@ -342,7 +342,6 @@ describe('store: useEpisode', () => {
 
       expect(await readLoadedPoster(seasonPoster)).toEqual({
         src: SEASON_ONE?.poster?.url.thumb,
-        seasonId: SEASON_ONE?.id,
       });
     });
 
@@ -352,7 +351,6 @@ describe('store: useEpisode', () => {
 
       expect(await readLoadedPoster(seasonPoster)).toEqual({
         src: ShowSiloMappedMock.poster.url.thumb,
-        seasonId: SEASON_ONE?.id,
       });
     });
 
@@ -373,7 +371,6 @@ describe('store: useEpisode', () => {
 
       expect(await readLoadedPoster(seasonPoster)).toEqual({
         src: SEASON_TWO?.poster?.url.thumb,
-        seasonId: SEASON_TWO?.id,
       });
     });
 
@@ -405,7 +402,6 @@ describe('store: useEpisode', () => {
       loaded.forEach((poster) =>
         expect(poster).toEqual({
           src: ShowDevsMappedMock.poster.url.thumb,
-          seasonId: SEASON_ONE?.id,
         })
       );
     });

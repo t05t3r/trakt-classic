@@ -115,6 +115,11 @@ function countResponse(count: number) {
   });
 }
 
+// The whole count read in one page, then the empty page that ends it.
+function countOf(count: number) {
+  return (page: string | null) => countResponse(page === '1' ? count : 0);
+}
+
 type GenreAnswers = {
   grid: () => Response;
   // Given the page the count read asks for.
@@ -355,7 +360,7 @@ describe('store: useListItems', () => {
 
     it('should read the counts under a genre filter from the count read', async () => {
       openAt(`${WATCHLIST_PATH}?genres=drama`);
-      serveGenre({ grid: genreGrid, count: () => countResponse(121) });
+      serveGenre({ grid: genreGrid, count: countOf(121) });
       const { reading } = await renderItems({ genre: 'drama' });
 
       expect(await readingOf(reading, 'itemCount')).toBe(121);
@@ -371,7 +376,7 @@ describe('store: useListItems', () => {
 
       const failed = await nextOf(statusOf(reading), 'error');
       const kinds = kindsOf(statusOf(reading));
-      serveGenre({ grid: genreGrid, count: () => countResponse(121) });
+      serveGenre({ grid: genreGrid, count: countOf(121) });
       failed.retry();
       const rows = await readyRows(reading);
 
@@ -393,7 +398,7 @@ describe('store: useListItems', () => {
       const itemCounts = collectDistinctStates(
         reading.pipe(map(({ itemCount }) => itemCount)),
       );
-      serveGenre({ grid: genreGrid, count: () => countResponse(121) });
+      serveGenre({ grid: genreGrid, count: countOf(121) });
       failed.retry();
 
       await waitFor(() => expect(itemCounts.at(-1)).toBe(121));
@@ -453,7 +458,7 @@ describe('store: useListItems', () => {
       serveGenre({
         grid: () =>
           pagedResponse({ body: [], page: 2, pageCount: 9, itemCount: 999 }),
-        count: () => countResponse(100),
+        count: countOf(100),
       });
       const { reading } = await renderItems({ genre: 'drama', page: 2 });
       collectDistinctStates(reading);
@@ -469,7 +474,7 @@ describe('store: useListItems', () => {
       serveGenre({
         grid: () =>
           pagedResponse({ body: [], page: 2, pageCount: 9, itemCount: 999 }),
-        count: countRead.answer,
+        count: (page) => page === '1' ? countRead.answer() : countResponse(0),
       });
       const { reading } = await renderItems({ genre: 'drama', page: 2 });
       const kinds = kindsOf(statusOf(reading));

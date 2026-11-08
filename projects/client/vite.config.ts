@@ -6,7 +6,6 @@ import { existsSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { defineConfig, searchForWorkspaceRoot } from 'vite';
-import denoSveltekitExit from './.vite/deno-sveltekit-exit.ts';
 import pkg from './package.json' with { type: 'json' };
 const TRAKT_TARGET_ENVIRONMENT = Environment.production;
 
@@ -47,7 +46,6 @@ export default defineConfig(({ mode }) => ({
       project: './i18n/project.inlang',
       outdir: './src/lib/paraglide',
     }),
-    denoSveltekitExit(),
     svelteTesting(),
   ],
 
@@ -65,7 +63,6 @@ export default defineConfig(({ mode }) => ({
       reporter: ['clover', 'lcov'],
       exclude: [
         '.svelte-kit/**',
-        '.vite/**',
         'test/**',
         'static/**',
         'src/mocks/**',

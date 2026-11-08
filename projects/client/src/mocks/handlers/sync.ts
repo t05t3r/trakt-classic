@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { pageHeaders } from '$mocks/pageHeaders.ts';
 
 import { MediaLibraryResponseMock } from '$mocks/data/sync/response/MediaLibraryResponseMock.ts';
+import { WATCHED_PROGRESS_URL } from '$mocks/data/sync/WATCHED_PROGRESS_URL.ts';
 import { UpNextResponseMock } from '$mocks/data/sync/response/UpNextResponseMock.ts';
 import { WatchlistAllResponseMock } from '$mocks/data/sync/response/WatchlistAllResponseMock.ts';
 import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
@@ -110,6 +111,9 @@ export const sync = [
       return HttpResponse.json(UpNextResponseMock);
     },
   ),
+  http.get(WATCHED_PROGRESS_URL, () => {
+    return HttpResponse.json(UpNextResponseMock, { headers: pageHeaders() });
+  }),
   http.get(
     'http://localhost/sync/collection/media',
     () => {

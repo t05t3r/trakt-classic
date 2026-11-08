@@ -2,7 +2,7 @@ import type {
   HistoryEntry,
   HistoryRow,
 } from '$lib/features/history/stores/useHistoryItems.ts';
-import { toHistoryCard } from '$lib/features/history/toHistoryCard.ts';
+import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
 import { SYNC_HISTORY_REMOVE_URL } from '$mocks/data/sync/SYNC_HISTORY_REMOVE_URL.ts';
 import { EPISODE_PLAY } from '$mocks/data/users/EPISODE_PLAY.ts';
 import { MOVIE_PLAY } from '$mocks/data/users/MOVIE_PLAY.ts';
@@ -24,7 +24,7 @@ import HistoryGridCard from './HistoryGridCard.svelte';
 const WATCHED = '31 Jan 2025 23:12';
 
 function rowOf(entry: HistoryEntry, isFaded = false): HistoryRow {
-  return { entry, card: toHistoryCard(entry), isFaded };
+  return { entry, card: toListItemCard(entry), isFaded };
 }
 
 async function renderCard(row: HistoryRow, art?: 'fanart') {

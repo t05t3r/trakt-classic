@@ -5,33 +5,29 @@ import { type MediaCard, toMediaCard } from './toMediaCard.ts';
 
 const AIRED = new Date('2022-03-04T00:00:00.000Z');
 const RELEASED = new Date('2022-03-01T00:00:00.000Z');
-const INVALID_DATE = new Date('not a date');
-
-type PlayParams = { airDate?: Date; playedAt?: Date };
+type AiredParams = { airDate?: Date };
 
 // The fixture's movie, aired on `airDate` and released on RELEASED.
-function moviePlayed({ airDate = AIRED, playedAt }: PlayParams) {
+function movieAired({ airDate = AIRED }: AiredParams) {
   const movie = itemOfType('movie').entry;
   return {
     type: 'movie' as const,
     movie: { ...movie, airDate, effectiveReleaseDate: RELEASED },
-    playedAt,
   };
 }
 
 // The fixture's episode, aired on `airDate` and released on RELEASED.
-function episodePlayed({ airDate = AIRED, playedAt }: PlayParams) {
+function episodeAired({ airDate = AIRED }: AiredParams) {
   const { episode, show } = itemOfType('episode').entry;
   return {
     type: 'episode' as const,
     show,
     episode: { ...episode, airDate, effectiveReleaseDate: RELEASED },
-    playedAt,
   };
 }
 
 // The fixture's show, aired on `airDate` and released on RELEASED.
-function showPlayed({ airDate = AIRED, playedAt }: PlayParams) {
+function showAired({ airDate = AIRED }: AiredParams) {
   return {
     type: 'show' as const,
     show: {
@@ -39,14 +35,13 @@ function showPlayed({ airDate = AIRED, playedAt }: PlayParams) {
       airDate,
       effectiveReleaseDate: RELEASED,
     },
-    playedAt,
   };
 }
 
 describe('toMediaCard', () => {
   describe('runtime', () => {
     it("should carry a movie's runtime on its Target", () => {
-      const { movie } = moviePlayed({});
+      const { movie } = movieAired({});
 
       expect(
         toMediaCard({ type: 'movie', movie: { ...movie, runtime: 159 } }).target
@@ -55,7 +50,7 @@ describe('toMediaCard', () => {
     });
 
     it("should carry an episode's runtime, else its show's, on its Target", () => {
-      const { show, episode } = episodePlayed({});
+      const { show, episode } = episodeAired({});
       const cardOf = (runtime: number) =>
         toMediaCard({
           type: 'episode',
@@ -69,9 +64,9 @@ describe('toMediaCard', () => {
   });
 
   it("should type a card's Target by its kind", () => {
-    expectTypeOf(toMediaCard(moviePlayed({})).target)
+    expectTypeOf(toMediaCard(movieAired({})).target)
       .toEqualTypeOf<Extract<QuickActionsTarget, { type: 'movie' }>>();
-    expectTypeOf(toMediaCard(episodePlayed({})).target)
+    expectTypeOf(toMediaCard(episodeAired({})).target)
       .toEqualTypeOf<Extract<QuickActionsTarget, { type: 'episode' }>>();
     expectTypeOf<MediaCard<'season'>['target']>()
       .toEqualTypeOf<Extract<QuickActionsTarget, { type: 'season' }>>();
@@ -96,6 +91,7 @@ describe('toMediaCard', () => {
       rating: {
         value: 0.7999,
         earliestReleaseDate: new Date('2022-03-04T00:00:00.000Z'),
+        movieSlug: 'the-batman-2022',
       },
     });
   });
@@ -189,73 +185,10 @@ describe('toMediaCard', () => {
     });
   });
 
-  describe('when played', () => {
-    it.each([
-      { play: 'a movie', input: moviePlayed },
-      { play: 'an episode', input: episodePlayed },
-      { play: 'a show', input: showPlayed },
-    ])(
-      'should date $play by its play when the play comes before the air date, leaving the rating date',
-      ({ input }) => {
-        const playedAt = new Date('2000-01-01T00:00:00.000Z');
-
-        const card = toMediaCard(input({ playedAt }));
-
-        expect(card.target.airDate).toEqual(playedAt);
-        expect(card.rating.earliestReleaseDate).toEqual(RELEASED);
-      },
-    );
-
-    it.each([
-      { play: 'a movie', input: moviePlayed },
-      { play: 'an episode', input: episodePlayed },
-      { play: 'a show', input: showPlayed },
-    ])(
-      'should keep the air date of $play when the play comes after it',
-      ({ input }) => {
-        const card = toMediaCard(
-          input({ playedAt: new Date('2025-01-31T23:12:41.000Z') }),
-        );
-
-        expect(card.target.airDate).toEqual(AIRED);
-        expect(card.rating.earliestReleaseDate).toEqual(RELEASED);
-      },
-    );
-
-    it.each([
-      { play: 'an episode', input: episodePlayed },
-      { play: 'a show', input: showPlayed },
-    ])(
-      'should date $play with an invalid air date by its play',
-      ({ input }) => {
-        const playedAt = new Date('2025-01-31T23:12:41.000Z');
-
-        const card = toMediaCard(input({ airDate: INVALID_DATE, playedAt }));
-
-        expect(card.target.airDate).toEqual(playedAt);
-        expect(card.rating.earliestReleaseDate).toEqual(RELEASED);
-      },
-    );
-
-    it.each([
-      { airDate: AIRED, when: 'valid' },
-      { airDate: INVALID_DATE, when: 'invalid' },
-    ])(
-      'should keep a $when air date when the play has an invalid date',
-      ({ airDate }) => {
-        const card = toMediaCard(
-          episodePlayed({ airDate, playedAt: new Date('not a date either') }),
-        );
-
-        expect(card.target.airDate).toBe(airDate);
-      },
-    );
-  });
-
   it.each([
-    { kind: 'a movie', input: moviePlayed({}) },
-    { kind: 'an episode', input: episodePlayed({}) },
-    { kind: 'a show', input: showPlayed({}) },
+    { kind: 'a movie', input: movieAired({}) },
+    { kind: 'an episode', input: episodeAired({}) },
+    { kind: 'a show', input: showAired({}) },
   ])(
     "should rate $kind from its effective release date, leaving the Target's air date",
     ({ input }) => {

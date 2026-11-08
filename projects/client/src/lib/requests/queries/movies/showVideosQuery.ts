@@ -2,7 +2,6 @@ import { defineQuery } from '$lib/features/query/defineQuery.ts';
 import { api, type ApiParams } from '$lib/requests/api.ts';
 import { MediaVideoSchema } from '$lib/requests/models/MediaVideo.ts';
 import { time } from '$lib/utils/timing/time.ts';
-import type { VideoResponse } from '@trakt/api';
 import { mapToMediaVideo } from '$lib/requests/_internal/mapToMediaVideo.ts';
 
 // The API takes `all` for every season, though the contract types a number.
@@ -45,10 +44,7 @@ const showVideoRequest = (
       }
 
       return {
-        body: [
-          showResponse.body,
-          seasonResponse.body,
-        ].flat() as VideoResponse[],
+        body: [showResponse.body, seasonResponse.body].flat(),
         status: 200,
       };
     });

@@ -1,3 +1,4 @@
+import { RELATED_LIMIT } from '$lib/requests/RELATED_LIMIT.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { ShowSiloRelatedMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloRelatedMappedMock.ts';
@@ -36,7 +37,7 @@ describe('showRelatedQuery', () => {
     expect(searches.map((search) => Object.fromEntries(search))).toEqual([
       expect.objectContaining({
         extended: 'full,images',
-        limit: '6',
+        limit: String(RELATED_LIMIT),
         page: '1',
       }),
     ]);

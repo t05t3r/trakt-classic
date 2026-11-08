@@ -18,10 +18,7 @@ export const mapToPersonSummary = (
     knownFor:
       crewPositionSchema.safeParse(response.known_for_department).data ?? null,
     headshot: mapToHeadshot(response.images),
-    /**
-     * FIXME: @seferturan remove cast once @trakt/api is updated
-     */
-    height: (response as unknown as { height: number }).height,
+    height: response.height,
     birthday: response.birthday ? parseLocalDate(response.birthday) : null,
     socialMedia: mapToSocialMedia(response),
     deathDate: response.death ? parseLocalDate(response.death) : null,

@@ -20,7 +20,7 @@ function renderGrid(
   props: {
     items?: Poster[];
     phoneDivider?: 'default' | 'none';
-    gaps?: 'default' | 'none';
+    gaps?: 'default' | 'rows';
     phoneGaps?: 'default' | 'none';
     tabletLimit?: number;
     columns?: PosterGridColumns;
@@ -90,11 +90,11 @@ describe('component: PosterGrid', () => {
   });
 
   // The phone divider and the gaps are CSS keyed on these marks.
-  it('should mark a grid with no phone divider and no gaps', () => {
-    const { grid } = renderGrid({ phoneDivider: 'none', gaps: 'none' });
+  it('should mark a grid with no phone divider and gaps only between rows', () => {
+    const { grid } = renderGrid({ phoneDivider: 'none', gaps: 'rows' });
 
     expect(grid).toHaveAttribute('data-phone-divider', 'none');
-    expect(grid).toHaveAttribute('data-gaps', 'none');
+    expect(grid).toHaveAttribute('data-gaps', 'rows');
   });
 
   // Stacking the rows flush on phones is CSS keyed on this mark.

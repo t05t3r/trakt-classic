@@ -11,13 +11,13 @@ import { movieStatsQuery } from '$lib/requests/queries/movies/movieStatsQuery.ts
 import { movieStudiosQuery } from '$lib/requests/queries/movies/movieStudiosQuery.ts';
 import { movieSummaryQuery } from '$lib/requests/queries/movies/movieSummaryQuery.ts';
 import { isEmpty } from '$lib/utils/array/isEmpty.ts';
+import { toEarliestReleaseDate } from '$lib/utils/media/toEarliestReleaseDate.ts';
 import { combineLatest, type Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { EMPTY_CREW } from './_internal/EMPTY_CREW.ts';
 import { hasNoMembers } from './_internal/hasNoMembers.ts';
 import { toCastGroups } from './_internal/toCastGroups.ts';
 import { toCommentsStatus } from './_internal/toCommentsStatus.ts';
-import { toEarliestReleaseDate } from './_internal/toEarliestReleaseDate.ts';
 import { useListsStatus } from './_internal/useListsStatus.ts';
 
 const toRelatedCards = (

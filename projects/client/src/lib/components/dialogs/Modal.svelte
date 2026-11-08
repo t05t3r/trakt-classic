@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as m from "$lib/features/i18n/messages.ts";
   import IconX from "@tabler/icons-svelte/icons/x";
+  import { tabStopOnOverflow } from "$lib/utils/actions/tabStopOnOverflow.ts";
   import { Dialog } from "bits-ui";
   import type { ModalProps } from "./_internal/ModalProps.ts";
 
@@ -26,7 +27,7 @@
           <h2 {...props} class="modal-title">{title}</h2>
         {/snippet}
       </Dialog.Title>
-      <div class="modal-body">
+      <div class="modal-body" use:tabStopOnOverflow>
         {@render children()}
       </div>
       {#if footer}
@@ -39,6 +40,8 @@
 </Dialog.Root>
 
 <style lang="scss">
+  @use "$style/scss/mixins/index" as *;
+
   :global(.trakt-modal-overlay) {
     position: fixed;
     inset: 0;
@@ -55,7 +58,6 @@
     width: var(--modal-width);
     max-height: calc(100dvh - 2 * var(--ni-20));
     padding-block: 0 var(--modal-padding-block-end);
-    padding-inline: var(--modal-padding-inline);
 
     position: fixed;
     left: 50%;
@@ -91,6 +93,7 @@
     :global(.modal-title) {
       margin-block-start: var(--ni-15);
       margin-block-end: var(--ni-20);
+      padding-inline: var(--modal-padding-inline);
       font-family: var(--font-family-body);
       font-size: var(--font-size-dialog-title);
       font-weight: var(--font-weight-body);
@@ -99,6 +102,8 @@
 
     :global(.modal-body) {
       min-block-size: 0;
+      // Here, not on the box, so the scroller doesn't clip a focus ring at its inline edge.
+      padding-inline: var(--modal-padding-inline);
       overflow-y: auto;
     }
 
@@ -107,6 +112,27 @@
       justify-content: center;
       gap: var(--ni-10);
       margin-block-start: var(--ni-20);
+      padding-inline: var(--modal-padding-inline);
+    }
+
+    // The title and footer leave the body little room here, so the whole box scrolls.
+    @include for-short-viewport {
+      overflow-y: auto;
+
+      :global(.modal-close) {
+        top: 0;
+        inset-inline-end: 0;
+      }
+
+      :global(.modal-body) {
+        flex-shrink: 0;
+        overflow-y: visible;
+      }
+
+      :global(.modal-title),
+      :global(.modal-footer) {
+        flex-shrink: 0;
+      }
     }
   }
 </style>

@@ -1,5 +1,6 @@
 import { WatchedShowsMappedMock } from '$mocks/data/users/mapped/WatchedShowsMappedMock.ts';
 import { WatchedShowsMinimalResponseMock } from '$mocks/data/users/response/WatchedShowsMinimalResponseMock.ts';
+import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
 import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
 import { renderSnapshot } from '$test/beds/query/renderSnapshot.ts';
@@ -30,7 +31,7 @@ function readAllPages(limit: number) {
 }
 
 describe('currentUserWatchedShowsQuery', () => {
-  it('should request 250 watched shows by default', async () => {
+  it('should request the most a page holds by default', async () => {
     const searches = recordSearches(WATCHED_SHOWS_URL, {});
 
     await runQuery({
@@ -39,7 +40,7 @@ describe('currentUserWatchedShowsQuery', () => {
     });
 
     expect(searches.map((search) => search.get('limit')))
-      .to.deep.equal(['250']);
+      .to.deep.equal([String(MAX_PAGE_LIMIT)]);
   });
 
   it('should query for watched shows', async () => {
@@ -52,18 +53,7 @@ describe('currentUserWatchedShowsQuery', () => {
   });
 
   // Trakt sends this endpoint's pages without pagination headers.
-  it('should send one request when a headerless page is shorter than its limit', async () => {
-    serveHeaderlessPages({
-      url: WATCHED_SHOWS_URL,
-      pages: [WatchedShowsMinimalResponseMock, WatchedShowsMinimalResponseMock],
-    });
-
-    const requests = await readAllPages(SHOW_COUNT + 1);
-
-    expect(requests).toEqual(['GET /users/me/watched/shows']);
-  });
-
-  it('should request the next page when a headerless page fills its limit', async () => {
+  it('should read on past a page shorter than its limit until an empty one', async () => {
     serveHeaderlessPages({
       url: WATCHED_SHOWS_URL,
       pages: [
@@ -72,9 +62,10 @@ describe('currentUserWatchedShowsQuery', () => {
       ],
     });
 
-    const requests = await readAllPages(SHOW_COUNT);
+    const requests = await readAllPages(SHOW_COUNT + 1);
 
     expect(requests).toEqual([
+      'GET /users/me/watched/shows',
       'GET /users/me/watched/shows',
       'GET /users/me/watched/shows',
     ]);

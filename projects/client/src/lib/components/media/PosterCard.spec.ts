@@ -196,7 +196,7 @@ describe('component: PosterCard', () => {
       const { root } = renderCard({
         media: EPISODE,
         showHref: '/shows/silo',
-        lines: [sort, undefined],
+        lines: [sort],
       });
 
       expect(
@@ -210,11 +210,11 @@ describe('component: PosterCard', () => {
       ]]);
     });
 
-    it('should keep two lines, the second empty, when the caller fills none', () => {
+    it("should hold the caller's line blank under the show line while it is empty", () => {
       const { root } = renderCard({
         media: { type: 'season', show: 'Silo', number: 3 },
         showHref: '/shows/silo',
-        lines: [undefined, undefined],
+        lines: [undefined],
       });
 
       expect(
@@ -251,15 +251,13 @@ describe('component: PosterCard', () => {
       expect(cardLines(root)).toEqual([]);
     });
 
-    it('should leave the second line empty and take no subtitle beside a show link', () => {
+    it('should take one line and no subtitle beside a show link', () => {
       type Base = Pick<PosterCardProps, 'media' | 'href' | 'image'>;
       type Show = { showHref: '/shows/silo' };
 
-      expectTypeOf<Base & Show & { lines: readonly [Snippet, undefined] }>()
-        .toExtend<PosterCardProps>();
-      expectTypeOf<Base & Show & { lines: readonly [undefined, Snippet] }>()
-        .not.toExtend<PosterCardProps>();
       expectTypeOf<Base & Show & { lines: readonly [Snippet] }>()
+        .toExtend<PosterCardProps>();
+      expectTypeOf<Base & Show & { lines: readonly [Snippet, undefined] }>()
         .not.toExtend<PosterCardProps>();
       expectTypeOf<Base & Show & { subtitle: Snippet }>().not
         .toExtend<PosterCardProps>();

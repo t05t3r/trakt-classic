@@ -1,5 +1,4 @@
-import type { ApiParams } from '$lib/requests/api.ts';
-import { postReorderRequest } from './_internal/postReorderRequest.ts';
+import { api, type ApiParams } from '$lib/requests/api.ts';
 
 type ReorderUserListsParams = {
   userId: string | number;
@@ -9,9 +8,12 @@ type ReorderUserListsParams = {
 export function reorderUserListsRequest(
   { fetch, userId, rank }: ReorderUserListsParams,
 ): Promise<boolean> {
-  return postReorderRequest({
-    fetch,
-    path: `/users/${encodeURIComponent(`${userId}`)}/lists/reorder`,
-    rank,
-  });
+  return api({ fetch })
+    .users
+    .lists
+    .reorder({
+      params: { id: `${userId}` },
+      body: { rank },
+    })
+    .then((response) => response.status === 200);
 }

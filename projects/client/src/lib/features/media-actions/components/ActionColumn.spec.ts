@@ -227,22 +227,25 @@ describe('component: ActionColumn', () => {
     ];
 
     it.each(UNPLAYED)(
-      'should offer no history button or its side icons on $name with no Play',
+      'should block the history button of $name with no Play, its add disabled',
       async ({ target }) => {
         serveMoviePlays([]);
         serveNoShowPlays();
-        const { container } = renderComponent(ActionColumn, {
-          props: { target, favorite: true },
+        const writes = recordWrites();
+        renderComponent(ActionColumn, { props: { target, favorite: true } });
+        const main = await screen.findByRole('button', {
+          name: 'Add to history, Not released yet',
         });
 
-        await settledMain(container, 0);
+        await userEvent.click(main);
         await waitNegativeClaim();
 
-        expect(readButtons(container).map(({ label }) => label)).not.toContain(
-          'Add to history',
-        );
-        expect(screen.queryByRole('button', { name: 'Add another play' }))
-          .toBeNull();
+        expect(main.closest('.trakt-action-button')).toHaveClass('is-blocked');
+        expect(main).toHaveAttribute('aria-disabled', 'true');
+        expect(main).toHaveFocus();
+        expect(writes).toEqual([]);
+        expect(screen.getByRole('button', { name: 'Add another play' }))
+          .toBeDisabled();
         expect(screen.queryByRole('button', { name: MORE })).toBeNull();
       },
     );
@@ -1680,7 +1683,8 @@ describe('component: ActionColumn', () => {
         props: { target: MATRIX_ACTIONS_TARGET, favorite: true },
       });
       await waitFor(() =>
-        expect(mainOf(container, 2)).toHaveAttribute('title', BLOCKED_REASON)
+        expect(mainOf(container, 2))
+          .toHaveAccessibleName(`Add to Favorites, ${BLOCKED_REASON}`)
       );
 
       await userEvent.click(mainOf(container, 2));
@@ -1689,8 +1693,10 @@ describe('component: ActionColumn', () => {
       expect(writes).toEqual([]);
       expect(mainOf(container, 2)).toHaveFocus();
       expect(mainOf(container, 2)).toHaveAttribute('aria-disabled', 'true');
-      expect(mainOf(container, 2)).toHaveAccessibleName('Add to Favorites');
       expect(mainOf(container, 2).parentElement).toHaveClass('is-blocked');
+      await waitFor(() =>
+        expect(mainOf(container, 2)).toHaveAccessibleDescription(BLOCKED_REASON)
+      );
     });
 
     it.each([
@@ -1716,7 +1722,7 @@ describe('component: ActionColumn', () => {
       await userEvent.click(await settledMain(container, 2));
 
       await waitFor(() => expect(writes).toEqual([write]));
-      expect(mainOf(container, 2)).not.toHaveAttribute('title');
+      expect(mainOf(container, 2)).not.toHaveAccessibleName(/Watch it first/);
     });
   });
 });

@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import IconCirclePlus from '@tabler/icons-svelte/icons/circle-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ActionSideIconMenuHost from '$test/beds/buttons/ActionSideIconMenuHost.svelte';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import ActionSideIcon from './ActionSideIcon.svelte';
 
 beforeEach(() => {
@@ -11,14 +12,18 @@ beforeEach(() => {
 });
 
 describe('component: ActionSideIcon', () => {
-  it('should carry its label as title and accessible name', () => {
+  it('should carry its label as accessible name and, on hover, in a tooltip', async () => {
     render(ActionSideIcon, {
       props: { icon: IconCirclePlus, label: 'Add another play' },
     });
 
     const button = screen.getByRole('button', { name: 'Add another play' });
+    await userEvent.hover(button);
 
-    expect(button).toHaveAttribute('title', 'Add another play');
+    await waitFor(() =>
+      expect(button).toHaveAccessibleDescription('Add another play')
+    );
+    expect(button).not.toHaveAttribute('title');
     expect(button).toHaveAttribute('type', 'button');
     expect(button.querySelector('.tabler-icon-circle-plus')).not.toBeNull();
   });
@@ -41,11 +46,10 @@ describe('component: ActionSideIcon', () => {
     expect(button).toHaveAttribute('aria-haspopup', 'menu');
   });
 
-  it('should keep its own class, title, label and type over spread props', () => {
+  it('should keep its own class, label and type over spread props', () => {
     // Shaped like the untyped trigger props a `Menu` spreads.
     const triggerProps: Record<string, unknown> = {
       class: 'other',
-      title: 'Other',
       'aria-label': 'Other',
       type: 'submit',
     };
@@ -57,8 +61,21 @@ describe('component: ActionSideIcon', () => {
 
     expect(button).toHaveClass('trakt-action-side-icon');
     expect(button).not.toHaveClass('other');
-    expect(button).toHaveAttribute('title', 'Drop');
     expect(button).toHaveAttribute('type', 'button');
+  });
+
+  it('should stay out of reach with no tooltip while disabled', async () => {
+    render(ActionSideIcon, {
+      props: { icon: IconCirclePlus, label: 'Drop', disabled: true },
+    });
+
+    const button = screen.getByRole('button', { name: 'Drop' });
+    await userEvent.hover(button);
+
+    await waitNegativeClaim();
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription('');
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
   it('should hide its glyph from assistive technology', () => {

@@ -20,7 +20,6 @@
     variant,
     bottomGap = 'default',
     phoneRows = 'desktop',
-    phoneCellGap = 'default',
     fallbackFocus,
   }: RowRevealGridProps<T> = $props();
 
@@ -76,7 +75,6 @@
   class="trakt-row-reveal-grid"
   data-variant={variant}
   data-bottom-gap={variant ? bottomGap : undefined}
-  data-phone-cell-gap={phoneCellGap}
   bind:this={root}
   {@attach focusKeeper.track}
   style="--row-reveal-columns-desktop: {columns.desktop}; --row-reveal-columns-tablet: {columns.tablet}; --row-reveal-columns-mobile: {columns.mobile}"
@@ -129,12 +127,7 @@
     }
 
     .row-reveal-cells {
-      display: grid;
-      grid-template-columns: repeat(
-        var(--row-reveal-columns),
-        minmax(var(--grid-column-track-min), var(--grid-column-track-max))
-      );
-      margin-inline: var(--gutter-half-negative);
+      @include gutter-grid(var(--row-reveal-columns));
     }
 
     .row-reveal-cell {
@@ -148,12 +141,6 @@
         margin-block-start: var(--ni-0);
         overflow: hidden;
         opacity: 0;
-      }
-    }
-
-    &[data-phone-cell-gap='none'] .row-reveal-cell {
-      @include for-mobile {
-        margin-block-start: var(--ni-0);
       }
     }
 

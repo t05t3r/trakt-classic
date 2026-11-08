@@ -4,6 +4,7 @@ import {
 } from '$lib/features/media-actions/_internal/toWatchProgress.ts';
 import { nonNegativeFinite } from '$lib/utils/number/nonNegativeFinite.ts';
 import type { QuickActionsTarget } from '../QuickActionsProps.ts';
+import { hasTargetAired } from './hasTargetAired.ts';
 
 type WatchHoverParams = {
   target: QuickActionsTarget;
@@ -15,6 +16,7 @@ type WatchHoverParams = {
 
 export type WatchHoverContent =
   | { kind: 'add' }
+  | { kind: 'unreleased' }
   | { kind: 'play'; playedAt: Date; minutes: number | undefined }
   | { kind: 'plays'; count: number; minutes: number | undefined }
   | { kind: 'progress'; progress: WatchProgress };
@@ -62,7 +64,9 @@ export function toWatchHover(
 ): WatchHoverContent | undefined {
   // An unknown history may hold a Play, so the add is not on offer yet.
   if (isPlayed === undefined) return undefined;
-  if (!isPlayed) return { kind: 'add' };
+  if (!isPlayed) {
+    return hasTargetAired(target) ? { kind: 'add' } : { kind: 'unreleased' };
+  }
 
   if (target.type === 'show' || target.type === 'season') {
     return toCollectionHover(target, { plays, watchedEpisodes });

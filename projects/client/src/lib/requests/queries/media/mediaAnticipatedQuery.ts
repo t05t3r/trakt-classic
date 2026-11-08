@@ -8,6 +8,7 @@ import { PaginatableSchemaFactory } from '$lib/requests/models/Paginatable.ts';
 import type { PaginationParams } from '$lib/requests/models/PaginationParams.ts';
 import type { SearchParams } from '$lib/requests/models/SearchParams.ts';
 import { time } from '$lib/utils/timing/time.ts';
+import type { MediaAnticipatedResponse } from '@trakt/api';
 import { z } from 'zod';
 import { extractPageMeta } from '$lib/requests/_internal/extractPageMeta.ts';
 import {
@@ -29,6 +30,15 @@ const AnticipatedMediaSchema = z.union([
   AnticipatedMovieSchema,
   AnticipatedShowSchema,
 ]);
+
+function mapToAnticipatedEntries(
+  { list_count, show, movie }: MediaAnticipatedResponse,
+) {
+  if (show) return [mapToAnticipatedShow({ list_count, show })];
+  if (movie) return [mapToAnticipatedMovie({ list_count, movie })];
+
+  return [];
+}
 
 const mediaAnticipatedRequest = (
   { fetch, limit, page, filter, filterOverride, search }:
@@ -70,11 +80,7 @@ export const mediaAnticipatedQuery = defineInfiniteQuery({
   ],
   request: mediaAnticipatedRequest,
   mapper: (response) => ({
-    entries: response.body.map((entry) =>
-      'show' in entry
-        ? mapToAnticipatedShow(entry)
-        : mapToAnticipatedMovie(entry)
-    ),
+    entries: response.body.flatMap(mapToAnticipatedEntries),
     page: extractPageMeta(response.headers),
   }),
   schema: PaginatableSchemaFactory(AnticipatedMediaSchema),

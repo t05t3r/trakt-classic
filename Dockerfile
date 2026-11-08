@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- build: Deno, exactly as the workstation builds ----
-FROM denoland/deno:2.9.7 AS build
+FROM denoland/deno:2.9.8 AS build
 WORKDIR /src
 
 # Dependency layer: workspace manifests + lockfile only, so source edits do

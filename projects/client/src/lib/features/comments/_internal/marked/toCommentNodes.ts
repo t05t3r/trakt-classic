@@ -1,5 +1,6 @@
 import { toUrl } from '$lib/utils/url/toUrl.ts';
 import { Marked, type Token } from 'marked';
+import { hasSpoilerTag } from './hasSpoilerTag.ts';
 import { spoilerExtension } from './spoilerExtension.ts';
 
 export type CommentNode =
@@ -16,8 +17,6 @@ export type CommentNode =
   | { kind: 'text'; text: string };
 
 const WEB_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:']);
-
-const SPOILER_PAIR = /\[spoiler\].*?\[\/spoiler\]/s;
 
 const MAX_NESTING = 32;
 
@@ -44,7 +43,7 @@ function textOf(token: Token): string {
 // Text printed as written would show a spoiler it holds, so it blurs whole.
 function toRawTextNode(text: string): CommentNode {
   const node: CommentNode = { kind: 'text', text };
-  if (!SPOILER_PAIR.test(text)) return node;
+  if (!hasSpoilerTag(text)) return node;
 
   return { kind: 'spoiler', children: [node] };
 }

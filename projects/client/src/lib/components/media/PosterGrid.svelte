@@ -46,13 +46,9 @@
       var(--poster-columns-desktop)
     );
 
-    display: grid;
-    grid-template-columns: repeat(
-      var(--poster-grid-columns),
-      minmax(var(--grid-column-track-min), var(--grid-column-track-max))
-    );
+    @include gutter-grid(var(--poster-grid-columns));
+
     margin-block: var(--ni-0) var(--gap-l);
-    margin-inline: var(--gutter-half-negative);
     padding: var(--ni-0);
     list-style: none;
 
@@ -82,7 +78,8 @@
       padding-inline: var(--gutter-half);
     }
 
-    &[data-gaps='none'] {
+    &[data-gaps='rows'] {
+      row-gap: var(--gap-l);
       margin-block-end: var(--ni-0);
 
       .poster-grid-cell {
