@@ -2,10 +2,22 @@
   import * as m from "$lib/features/i18n/messages.ts";
   import IconX from "@tabler/icons-svelte/icons/x";
   import { tabStopOnOverflow } from "$lib/utils/actions/tabStopOnOverflow.ts";
+  import { firstTabbable } from "$lib/utils/focus/firstTabbable.ts";
   import { Dialog } from "bits-ui";
   import type { ModalProps } from "./_internal/ModalProps.ts";
 
   const { title, onClose, children, footer }: ModalProps = $props();
+
+  let content: HTMLElement | null = $state(null);
+
+  // A hint opening with the dialog pauses its focus trap, which then skips the first focus.
+  const focusInside = (event: Event) => {
+    event.preventDefault();
+    requestAnimationFrame(() => {
+      if (!content || content.contains(document.activeElement)) return;
+      (firstTabbable(content) ?? content).focus({ preventScroll: true });
+    });
+  };
 </script>
 
 <Dialog.Root
@@ -18,7 +30,12 @@
 >
   <Dialog.Portal>
     <Dialog.Overlay class="trakt-modal-overlay" />
-    <Dialog.Content class="trakt-modal" interactOutsideBehavior="close">
+    <Dialog.Content
+      bind:ref={content}
+      class="trakt-modal"
+      interactOutsideBehavior="close"
+      onOpenAutoFocus={focusInside}
+    >
       <Dialog.Close class="modal-close" aria-label={m.button_label_close()}>
         <IconX class="modal-close-glyph" aria-hidden="true" />
       </Dialog.Close>
@@ -109,6 +126,7 @@
 
     :global(.modal-footer) {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       gap: var(--ni-10);
       margin-block-start: var(--ni-20);

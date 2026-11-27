@@ -7,6 +7,7 @@ import {
 import type { PageQuery } from '$lib/features/paging/stores/usePagedItems.ts';
 import { useInfiniteQuery } from '$lib/features/query/useQuery.ts';
 import { LIST_PAGE_SIZE } from '$lib/utils/LIST_PAGE_SIZE.ts';
+import { flooredPercent } from '$lib/utils/number/flooredPercent.ts';
 import { multicast } from '$lib/utils/store/multicast.ts';
 import {
   combineLatest,
@@ -47,7 +48,11 @@ function toReading<TEntry>(
       isWatchedInHistory({ target: toTarget(entry), history })
     ).length;
 
-  return { watched, count, percentage: Math.floor(watched * 100 / count) };
+  return {
+    watched,
+    count,
+    percentage: flooredPercent({ value: watched, total: count }),
+  };
 }
 
 export function useWatchedPercentage<TParams, TEntry>(

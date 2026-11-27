@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { mergeProps } from 'bits-ui';
   import type { SwapTextProps } from './SwapTextProps.ts';
 
-  const { text, alternate, swap, ...data }: SwapTextProps = $props();
+  const { text, alternate, swap, triggerProps, ...data }: SwapTextProps =
+    $props();
 
   let isSwapped = $state(false);
 
@@ -9,11 +11,15 @@
 </script>
 
 {#if swap}
+  <!-- Merged, trigger props first, so a tooltip's click runs before the swap's rather than replacing it. -->
   <button
     type="button"
     class="trakt-swap-text"
-    onclick={() => (isSwapped = !isSwapped)}
-    {...data}
+    {...mergeProps(
+      triggerProps,
+      { onclick: () => (isSwapped = !isSwapped) },
+      data,
+    )}
   >
     {shown}
   </button>
@@ -29,7 +35,6 @@
     border: none;
     background: none;
     color: inherit;
-    font: inherit;
     text-align: inherit;
 
     &[type='button'] {

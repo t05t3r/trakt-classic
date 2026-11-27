@@ -1,4 +1,5 @@
 import { holdFallbackFocus } from './holdFallbackFocus.ts';
+import { isUndisplayed } from './isUndisplayed.ts';
 
 type Remembered = {
   control: HTMLElement;
@@ -29,12 +30,6 @@ type FocusRetention = {
 
 const itself = (control: HTMLElement) => control;
 const never = () => false;
-
-const isUndisplayed = (element: Element | null): boolean => {
-  if (!element) return false;
-  if (getComputedStyle(element).display === 'none') return true;
-  return isUndisplayed(element.parentElement);
-};
 
 // A browser drops the focus of a control that left the page or went undisplayed.
 const canHoldFocus = (control: HTMLElement) =>

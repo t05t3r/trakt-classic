@@ -17,8 +17,10 @@
     onRepick,
     font,
     isLimited,
+    changed,
   }: ChoiceMenuProps<K> = $props();
 
+  const isChanged = $derived(changed ?? (all !== undefined && value !== null));
   const shown = $derived(
     value === null
       ? (all ?? '')
@@ -28,7 +30,7 @@
   // The group reports `null` when the checked row is picked again.
   const select = (next: string | null) => {
     if (next === null) return onRepick?.();
-    if (next === ALL) return onChange(null);
+    if (next === ALL && all !== undefined) return onChange(null);
 
     const choice = choices.find((entry) => entry.value === next);
     if (!choice) return;
@@ -38,7 +40,13 @@
 
 <Menu {label} {isLimited}>
   {#snippet trigger({ props })}
-    <DropdownButton {...props} label={triggerLabel(shown)} {font}>
+    <DropdownButton
+      {...props}
+      label={triggerLabel(shown)}
+      {font}
+      selected={isChanged}
+      selectedTint="accent"
+    >
       {shown}
     </DropdownButton>
   {/snippet}

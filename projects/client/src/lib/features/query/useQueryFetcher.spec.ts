@@ -1,21 +1,29 @@
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { showProgressQuery } from '$lib/requests/queries/shows/showProgressQuery.ts';
+import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
 import { SILO_PROGRESS_URL } from '$mocks/data/shows/SILO_PROGRESS_URL.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { ShowSiloProgressMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloProgressMappedMock.ts';
+import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressResponseMock.ts';
 import { server } from '$mocks/server.ts';
 import { setNetwork } from '$test/beds/network/setNetwork.ts';
 import { settleWithin } from '$test/beds/promise/settleWithin.ts';
 import { useObserverApart } from '$test/beds/query/useObserverApart.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
+import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
+import { useInvalidator } from './useInvalidator.ts';
 import { useQueryFetcher } from './useQueryFetcher.ts';
 
 const SILO_PROGRESS = () =>
   showProgressQuery({ slug: ShowSiloMappedMock.slug });
 const PROGRESS_KEY = SILO_PROGRESS().queryKey;
+const AFTER_WRITE_RESPONSE = {
+  ...ShowSiloProgressResponseMock,
+  completed: ShowSiloProgressResponseMock.completed + 1,
+};
 
 const renderObserved = () =>
   renderStore(() => ({
@@ -63,6 +71,32 @@ describe('useQueryFetcher', () => {
     expect(requests).toEqual(
       Array(4).fill('GET /shows/silo/progress/watched'),
     );
+  });
+
+  it('should resolve with its own answer when a write lands while its read is on its way', async () => {
+    const beforeWrite = holdResponse(NOOP_FN);
+    const requests: string[] = [];
+    server.use(
+      http.get(SILO_PROGRESS_URL, () => {
+        requests.push('GET');
+        return requests.length === 1
+          ? beforeWrite.answer()
+          : HttpResponse.json(AFTER_WRITE_RESPONSE);
+      }),
+    );
+    const { fetch, invalidate } = await renderStore(() => ({
+      ...useQueryFetcher(),
+      ...useInvalidator(),
+    }));
+
+    const fetching = fetch(SILO_PROGRESS());
+    await beforeWrite.requested;
+    const write = invalidate(InvalidateAction.Rewatching('show'));
+    beforeWrite.release();
+    await write;
+
+    expect(await fetching).toEqual(ShowSiloProgressMappedMock);
+    expect(requests).toHaveLength(1);
   });
 
   describe('beside an observer of the same query', () => {

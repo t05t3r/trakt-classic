@@ -3,6 +3,9 @@ import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
+import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
+import { readCheckedMenuRow } from '$test/beds/menus/readCheckedMenuRow.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -15,7 +18,6 @@ const setLayout = fakeLayouts({
 });
 
 const trigger = () => screen.getByRole('button', { name: 'Filters' });
-const row = (name: string) => screen.getByRole('menuitemradio', { name });
 const openMenu = () => openMenuByClick('Filters', 'Filters');
 
 beforeEach(() => {
@@ -64,14 +66,9 @@ describe('component: WatchedFilterMenu', () => {
     });
     await openMenu();
 
-    expect(
-      screen.getAllByRole('menuitemradio').map((item) =>
-        item.textContent?.trim()
-      ),
-    )
+    expect(readMenuRows('menuitemradio'))
       .toEqual(['Fade watched', 'Hide watched']);
-    expect(row('Hide watched')).toHaveAttribute('aria-checked', 'true');
-    expect(row('Fade watched')).toHaveAttribute('aria-checked', 'false');
+    expect(readCheckedMenuRow()).toBe('Hide watched');
   });
 
   it('should report the filter it selects', async () => {
@@ -79,7 +76,7 @@ describe('component: WatchedFilterMenu', () => {
     render(WatchedFilterMenu, { props: { value: 'fade', onValueChange } });
     await openMenu();
 
-    await userEvent.click(row('Hide watched'));
+    await pickMenuRadio('Hide watched');
 
     expect(onValueChange).toHaveBeenCalledExactlyOnceWith('hide');
   });

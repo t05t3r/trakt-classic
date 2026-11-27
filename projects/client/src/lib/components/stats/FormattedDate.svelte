@@ -4,7 +4,8 @@
   import type { FormattedDateProps } from './_internal/FormattedDateProps.ts';
   import SwapText from './_internal/SwapText.svelte';
 
-  const { date, pattern, swap = true }: FormattedDateProps = $props();
+  const { date, pattern, swap = true, triggerProps }: FormattedDateProps =
+    $props();
 
   const formatted = $derived(toHumanPatternDate(date, pattern));
 </script>
@@ -14,5 +15,6 @@
     text={formatted}
     alternate={() => toRelativeHumanTime({ date, now: new Date() })}
     {swap}
+    {triggerProps}
   />
 {/if}

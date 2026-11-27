@@ -2,14 +2,12 @@
   import { resolve } from '$app/paths';
   import type { Pathname } from '$app/types';
   import DroppedBadge from '$lib/components/badges/DroppedBadge.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import { whenInViewport } from '$lib/utils/actions/whenInViewport.ts';
-  import { episodeSxeLabel } from '$lib/utils/intl/episodeSxeLabel.ts';
-  import { seasonLabel } from '$lib/utils/intl/seasonLabel.ts';
+  import { toCardHeading } from './_internal/toCardHeading.ts';
   import { toCardTooltip } from './_internal/toCardTooltip.ts';
-  import type {
-    PosterCardMedia,
-    PosterCardProps,
-  } from './PosterCardProps.ts';
+  import EpisodeTitle from './EpisodeTitle.svelte';
+  import type { PosterCardProps } from './PosterCardProps.ts';
 
   const {
     media,
@@ -17,6 +15,7 @@
     droppedAt,
     strip = 'recessed',
     image,
+    tooltipLine,
     rank,
     actions,
     badges,
@@ -27,29 +26,22 @@
     lines,
   }: PosterCardProps = $props();
 
+  const id = $props.id();
+  const badgesId = `${id}-badges`;
+
   let isInView = $state(false);
 
-  function toHeading(target: PosterCardMedia): string {
-    switch (target.type) {
-      case 'episode':
-        return `${episodeSxeLabel(target)} ${target.title}`;
-      case 'season':
-        return seasonLabel(target.number);
-      default:
-        return target.title;
-    }
-  }
-
-  function toShowLine(target: PosterCardMedia, showPath: Pathname | undefined) {
-    if (!showPath) return undefined;
-    if (target.type !== 'season' && target.type !== 'episode') return undefined;
-
-    return { href: showPath, title: target.show };
-  }
-
-  const tooltip = $derived(toCardTooltip(media));
-  const heading = $derived(toHeading(media));
-  const show = $derived(toShowLine(media, showHref));
+  const tooltip = $derived(toCardTooltip(media, tooltipLine));
+  const heading = $derived(toCardHeading(media));
+  const showTitle = $derived('show' in media ? media.show : undefined);
+  const posterLabel = $derived(
+    showTitle === undefined ? heading : `${showTitle} ${heading}`,
+  );
+  const show = $derived(
+    showHref && showTitle !== undefined
+      ? { href: showHref, title: showTitle }
+      : undefined,
+  );
 </script>
 
 {#snippet showLink(target: { href: Pathname; title: string })}
@@ -66,12 +58,23 @@
   {#if rank}
     <div class="poster-rank">{@render rank()}</div>
   {/if}
-  <a class="poster" href={resolve(href)} title={tooltip}>
+  <!-- Named by its own label, then by what its badges say. -->
+  <!-- The tooltip opens outside the poster, over links whose press it must not take. -->
+  <a
+    {id}
+    class="poster"
+    href={resolve(href)}
+    aria-label={posterLabel}
+    aria-labelledby="{id} {badgesId}"
+    {@attach hint(() => ({ ...tooltip, isPassThrough: true }))}
+  >
     {@render image()}
-    {@render badges?.()}
-    {#if droppedAt}
-      <DroppedBadge {droppedAt} />
-    {/if}
+    <span id={badgesId} class="poster-badges">
+      {@render badges?.()}
+      {#if droppedAt}
+        <DroppedBadge {droppedAt} />
+      {/if}
+    </span>
   </a>
   <div class="poster-strip">
     {#if isInView && actions}
@@ -82,10 +85,18 @@
     {#if progress}
       <div class="card-progress">{@render progress()}</div>
     {/if}
-    <h3 class="card-title" title={heading}>
+    <!-- The tooltip opens over the strip's icons, whose press it must not take. -->
+    <h3
+      class="card-title"
+      {@attach hint(() => ({ content: heading, isPassThrough: true }))}
+    >
       <a class="title-link ellipsis" href={resolve(href)}>
         {#if media.type === 'episode'}
-          <b class="title-sxe">{episodeSxeLabel(media)}</b> {media.title}
+          <EpisodeTitle
+            season={media.season}
+            number={media.number}
+            title={media.title}
+          />
         {:else}
           {heading}
         {/if}
@@ -140,6 +151,11 @@
 
       // Drawn inside the box, so a cell at the viewport's edge keeps the ring on screen.
       @include inset-focus-ring;
+    }
+
+    // Only groups the badges, which place themselves on the poster.
+    .poster-badges {
+      display: contents;
     }
 
     .title-link:focus-visible,
@@ -218,10 +234,6 @@
       .show-link {
         min-width: var(--ni-0);
       }
-    }
-
-    .title-sxe {
-      font-weight: var(--font-weight-heading-heavy);
     }
 
     // The face the global h4 rule gives a filled line, so an empty line's div matches it.

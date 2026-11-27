@@ -1,6 +1,8 @@
+import type { UserHistory } from '$lib/features/auth/stores/useCurrentUserHistory.ts';
 import { useUser } from '$lib/features/auth/stores/useUser.ts';
 import {
   type PendingOverride,
+  type PendingOverrideKey,
   pendingOverrides,
 } from '$lib/features/media-actions/_internal/pendingOverrides.ts';
 import { toTargetKey } from '$lib/features/media-actions/_internal/toTargetKey.ts';
@@ -79,28 +81,30 @@ export function useIsWatched(props: IsWatchedProps) {
       isWatched: of<WatchedState>(false),
       isUpdating: of(false),
       pendingWatched: of<WatchedState>(undefined),
+      isWatchedIn: (_history: UserHistory) => false,
     };
   }
 
   const { history } = useUser();
   const targets = toWatchedTargets({ props, media, seasons });
 
+  const keys: ReadonlyArray<PendingOverrideKey> = media.map((item) => ({
+    action: 'watched',
+    targetKey: toTargetKey(type, item.id),
+  }));
   const overrides = combineLatest(
-    media.map((item) =>
-      pendingOverrides.lookup$({
-        action: 'watched',
-        targetKey: toTargetKey(type, item.id),
-      })
-    ),
+    keys.map((key) => pendingOverrides.lookup$(key)),
   );
+
+  const readTargets = ($history: UserHistory) =>
+    targets.map((target) => isWatchedInHistory({ target, history: $history }));
+  // Whether the history alone reads every Target watched, whatever is pending.
+  const isWatchedIn = ($history: UserHistory) =>
+    readTargets($history).every(Boolean);
 
   const isWatched = combineLatest([history, overrides]).pipe(
     map(([$history, $overrides]) => {
-      const snapshot = $history
-        ? targets.map((target) =>
-          isWatchedInHistory({ target, history: $history })
-        )
-        : [];
+      const snapshot = $history ? readTargets($history) : [];
 
       return combineStates(
         $overrides.map((override, index) =>
@@ -111,9 +115,7 @@ export function useIsWatched(props: IsWatchedProps) {
     shareReplay({ bufferSize: 1, refCount: true }),
   );
 
-  const isUpdating = overrides.pipe(
-    map(($overrides) => $overrides.some((override) => override !== undefined)),
-  );
+  const isUpdating = pendingOverrides.isInFlight$(keys);
 
   // The value a pending write leaves, whatever the history reads.
   const pendingWatched = overrides.pipe(
@@ -121,5 +123,5 @@ export function useIsWatched(props: IsWatchedProps) {
     distinctUntilChanged(),
   );
 
-  return { isWatched, isUpdating, pendingWatched };
+  return { isWatched, isUpdating, pendingWatched, isWatchedIn };
 }

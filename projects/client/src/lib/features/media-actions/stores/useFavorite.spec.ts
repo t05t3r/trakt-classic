@@ -1,5 +1,8 @@
 import { currentUserFavoritesQuery } from '$lib/features/auth/queries/currentUserFavoritesQuery.ts';
+import { useUser } from '$lib/features/auth/stores/useUser.ts';
 import { useQuery } from '$lib/features/query/useQuery.ts';
+import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import { movieFavoritesQuery } from '$lib/requests/queries/movies/movieFavoritesQuery.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
 import { HERETIC } from '$mocks/data/media-actions/HERETIC.ts';
@@ -7,9 +10,16 @@ import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
 import { SYNC_FAVORITES_REMOVE_URL } from '$mocks/data/sync/SYNC_FAVORITES_REMOVE_URL.ts';
 import { SYNC_FAVORITES_URL } from '$mocks/data/sync/SYNC_FAVORITES_URL.ts';
+import { FAVORITED_SHOWS_URL } from '$mocks/data/users/FAVORITED_SHOWS_URL.ts';
 import { FavoritedMoviesMappedMock } from '$mocks/data/users/mapped/FavoritedMoviesMappedMock.ts';
 import { server } from '$mocks/server.ts';
 import { createRenderBound } from '$test/beds/media-actions/createRenderBound.ts';
+import { describeKeptWrite } from '$test/beds/media-actions/describeKeptWrite.ts';
+import { NEGATIVE_CLAIM_WINDOW } from '$test/beds/promise/NEGATIVE_CLAIM_WINDOW.ts';
+import { settleWithin } from '$test/beds/promise/settleWithin.ts';
+import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
+import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
+import { useWaitForUnobserved } from '$test/beds/query/useWaitForUnobserved.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
@@ -17,8 +27,11 @@ import { renderStore } from '$test/beds/store/renderStore.ts';
 import { screen, within } from '@testing-library/svelte';
 import { http, HttpResponse } from 'msw';
 import { filter, firstValueFrom } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { useFavorite } from './useFavorite.ts';
+
+const FAVORITE_MOVIES = movieFavoritesQuery({ slug: 'me', limit: 10 });
+const FAVORITE_MOVIES_PATH = '/users/me/favorites/movies';
 
 const renderBound = createRenderBound({
   store: useFavorite,
@@ -131,6 +144,42 @@ describe('store: useFavorite', () => {
     ).toBeVisible();
   });
 
+  it('should settle a write while a list nothing shows still loads from before it, and read the list again at its next mount', async () => {
+    const held = holdRequest({
+      method: 'get',
+      url: `http://localhost${FAVORITE_MOVIES_PATH}`,
+    });
+    const { store, favorites, list, waitForUnobserved, waitForLateRequests } =
+      await renderStore(() => ({
+        store: useFavorite(MATRIX),
+        favorites: useUser().favorites,
+        list: createTestBedInfiniteQuery(FAVORITE_MOVIES),
+        waitForUnobserved: useWaitForUnobserved(),
+        waitForLateRequests: useWaitForLateRequests(),
+      }));
+    const bound = store.isFavorite.subscribe();
+    onTestFinished(() => bound.unsubscribe());
+    await firstValueFrom(favorites.pipe(filter(Boolean)));
+    const mount = list.subscribe();
+    await held.requested;
+    mount.unsubscribe();
+    await waitForUnobserved({ queryKey: FAVORITE_MOVIES.queryKey });
+
+    const added = await settleWithin(store.add(), NEGATIVE_CLAIM_WINDOW);
+    const updating = await firstValueFrom(store.isUpdating);
+    const requests = await captureRequests(async () => {
+      held.release();
+      await waitForLateRequests();
+      const remount = list.subscribe();
+      onTestFinished(() => remount.unsubscribe());
+      await waitForLateRequests();
+    });
+
+    expect(added).toBe('resolved');
+    expect(updating).toBe(false);
+    expect(requests).toEqual([`GET ${FAVORITE_MOVIES_PATH}`]);
+  });
+
   it('should read a Target as not known while the favourites load', async () => {
     holdRequest({
       method: 'get',
@@ -160,5 +209,18 @@ describe('store: useFavorite', () => {
     );
 
     expect(states.at(-1)).toBeUndefined();
+  });
+
+  describeKeptWrite({
+    name: 'an addition whose refetch fails',
+    store: () => {
+      const { isFavorite, isUpdating, add, remove } = useFavorite(DEVS);
+      return { value: isFavorite, isUpdating, write: add, rewrite: remove };
+    },
+    reader: currentUserFavoritesQuery().queryKey,
+    refetchUrl: FAVORITED_SHOWS_URL,
+    invalidation: InvalidateAction.Favorited('show'),
+    rewriteUrl: SYNC_FAVORITES_REMOVE_URL,
+    values: { before: false, written: true, rewritten: false },
   });
 });

@@ -1,4 +1,7 @@
-import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
+import type {
+  NeverEmptyStatus,
+  SectionStatus,
+} from '$lib/components/feedback/SectionStatus.ts';
 import type { CreateInfiniteQueryOptions } from '$lib/features/query/QueryOptions.ts';
 import type { Paginatable } from '$lib/requests/models/Paginatable.ts';
 import { multicast } from '$lib/utils/store/multicast.ts';
@@ -92,8 +95,23 @@ export function useSnapshot<
 
 export type SnapshotStatusOptions<T, S> = {
   select: (entries: ReadonlyArray<T>) => S;
-  isEmpty: (data: S) => boolean;
+  // Without one, known data always reads as ready.
+  isEmpty?: (data: S) => boolean;
 };
+
+// Tried first; an options object that may hold an isEmpty falls through to maybe empty.
+type NeverEmptyOptions<T, S> =
+  & Pick<SnapshotStatusOptions<T, S>, 'select'>
+  & { isEmpty?: never };
+
+type StatusQueryOptions<T, TError, TQueryKey extends QueryKey, TPageParam> =
+  CreateInfiniteQueryOptions<
+    Paginatable<T>,
+    TError,
+    InfiniteData<Paginatable<T>>,
+    TQueryKey,
+    TPageParam
+  >;
 
 type SnapshotRead<T, S, TError> = {
   result: InfiniteQueryObserverResult<InfiniteData<Paginatable<T>>, TError>;
@@ -133,13 +151,27 @@ export function useSnapshotStatus<
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = number,
 >(
-  options: CreateInfiniteQueryOptions<
-    Paginatable<T>,
-    TError,
-    InfiniteData<Paginatable<T>>,
-    TQueryKey,
-    TPageParam
-  >,
+  options: StatusQueryOptions<T, TError, TQueryKey, TPageParam>,
+  snapshot: NeverEmptyOptions<T, S>,
+): Observable<NeverEmptyStatus<S>>;
+export function useSnapshotStatus<
+  T,
+  S,
+  TError extends Error = Error,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = number,
+>(
+  options: StatusQueryOptions<T, TError, TQueryKey, TPageParam>,
+  snapshot: SnapshotStatusOptions<T, S>,
+): Observable<SectionStatus<S>>;
+export function useSnapshotStatus<
+  T,
+  S,
+  TError extends Error = Error,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = number,
+>(
+  options: StatusQueryOptions<T, TError, TQueryKey, TPageParam>,
   { select, isEmpty }: SnapshotStatusOptions<T, S>,
 ): Observable<SectionStatus<S>> {
   const cache = useQueryClient().getQueryCache();

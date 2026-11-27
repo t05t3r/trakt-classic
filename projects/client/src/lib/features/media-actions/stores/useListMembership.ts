@@ -6,10 +6,9 @@ import { addToListRequest } from '$lib/requests/queries/users/addToListRequest.t
 import { removeFromListRequest } from '$lib/requests/queries/users/removeFromListRequest.ts';
 import { userListItemIdsQuery } from '$lib/requests/queries/users/userListItemIdsQuery.ts';
 import { toBulkPayload } from '$lib/requests/sync/toBulkPayload.ts';
-import { combineLatest, map } from 'rxjs';
-import { pendingOverrides } from '../_internal/pendingOverrides.ts';
 import { toTargetKey } from '../_internal/toTargetKey.ts';
 import { useOptimisticWrite } from '../_internal/useOptimisticWrite.ts';
+import { withPendingOverride } from '../_internal/withPendingOverride.ts';
 
 export type ListMembershipStoreProps = {
   list: MediaListSummary;
@@ -26,46 +25,37 @@ export function useListMembership(
     listId: list.id,
   } as const;
   const body = toBulkPayload(type, [id]);
-  const invalidation = [
-    InvalidateAction.ListedIn(list.id),
-    InvalidateAction.Listed,
-  ];
-  const { run } = useOptimisticWrite();
-  const override$ = pendingOverrides.lookup$(key);
-  const listedKeys$ = useSnapshot(
-    userListItemIdsQuery({ userId: 'me', listId: list.id }),
-    {
-      select: (items) =>
-        new Set(items.map((item) => toTargetKey(item.type, item.id))),
-      whileUnsettled: 'hold',
-    },
-  );
-
-  const isListed = combineLatest([listedKeys$, override$]).pipe(
-    map(([listedKeys, override]) => {
-      if (override) return override.value === true;
-
-      return listedKeys?.has(key.targetKey);
-    }),
-  );
-
-  const isUpdating = override$.pipe(map((override) => override !== undefined));
+  const listItemsQuery = userListItemIdsQuery({
+    userId: 'me',
+    listId: list.id,
+  });
+  const listedKeys$ = useSnapshot(listItemsQuery, {
+    select: (items) =>
+      new Set(items.map((item) => toTargetKey(item.type, item.id))),
+    whileUnsettled: 'hold',
+  });
+  const { value: isListed, isUpdating } = withPendingOverride({
+    key,
+    snapshot: listedKeys$,
+    fromSnapshot: (listedKeys) => listedKeys?.has(key.targetKey),
+  });
+  const write = useOptimisticWrite().bind({
+    keys: [key],
+    invalidation: [InvalidateAction.ListedIn(list.id), InvalidateAction.Listed],
+    keepUntil: [listItemsQuery.queryKey],
+  });
 
   const add = () =>
-    run({
-      keys: [key],
+    write({
       value: true,
       task: (params) => addToListRequest({ listId: list.id, body, ...params }),
-      invalidation,
     });
 
   const remove = () =>
-    run({
-      keys: [key],
+    write({
       value: false,
       task: (params) =>
         removeFromListRequest({ listId: list.id, body, ...params }),
-      invalidation,
     });
 
   return { isListed, isUpdating, add, remove };

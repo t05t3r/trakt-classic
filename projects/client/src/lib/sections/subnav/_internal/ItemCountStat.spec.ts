@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/svelte';
+import { countStat } from '$test/beds/stats/countStat.ts';
+import { render } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import ItemCountStat from './ItemCountStat.svelte';
 
-const stat = () => screen.getByTitle('Items');
+const stat = () => countStat('Items');
 
 describe('section: ItemCountStat', () => {
   it('should leave the count blank while it is undefined', () => {
@@ -26,7 +27,13 @@ describe('section: ItemCountStat', () => {
   it('should use the singular for one item', () => {
     render(ItemCountStat, { props: { itemCount: 1 } });
 
-    expect(screen.getByTitle('Item')).toHaveTextContent(/^1 Item$/);
+    expect(countStat('Item')).toHaveTextContent(/^1 Item$/);
+  });
+
+  it('should word the count by the unit it is given', () => {
+    render(ItemCountStat, { props: { itemCount: 9, unit: 'shows' } });
+
+    expect(countStat('shows')).toHaveTextContent(/^9 shows$/);
   });
 
   it('should mark the label wide only when asked', () => {

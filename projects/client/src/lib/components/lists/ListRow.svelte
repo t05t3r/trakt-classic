@@ -50,7 +50,7 @@
           {#if typeof owner === 'string'}{owner}{:else}{@render owner()}{/if}
         </h4>
       </div>
-      <div class="list-row-interactions">
+      <div class="list-row-interactions no-wrap">
         <CountStat
           icon={IconFile}
           value={toGroupedNumber(count)}
@@ -139,7 +139,6 @@
     .list-row-interactions {
       flex: none;
       margin-block-start: var(--ni-12);
-      white-space: nowrap;
     }
 
     .list-row-overview {

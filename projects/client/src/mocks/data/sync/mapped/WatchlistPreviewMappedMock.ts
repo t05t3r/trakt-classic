@@ -472,6 +472,7 @@ export const WatchlistPreviewMappedMock: ListItem[] = [
         'season': 1,
         'genres': [],
         'number': 1,
+        'numberAbs': 1,
         'runtime': 66,
         'cover': {
           'url': {

@@ -2,19 +2,13 @@
   import FormattedDate from '$lib/components/stats/FormattedDate.svelte';
   import type { HistoryRow } from '$lib/features/history/stores/useHistoryItems.ts';
   import UserGridCard from '$lib/features/media-card/components/UserGridCard.svelte';
-  import { toEpisodeScreenshot } from '$lib/features/media-card/toEpisodeScreenshot.ts';
+  import type { UserGridCardProps } from '$lib/features/media-card/components/UserGridCardProps.ts';
   import { useHydrated } from '$lib/utils/hydration/hydration.ts';
 
-  const { row, art }: { row: HistoryRow; art?: 'fanart' } = $props();
+  const { row, art }: { row: HistoryRow; art?: UserGridCardProps['art'] } =
+    $props();
 
   const hydrated = useHydrated();
-
-  // Only an episode has a screenshot; any other row keeps its poster.
-  const fanart = $derived(
-    art === 'fanart' && row.entry.type === 'episode'
-      ? toEpisodeScreenshot(row.entry)
-      : undefined,
-  );
 
   // A play's day is the viewer's, which the server cannot know.
   const line = $derived($hydrated ? watched : undefined);
@@ -30,12 +24,11 @@
 
 <UserGridCard
   card={row.card}
-  {fanart}
+  {art}
   droppedAt={row.droppedAt}
   historyId={row.entry.id}
   playedAt={row.entry.watchedAt}
   hasPlay
   isFaded={row.isFaded}
-  showHref={fanart ? row.card.showHref : undefined}
   lines={[line]}
 />

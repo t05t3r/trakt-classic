@@ -61,6 +61,40 @@ describe('component: DropdownButton', () => {
     expect(caret).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it.each([true, false])(
+    'should turn its caret up only on its own aria-expanded, here %s',
+    (expanded) => {
+      render(DropdownButton, {
+        props: {
+          label: 'Filters',
+          'aria-expanded': expanded,
+          children: glyphSnippet,
+        },
+      });
+
+      const caret = button('Filters').lastElementChild;
+
+      expect(caret).toHaveClass('trakt-icon-expander');
+      // The expander turns up under the selector this matches.
+      expect(caret?.closest("[aria-expanded='true']")).toBe(
+        expanded ? button('Filters') : null,
+      );
+    },
+  );
+
+  it("should draw its glyph in a menu row's glyph column, before its label", () => {
+    render(DropdownButton, {
+      props: { label: 'Watchlist', glyph: glyphSnippet, children: menuLabel },
+    });
+
+    const column = button('Watchlist').querySelector('.trakt-menu-glyph');
+
+    expect(column?.querySelector('svg')).toHaveClass('glyph');
+    expect(column).toHaveAttribute('aria-hidden', 'true');
+    expect(button('Watchlist').firstElementChild).toBe(column);
+    expect(button('Watchlist')).toHaveTextContent(/^Watchlist$/);
+  });
+
   it.each([
     { selected: true, isSelected: true },
     { selected: false, isSelected: false },

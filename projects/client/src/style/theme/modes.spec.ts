@@ -83,6 +83,20 @@ describe('style: modes', () => {
     expect(block).toContain('--ratings-bar-item-gap: var(--ni-20);');
   });
 
+  it('should set the progress percentage at 20px on portrait tablets only', async () => {
+    const css = await compileModes();
+    const tablet = mediaBlock(css, '(min-width: 768px) and (max-width: 991px)');
+    const portrait = mediaBlock(
+      css,
+      '(min-width: 768px) and (max-width: 991px) and (orientation: portrait)',
+    );
+
+    expect(portrait).toContain(
+      '--font-size-progress-percentage: var(--ni-20);',
+    );
+    expect(tablet).not.toContain('--font-size-progress-percentage');
+  });
+
   it('should shrink the hero ratings bar at widths up to and including 767px', async () => {
     const block = mediaBlock(await compileModes(), '(max-width: 767px)');
 
@@ -236,6 +250,19 @@ describe('style: modes', () => {
     expect(block).toContain('--font-size-title-bar: var(--ni-16);');
   });
 
+  it("should set a toolbar's stats on phones at 14px text, an 18px glyph 4px from it and 12px apart", async () => {
+    const css = await compileModes();
+    const root = rootBlock(css);
+    const block = mediaBlock(css, '(max-width: 767px)');
+
+    expect(root).toContain('--font-size-subnav-stat: var(--font-size-small);');
+    expect(root).toContain('--toolbar-stat-gap: var(--ni-15);');
+    expect(block).toContain('--font-size-subnav-stat: var(--ni-14);');
+    expect(block).toContain('--icon-size-toolbar-stat: var(--ni-18);');
+    expect(block).toContain('--toolbar-stat-glyph-gap: var(--ni-4);');
+    expect(block).toContain('--toolbar-stat-gap: var(--ni-12);');
+  });
+
   it("should set the list subnav at Classic's description surface and 20px gear", async () => {
     const { root, media } = rootAndMedia(await compileModes());
 
@@ -244,6 +271,20 @@ describe('style: modes', () => {
     );
     expect(root).toContain('--icon-size-subnav: var(--ni-20);');
     expect(media).not.toContain('--icon-size-subnav');
+  });
+
+  it("should size the progress row's glyphs to Classic's ink", async () => {
+    const { root, media } = rootAndMedia(await compileModes());
+
+    expect(root).toContain('--icon-size-seasons-box: var(--ni-10);');
+    expect(media).not.toContain('--icon-size-seasons-box');
+  });
+
+  it("should size the dropped badge's glyph to Classic's ink, 40px and 30px on phones", async () => {
+    const root = rootBlock(await compileModes());
+
+    expect(root).toContain('--icon-size-badge-dropped: var(--ni-48);');
+    expect(root).toContain('--icon-size-badge-dropped-sm: var(--ni-36);');
   });
 
   it.each(METACRITIC_LOGOS)(

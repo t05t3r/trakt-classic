@@ -64,7 +64,11 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
     case 'show': {
       const { show } = input;
       return {
-        media: { type: 'show', title: show.title },
+        media: {
+          type: 'show',
+          title: show.title,
+          year: show.year ?? undefined,
+        },
         href: UrlBuilder.show(show.slug),
         target: {
           type: 'show',
@@ -93,7 +97,7 @@ export function toMediaCard(input: MediaCardInput): MediaCard {
           number: season.number,
           episodes: season.episodes,
           airDate: season.airDate,
-          show: { id: show.id, title: show.title },
+          show: { id: show.id, title: show.title, slug: show.slug },
         },
         // A season carries no effective release date of its own.
         rating: { value: season.rating, earliestReleaseDate: season.airDate },

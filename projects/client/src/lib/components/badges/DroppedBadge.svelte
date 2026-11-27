@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import IconCircleMinus from '@tabler/icons-svelte/icons/circle-minus';
   import { LOCALE_MAP } from '$lib/utils/formatting/date/LOCALE_MAP.ts';
@@ -14,7 +15,12 @@
 </script>
 
 <div class="trakt-dropped-badge">
-  <span class="dropped-badge-glyph" role="img" title={label} aria-label={label}>
+  <span
+    class="dropped-badge-glyph"
+    role="img"
+    aria-label={label}
+    {@attach hint(() => ({ content: label }))}
+  >
     <IconCircleMinus class="dropped-badge-icon" aria-hidden="true" />
   </span>
 </div>

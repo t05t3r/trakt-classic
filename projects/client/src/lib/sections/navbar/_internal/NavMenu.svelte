@@ -28,6 +28,7 @@
   import { afterNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import MenuRow from '$lib/components/menus/MenuRow.svelte';
   import { selectedNavItem } from '$lib/features/navigation/selectedNavItem.ts';
   import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
   import { useMedia } from '$lib/stores/css/useMedia.ts';
@@ -191,7 +192,9 @@
         href={resolve(item.route)}
         aria-current={item.key === selected ? 'page' : undefined}
       >
-        {item.label()}
+        <MenuRow variant="nav" checked={item.key === selected}>
+          {item.label()}
+        </MenuRow>
       </a>
     {/each}
 
@@ -233,8 +236,6 @@
       border-end-end-radius: var(--border-radius-l);
       background: var(--color-surface-menu);
       box-shadow: var(--shadow-dropdown);
-      font-family: var(--font-family-heading);
-      font-weight: var(--font-weight-heading);
 
       @include for-desktop-lg-and-below {
         border-start-start-radius: var(--border-radius-l);
@@ -250,6 +251,11 @@
       &:hover:not(.is-hover-suppressed) .nav-menu-panel[hidden] {
         display: grid;
       }
+
+      // Hover shows the panel without expanding the trigger, so its chevron turns here.
+      &:hover:not(.is-hover-suppressed) :global(.trakt-icon-expander) {
+        transform: rotate(180deg);
+      }
     }
 
     .nav-menu-divider {
@@ -258,26 +264,20 @@
     }
 
     .nav-menu-panel :global(.nav-menu-row) {
-      display: flex;
-      align-items: center;
-      min-height: var(--menu-row-height);
-      padding-block: var(--ni-0);
-      padding-inline: var(--ni-16);
-      box-sizing: border-box;
+      display: block;
+      padding: var(--ni-0);
       border: none;
       background: none;
       color: var(--color-text-primary);
-      font-size: var(--font-size-text);
       text-align: start;
       text-decoration: none;
       cursor: pointer;
 
-      &[aria-current='page'] {
-        color: var(--color-link);
-      }
-
+      // The accent background would swallow the current row's accent.
       &:hover,
       &:focus-visible {
+        --menu-row-checked-color: var(--color-text-primary);
+
         background: var(--color-accent);
         color: var(--color-text-primary);
       }

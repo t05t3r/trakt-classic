@@ -13,17 +13,21 @@ const LEAKED_KEY: PendingOverrideKey = {
 };
 
 describe('resetPendingOverrides', () => {
-  it('should clear every pending override', async () => {
+  it('should clear every pending override, in flight or kept', async () => {
     const watched = { action: 'watched', targetKey: 'movie:1' } as const;
+    const hide = { action: 'hide', targetKey: 'movie:2' } as const;
     pendingOverrides.set({ ...watched, value: true, requestId: 'a' });
     pendingOverrides.set({ ...LEAKED_KEY, value: false, requestId: 'b' });
+    pendingOverrides.set({ ...hide, value: true, requestId: 'c' });
+    pendingOverrides.keep({ ...hide, requestId: 'c' });
 
     resetPendingOverrides();
 
     expect([
       await lookupPendingOverride(watched),
       await lookupPendingOverride(LEAKED_KEY),
+      await lookupPendingOverride(hide),
     ])
-      .toEqual([undefined, undefined]);
+      .toEqual([undefined, undefined, undefined]);
   });
 });

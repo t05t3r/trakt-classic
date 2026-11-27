@@ -1,7 +1,8 @@
 import { goto } from '$app/navigation';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
-import { holdFirstReplace } from '$test/beds/url/holdFirstReplace.ts';
+import { holdFirstNavigation } from '$test/beds/url/holdFirstNavigation.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { describe, expect, it, vi } from 'vitest';
@@ -186,13 +187,15 @@ describe('store: useSortParam', () => {
     });
 
     it('should flip twice for a second reverse made before the first lands', async () => {
-      const held = holdFirstReplace();
+      const held = holdFirstNavigation();
       openAt(SEASON_PATH);
       const { reverse } = await renderStore(() => useSortParam(EPISODES));
 
       const first = reverse();
       await vi.waitFor(() => expect(goto).toHaveBeenCalledOnce());
       const second = reverse();
+      await waitNegativeClaim();
+      expect(goto).toHaveBeenCalledOnce();
       held.resolve();
       await Promise.all([first, second]);
 
@@ -201,7 +204,7 @@ describe('store: useSortParam', () => {
     });
 
     it('should reverse the sort selected just before, while its replace waits', async () => {
-      const held = holdFirstReplace();
+      const held = holdFirstNavigation();
       openAt(SEASON_PATH);
       const { select, reverse } = await renderStore(() =>
         useSortParam(EPISODES)

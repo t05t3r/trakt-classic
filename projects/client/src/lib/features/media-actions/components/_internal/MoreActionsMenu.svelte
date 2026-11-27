@@ -9,7 +9,7 @@
   import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
   import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
   import { createPressHold } from '$lib/utils/focus/createPressHold.ts';
-  import { firstFocusable } from '$lib/utils/focus/firstFocusable.ts';
+  import { firstTabbable } from '$lib/utils/focus/firstTabbable.ts';
   import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
   import IconDots from '@tabler/icons-svelte/icons/dots';
   import type { Attachment } from 'svelte/attachments';
@@ -51,7 +51,7 @@
     if (!pressedControl) return;
 
     retention.remember(pressedControl);
-    retention.settle(strip && firstFocusable(strip));
+    retention.settle(strip && firstTabbable(strip));
   });
 
   // The row fires and forgets, so a failed push settles quietly.

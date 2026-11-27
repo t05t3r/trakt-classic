@@ -166,12 +166,13 @@
         }
       }
 
+      @include phone-gutterless-cells('.row-reveal-cell');
+
       @include for-mobile {
         --load-more-offset: var(--ni-neg-12);
 
         .row-reveal-cell {
           margin-block-end: var(--ni-0);
-          padding-inline: var(--ni-0);
         }
       }
     }

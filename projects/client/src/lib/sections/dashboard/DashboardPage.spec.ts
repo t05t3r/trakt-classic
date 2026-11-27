@@ -132,7 +132,10 @@ describe('section: DashboardPage', () => {
     const upNext = within(shell(container, 'up-next'))
       .getByRole('region', { name: 'Up Next' });
     expect(
-      await within(upNext).findByRole('link', { name: '1x01 Freedom Day' }),
+      await within(upNext).findByRole('heading', {
+        level: 3,
+        name: '1x01 Freedom Day',
+      }),
     )
       .toBeVisible();
   });
@@ -143,7 +146,10 @@ describe('section: DashboardPage', () => {
     const watchlist = within(shell(container, 'watchlist'))
       .getByRole('region', { name: 'Watchlist' });
     expect(
-      await within(watchlist).findByRole('link', { name: 'Season 3' }),
+      await within(watchlist).findByRole('heading', {
+        level: 3,
+        name: 'Season 3',
+      }),
     ).toBeVisible();
   });
 
@@ -153,7 +159,8 @@ describe('section: DashboardPage', () => {
     const recentlyWatched = within(shell(container, 'recently-watched'))
       .getByRole('region', { name: 'Recently Watched' });
     expect(
-      await within(recentlyWatched).findByRole('link', {
+      await within(recentlyWatched).findByRole('heading', {
+        level: 3,
         name: '1x01 Freedom Day',
       }),
     ).toBeVisible();
@@ -252,7 +259,7 @@ describe('section: DashboardPage', () => {
       expect(hero.querySelectorAll('.trakt-poster-wall image')).toHaveLength(24)
     );
     await within(screen.getByRole('region', { name: 'Up Next' }))
-      .findByRole('link', { name: '1x01 Freedom Day' });
+      .findByRole('heading', { level: 3, name: '1x01 Freedom Day' });
     expect(calls.count).toBe(1);
   });
 

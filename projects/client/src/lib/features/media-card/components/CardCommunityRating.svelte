@@ -2,7 +2,7 @@
   import CommunityRating from '$lib/components/badges/CommunityRating.svelte';
   import { toShownRating } from '$lib/components/badges/toShownRating.ts';
   import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
-  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import { useDisplayEarlyRatings } from '$lib/features/auth/stores/useDisplayEarlyRatings.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import RatingPopover from '$lib/features/media-actions/components/RatingPopover.svelte';
@@ -62,33 +62,29 @@
           {@const gate = toPlayGate({ isSet: shown !== null || isOpen, hasPlay })}
           {@const hover = toHover(gate, shown !== null)}
           <!-- The tooltip opens over the card's title, whose click it must not take. -->
-          <Tooltip
-            side="bottom"
-            content={hover}
-            disabled={isOpen || gate === 'unknown'}
-            disableHoverableContent
-            keepOpenOnPress={gate === 'blocked'}
-            triggerProps={gate === 'open'
-            ? props
-            : { ...props, ...INERT_TRIGGER_PROPS }}
+          <button
+            type="button"
+            class="trakt-card-community-rating"
+            class:is-blocked={gate === 'blocked'}
+            aria-label={toName({ percent: shownRating.percent, gate, hover })}
+            {@attach hint(() =>
+              isOpen || gate === 'unknown' ? undefined : {
+                content: hover,
+                side: 'bottom',
+                isPassThrough: true,
+                keepOpenOnPress: gate === 'blocked',
+              }
+            )}
+            {...props}
+            {...gate === 'open' ? {} : INERT_TRIGGER_PROPS}
           >
-            {#snippet trigger({ props })}
-              <button
-                type="button"
-                class="trakt-card-community-rating"
-                class:is-blocked={gate === 'blocked'}
-                aria-label={toName({ percent: shownRating.percent, gate, hover })}
-                {...props}
-              >
-                <CommunityRating
-                  rating={rating.value}
-                  {earliestReleaseDate}
-                  displayEarlyRatings={$displayEarlyRatings}
-                  {variant}
-                />
-              </button>
-            {/snippet}
-          </Tooltip>
+            <CommunityRating
+              rating={rating.value}
+              {earliestReleaseDate}
+              displayEarlyRatings={$displayEarlyRatings}
+              {variant}
+            />
+          </button>
         {/snippet}
       </RatingPopover>
     {/key}

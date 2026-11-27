@@ -42,5 +42,20 @@ export function mapToConfirmation(params: ConfirmationParams): Confirmation {
         alternateText: m.button_text_all_plays(),
         cancelText: m.button_text_no(),
       };
+    case ConfirmationType.WatchRemaining:
+      return {
+        title: m.confirmation_title_watch_remaining(),
+        message: params.title,
+        buttonText: m.button_text_watch_remaining(),
+        alternateText: m.button_text_remove_all(),
+        cancelText: m.button_text_nothing(),
+      };
+    case ConfirmationType.HideWholeShow:
+      return {
+        title: m.confirmation_title_hide_whole_show(),
+        message: m.warning_prompt_hide_whole_show({ title: params.title }),
+        buttonText: m.button_text_hide_confirm(),
+        cancelText: m.button_text_no(),
+      };
   }
 }

@@ -1,3 +1,4 @@
+import { readHint } from '$lib/components/tooltip/hint.svelte.ts';
 import { DEVS_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_ACTIONS_TARGET.ts';
 import { DEVS_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/DEVS_SEASON_ACTIONS_TARGET.ts';
 import { HERETIC_ACTIONS_TARGET } from '$mocks/data/media-actions/HERETIC_ACTIONS_TARGET.ts';
@@ -185,9 +186,7 @@ describe('component: CardCommunityRating', () => {
       await userEvent.click(button);
       await screen.findByRole('dialog');
 
-      await waitFor(() => expect(button).not.toHaveAccessibleDescription());
-      await waitNegativeClaim();
-      expect(button).not.toHaveAccessibleDescription();
+      expect(readHint(button)).toBeUndefined();
     });
 
     it('should block a title with no Play and no rating, starting no write and keeping the reason up', async () => {
@@ -196,10 +195,15 @@ describe('component: CardCommunityRating', () => {
       renderCard();
       const button = await control();
       await waitFor(() => expect(button).toHaveClass('is-blocked'));
-      await hoverReads(button, BLOCKED_REASON);
+      // One pointer throughout, since a fresh one first leaves the window.
+      const user = userEvent.setup();
+      await user.hover(button);
+      await waitFor(() =>
+        expect(button).toHaveAccessibleDescription(BLOCKED_REASON)
+      );
 
-      await userEvent.click(button);
-      await userEvent.keyboard('{Enter}');
+      await user.click(button);
+      await user.keyboard('{Enter}');
 
       await waitNegativeClaim();
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -234,14 +238,13 @@ describe('component: CardCommunityRating', () => {
       await userLoaded;
       const button = await control();
 
-      await userEvent.hover(button);
       await userEvent.click(button);
       await waitNegativeClaim();
 
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(button).toHaveAttribute('aria-disabled', 'true');
       expect(button).not.toHaveClass('is-blocked');
-      expect(button).not.toHaveAccessibleDescription();
+      expect(readHint(button)).toBeUndefined();
     });
 
     it.each(

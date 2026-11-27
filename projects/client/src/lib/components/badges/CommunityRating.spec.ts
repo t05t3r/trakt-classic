@@ -51,6 +51,20 @@ describe('component: CommunityRating', () => {
       .toHaveAttribute('data-variant', 'smaller');
   });
 
+  it('should carry the inline variant', () => {
+    const { container } = render(CommunityRating, {
+      props: {
+        rating: 0.74,
+        earliestReleaseDate: RELEASED,
+        displayEarlyRatings: false,
+        variant: 'inline',
+      },
+    });
+
+    expect(container.querySelector('.trakt-community-rating'))
+      .toHaveAttribute('data-variant', 'inline');
+  });
+
   it('should carry the summary variant', () => {
     const { container } = render(CommunityRating, {
       props: {

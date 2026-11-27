@@ -289,5 +289,19 @@ describe('store: useIsWatched', () => {
       expect(await readIsWatched({ type: 'movie', media: { id: HERETIC.id } }))
         .toBe(false);
     });
+
+    it('should read only a write in flight as updating', async () => {
+      pendingOverrides.set({ ...HERETIC_OVERRIDE, value: true });
+      pendingOverrides.set({ ...UNWATCHED_OVERRIDE, value: true });
+      pendingOverrides.keep(UNWATCHED_OVERRIDE);
+      const { isUpdating } = await renderSettledHistory(() =>
+        useIsWatched(SEVERAL)
+      );
+      const whileOneInFlight = await firstValueFrom(isUpdating);
+      pendingOverrides.clear(HERETIC_OVERRIDE);
+
+      expect(whileOneInFlight).toBe(true);
+      expect(await firstValueFrom(isUpdating)).toBe(false);
+    });
   });
 });

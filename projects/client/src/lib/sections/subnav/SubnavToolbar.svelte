@@ -6,53 +6,47 @@
 
   const {
     controls,
-    panel,
-    phone,
     start,
     stats,
     options,
     end,
+    changed = false,
   }: SubnavToolbarProps = $props();
-
-  const untitled = $derived(controls.untitled);
-  // The gear's aria-controls needs the options' element to name.
-  const hasPanel = $derived(panel === 'options' && options !== undefined);
 </script>
 
-<section
-  class="trakt-subnav-toolbar"
-  class:is-untitled={untitled}
-  data-phone={phone}
->
+<section class="trakt-subnav-toolbar">
   <ContainerPage>
     <div class="toolbar-row">
-      {#if start}
-        <div class="toolbar-start">
-          {@render start()}
-        </div>
-      {/if}
       <div class="toolbar-stats">
         {@render stats()}
       </div>
-      {#if options}
-        <div
-          id={controls.panelId}
-          class="toolbar-options"
-          class:is-open={hasPanel && controls.open}
-        >
-          {@render options()}
+      <OptionsGear
+        id={controls.gearId}
+        open={controls.open}
+        panelId={controls.panelId}
+        ontoggle={controls.toggle}
+        {changed}
+      />
+      <div
+        id={controls.panelId}
+        class="toolbar-panel"
+        class:is-open={controls.open}
+      >
+        <div class="toolbar-start">
+          {@render start()}
+        </div>
+        {#if options}
+          <div class="toolbar-options">
+            {@render options()}
+          </div>
+        {/if}
+      </div>
+      {#if end}
+        <div class="toolbar-end">
+          {@render end()}
         </div>
       {/if}
-      {#if untitled && hasPanel}
-        <OptionsGear
-          id={untitled.gearId}
-          open={controls.open}
-          panelId={controls.panelId}
-          ontoggle={untitled.toggle}
-        />
-      {/if}
-      {@render end?.()}
-      {#if untitled?.loading}
+      {#if controls.loading}
         <span class="toolbar-spinner"><PendingSpinner /></span>
       {/if}
     </div>
@@ -63,24 +57,28 @@
   @use '$style/scss/mixins/index' as *;
 
   .trakt-subnav-toolbar {
-    position: relative;
     padding-block: var(--ni-15);
     background: var(--color-surface-recessed);
 
     .toolbar-row {
       display: flex;
+      column-gap: var(--icon-button-gap);
       align-items: center;
     }
 
+    // Wider screens lay the panel's controls into the row: the start, the
+    // stats, then the options.
+    .toolbar-panel,
+    .toolbar-options {
+      display: contents;
+    }
+
     .toolbar-start {
+      order: -1;
       display: flex;
       align-items: center;
       gap: var(--ni-15);
       margin-inline-end: auto;
-    }
-
-    .toolbar-options {
-      display: contents;
     }
 
     .toolbar-stats {
@@ -88,66 +86,68 @@
 
       display: flex;
       align-items: center;
-      gap: var(--ni-15);
-      margin-inline-end: var(--ni-15);
+      gap: var(--toolbar-stat-gap);
+      // With the row's gap, as far from what follows as the stats are apart.
+      margin-inline-end: calc(
+        var(--toolbar-stat-gap) - var(--icon-button-gap)
+      );
+    }
+
+    .toolbar-end {
+      display: flex;
+      align-items: center;
+      gap: var(--icon-button-gap);
     }
 
     // Sized like the gear, since it stands in for no glyph of its own.
     .toolbar-spinner {
-      --pending-spinner-size: var(--options-gear-size, var(--icon-size-subnav));
+      --pending-spinner-size: var(--icon-size-subnav);
       --pending-spinner-stroke: var(--icon-stroke-chrome);
 
       display: inline-flex;
-      margin-inline-start: var(--ni-10);
     }
 
+    // One row of the stats, the gear and the end; the gear opens the panel
+    // under it, its controls stacked from the row's start.
     @include for-mobile {
       padding-block: var(--ni-0);
 
-      .toolbar-start {
-        gap: var(--ni-10);
+      .toolbar-row {
+        flex-wrap: wrap;
       }
 
       .toolbar-stats {
-        margin-inline-end: var(--ni-0);
-      }
+        --count-stat-glyph-size: var(--icon-size-toolbar-stat);
+        --count-stat-gap: var(--toolbar-stat-glyph-gap);
 
-      &[data-phone='stats'] .toolbar-stats {
+        flex: 1;
+        flex-wrap: wrap;
+        min-width: var(--ni-0);
+        margin-inline-end: var(--ni-0);
         padding-block: var(--ni-8);
       }
 
-      &[data-phone='controls'] {
-        --dropdown-button-font-size: var(--font-size-subnav-stat);
-        --options-gear-size: var(--icon-size-sort-direction);
-
-        padding-block: var(--ni-15);
-
-        .toolbar-stats {
-          display: none;
-        }
-      }
-
-      // The panel opens under the title bar that follows the toolbar.
-      .toolbar-options {
-        position: absolute;
-        z-index: var(--layer-panel);
-        inset-block-start: calc(100% + var(--subnav-panel-offset));
-        inset-inline: var(--ni-0);
+      .toolbar-panel {
+        order: 1;
         display: none;
+        flex-basis: 100%;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         gap: var(--ni-10);
-        padding-block: var(--ni-11);
-        background: var(--color-surface-recessed);
+        padding-block-end: var(--ni-11);
 
         &.is-open {
           display: flex;
         }
       }
 
-      // With no title bar, the panel opens right under the toolbar.
-      &.is-untitled .toolbar-options {
-        inset-block-start: 100%;
+      .toolbar-start,
+      .toolbar-options {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--ni-10);
+        margin-inline-end: var(--ni-0);
       }
     }
   }

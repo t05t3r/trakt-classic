@@ -1,4 +1,3 @@
-import type { PosterCardSubtitles } from '$lib/components/media/PosterCardProps.ts';
 import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
 import type { ListItem } from '$lib/requests/models/ListItem.ts';
 import { MovieHereticMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticMappedMock.ts';
@@ -16,16 +15,10 @@ import type { UserGridCardProps } from './UserGridCardProps.ts';
 
 const LINE = createRawSnippet(() => ({ render: () => '<span>Played</span>' }));
 
-type CardParams =
-  & Partial<
-    Pick<
-      UserGridCardProps,
-      'fanart' | 'isFaded' | 'droppedAt' | 'rank' | 'favorite'
-    >
-  >
-  & PosterCardSubtitles;
-
-async function renderCard(entry: ListItem, props: CardParams = {}) {
+async function renderCard(
+  entry: ListItem,
+  props: Partial<UserGridCardProps> = {},
+) {
   const { container, userLoaded } = renderComponent(UserGridCard, {
     props: { card: toListItemCard(entry), isFaded: false, ...props },
   });
@@ -58,15 +51,45 @@ describe('component: UserGridCard', () => {
   });
 
   describe('fanart', () => {
-    it('should draw the fanart it is given in place of the poster', async () => {
+    const artKind = (container: HTMLElement) =>
+      container.querySelector('.trakt-lazy-image')?.getAttribute('data-kind');
+
+    it("should draw an episode's screenshot in place of the poster, its show linked under the title", async () => {
       const container = await renderCard(itemOfType('episode'), {
-        fanart: { src: '/img/screenshot.jpg', alt: 'The screenshot' },
+        art: 'fanart',
+        lines: [LINE],
       });
 
-      expect(screen.getByRole('img', { name: 'The screenshot' }))
-        .toHaveAttribute('src', '/img/screenshot.jpg');
-      expect(container.querySelector('.trakt-lazy-image'))
-        .toHaveAttribute('data-kind', 'fanart');
+      expect(
+        screen.getByRole('img', {
+          name: 'House of the Dragon 1x01 screenshot',
+        }),
+      ).toHaveAttribute(
+        'src',
+        '/img/episodes/004/735/526/screenshots/thumb/d16aaf0607.jpg.webp',
+      );
+      expect(artKind(container)).toBe('fanart');
+      expect(cardLines(container)).toEqual(['House of the Dragon', 'Played']);
+      expect(screen.getByRole('link', { name: 'House of the Dragon' }))
+        .toHaveAttribute('href', '/shows/house-of-the-dragon');
+    });
+
+    it.each(['movie', 'show', 'season'] as const)(
+      'should keep the poster of a %s card',
+      async (type) => {
+        const container = await renderCard(itemOfType(type), { art: 'fanart' });
+
+        expect(artKind(container)).toBe('poster');
+      },
+    );
+
+    it('should keep the poster of an episode card without the art', async () => {
+      const container = await renderCard(itemOfType('episode'), {
+        lines: [LINE],
+      });
+
+      expect(artKind(container)).toBe('poster');
+      expect(cardLines(container)).toEqual(['Played']);
     });
   });
 

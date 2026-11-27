@@ -1,7 +1,7 @@
 <script lang="ts">
   import PendingSpinner from '$lib/components/feedback/PendingSpinner.svelte';
   import TickProgressBar from '$lib/components/progress/TickProgressBar.svelte';
-  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import type { ActionButtonProps } from './_internal/ActionButtonProps.ts';
 
@@ -37,42 +37,38 @@
   class:is-selected={selected === true}
   class:is-blocked={isBlocked}
 >
-  <!-- Always wrapped, so a write that leaves it blocked keeps the button and its focus. -->
-  <Tooltip
-    side="bottom"
-    content={blockedReason ?? ''}
-    disabled={!isBlocked}
-    disableHoverableContent
-    keepOpenOnPress={isBlocked}
-    triggerProps={{ onclick: handleClick }}
+  <button
+    type="button"
+    class="action-button-main"
+    aria-busy={isUpdating}
+    aria-disabled={isIgnoringClicks}
+    aria-label={blockedReason
+    ? m.button_label_blocked_action({ action: label, reason: blockedReason })
+    : undefined}
+    onclick={handleClick}
+    {@attach hint(() =>
+      blockedReason === undefined ? undefined : {
+        content: blockedReason,
+        side: 'bottom',
+        isPassThrough: true,
+        keepOpenOnPress: true,
+      }
+    )}
   >
-    {#snippet trigger({ props })}
-      <button
-        {...props}
-        type="button"
-        class="action-button-main"
-        aria-busy={isUpdating}
-        aria-disabled={isIgnoringClicks}
-        aria-label={blockedReason
-        ? m.button_label_blocked_action({ action: label, reason: blockedReason })
-        : undefined}
-      >
-        <span class="action-button-glyph" aria-hidden="true">
-          {#if isUpdating}
-            <PendingSpinner />
-          {:else}
-            <Glyph class="action-button-icon" />
-          {/if}
-        </span>
-        <span class="action-button-text" class:has-under-info={underInfo}>
-          <span class="action-button-label">{label}</span>
-          {#if underInfo}
-            <span class="action-button-under-info">{underInfo}</span>
-          {/if}
-        </span>
-      </button>
-    {/snippet}
-  </Tooltip>
+    <span class="action-button-glyph" aria-hidden="true">
+      {#if isUpdating}
+        <PendingSpinner />
+      {:else}
+        <Glyph class="action-button-icon" />
+      {/if}
+    </span>
+    <span class="action-button-text" class:has-under-info={underInfo}>
+      <span class="action-button-label">{label}</span>
+      {#if underInfo}
+        <span class="action-button-under-info">{underInfo}</span>
+      {/if}
+    </span>
+  </button>
   {#if side}
     <div class="action-button-side">
       {@render side()}

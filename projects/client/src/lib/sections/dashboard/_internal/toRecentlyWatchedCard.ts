@@ -1,16 +1,15 @@
-import * as m from '$lib/features/i18n/messages.ts';
+import type { MediaFanartCardProps } from '$lib/features/media-card/components/MediaFanartCardProps.ts';
+import { toEpisodeScreenshot } from '$lib/features/media-card/toEpisodeScreenshot.ts';
 import {
   type MediaCard,
   toMediaCard,
 } from '$lib/features/media-card/toMediaCard.ts';
-import { toEpisodeScreenshot } from '$lib/features/media-card/toEpisodeScreenshot.ts';
+import { toMediaFanart } from '$lib/features/media-card/toMediaFanart.ts';
 import type { EpisodeType } from '$lib/requests/models/EpisodeType.ts';
-import type { ImageUrl } from '$lib/requests/models/ImageUrlSchema.ts';
 import type { ActivityHistory } from '$lib/requests/queries/users/activityHistoryQuery.ts';
 
 export type RecentlyWatchedCard = MediaCard<'movie' | 'episode'> & {
-  image: ImageUrl;
-  imageAlt: string;
+  fanart: MediaFanartCardProps['fanart'];
   episodeType?: EpisodeType;
 };
 
@@ -22,18 +21,15 @@ export function toRecentlyWatchedCard(
 
     return {
       ...toMediaCard({ type: 'movie', movie }),
-      image: movie.cover.url.thumb,
-      imageAlt: m.image_alt_media_fanart({ title: movie.title }),
+      fanart: toMediaFanart(movie),
     };
   }
 
   const { episode, show } = entry;
-  const screenshot = toEpisodeScreenshot({ show, episode });
 
   return {
     ...toMediaCard({ type: 'episode', show, episode }),
-    image: screenshot.src,
-    imageAlt: screenshot.alt,
+    fanart: toEpisodeScreenshot({ show, episode }),
     episodeType: episode.type,
   };
 }

@@ -13,7 +13,6 @@ import '$test/mocks/scrollTo.mock.ts';
 import '$test/mocks/state.mock.ts';
 import '$test/mocks/variables.mock.ts';
 import { useToasts } from '$lib/features/action-toast/stores/useToasts.ts';
-import { resetHiddenRecommendations } from '$lib/features/media-actions/resetHiddenRecommendations.ts';
 import { resetPendingOverrides } from '$lib/features/media-actions/resetPendingOverrides.ts';
 import { safeLocalStorage } from '$lib/utils/storage/safeLocalStorage.ts';
 import { server } from '$mocks/server.ts';
@@ -43,10 +42,8 @@ afterEach(() => {
   toasts.subscribe((entries) => entries.forEach(({ id }) => dismiss(id)))
     .unsubscribe();
 });
-// A write still pending at a test's end would leak its override into the next.
+// A write pending or kept at a test's end, a Hide included, would leak its override into the next.
 afterEach(() => resetPendingOverrides());
-// A hidden recommendation is module state, so it would stay hidden in the next test.
-afterEach(() => resetHiddenRecommendations());
 // An observer a test never disconnects would take a later test's resize.
 afterEach(() => RESIZE_OBSERVERS.clear());
 // A stored preference or invalidation marker would carry into the next test.

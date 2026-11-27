@@ -1,7 +1,7 @@
 import {
   toWatchProgress,
   type WatchProgress,
-} from '$lib/features/media-actions/_internal/toWatchProgress.ts';
+} from '$lib/features/media-actions/toWatchProgress.ts';
 import { nonNegativeFinite } from '$lib/utils/number/nonNegativeFinite.ts';
 import type { QuickActionsTarget } from '../QuickActionsProps.ts';
 import { hasTargetAired } from './hasTargetAired.ts';

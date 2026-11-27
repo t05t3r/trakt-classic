@@ -1,4 +1,21 @@
-import type { ShowProgressDetail } from '$lib/requests/models/ShowProgressDetail.ts';
+import type {
+  EpisodeProgress,
+  ShowProgressDetail,
+} from '$lib/requests/models/ShowProgressDetail.ts';
+
+const SEASON_ONE_WATCHED_AT = new Date('2024-12-27T19:40:26.000Z');
+const SEASON_TWO_WATCHED_AT = new Date('2024-12-27T19:40:28.000Z');
+
+const watchedEpisode = (
+  number: number,
+  lastWatchedAt: Date,
+): EpisodeProgress => ({ number, completed: true, lastWatchedAt });
+
+const unwatchedEpisode = (number: number): EpisodeProgress => ({
+  number,
+  completed: false,
+  lastWatchedAt: null,
+});
 
 export const ShowSiloProgressMappedMock: ShowProgressDetail = {
   'total': 17,
@@ -38,15 +55,31 @@ export const ShowSiloProgressMappedMock: ShowProgressDetail = {
   'seasons': [
     {
       'number': 1,
+      'title': null,
       'total': 10,
       'completed': 10,
-      'lastWatchedAt': new Date('2024-12-27T19:40:26.000Z'),
+      'plays': 11,
+      'minutesWatched': 559,
+      'minutesLeft': 0,
+      'lastWatchedAt': SEASON_ONE_WATCHED_AT,
+      'episodes': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) =>
+        watchedEpisode(number, SEASON_ONE_WATCHED_AT)
+      ),
     },
     {
       'number': 2,
+      'title': null,
       'total': 7,
       'completed': 1,
-      'lastWatchedAt': new Date('2024-12-27T19:40:28.000Z'),
+      'plays': 1,
+      'minutesWatched': 46,
+      'minutesLeft': 301,
+      'lastWatchedAt': SEASON_TWO_WATCHED_AT,
+      'episodes': [
+        watchedEpisode(1, SEASON_TWO_WATCHED_AT),
+        ...[2, 3, 4, 5, 6, 7].map(unwatchedEpisode),
+      ],
     },
   ],
+  'hiddenSeasons': [],
 };

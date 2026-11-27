@@ -24,6 +24,30 @@ describe('toRecentlyWatchedCard', () => {
     {
       play: 'an episode',
       entry: EPISODE_PLAY,
+      fanart: {
+        src: '/img/episodes/005/165/667/screenshots/thumb/e035db5f06.jpg.webp',
+        alt: 'Silo 1x01 screenshot',
+      },
+    },
+    {
+      play: 'a movie',
+      entry: MOVIE_PLAY,
+      fanart: {
+        src: '/img/movies/000/916/302/fanarts/thumb/626327d7b4.jpg.webp',
+        alt: '"Heretic" fanart',
+      },
+    },
+  ])(
+    'should give the card of $play its screenshot or its fanart, named for its image',
+    ({ entry, fanart }) => {
+      expect(toRecentlyWatchedCard(entry).fanart).toEqual(fanart);
+    },
+  );
+
+  it.each([
+    {
+      play: 'an episode',
+      entry: EPISODE_PLAY,
       airDate: SILO_AIR_DATE,
       releaseDate: SILO_EFFECTIVE_RELEASE_DATE,
     },

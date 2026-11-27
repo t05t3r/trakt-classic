@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MenuGlyph from '$lib/components/menus/MenuGlyph.svelte';
   import IconChevronDown from '@tabler/icons-svelte/icons/chevron-down';
   import type { DropdownButtonProps } from './_internal/DropdownButtonProps.ts';
 
@@ -8,6 +9,7 @@
     selectedTint = 'selected',
     variant = 'default',
     font = 'body',
+    glyph,
     children,
     ...rest
   }: DropdownButtonProps = $props();
@@ -17,15 +19,21 @@
 <button
   {...rest}
   type="button"
-  class="trakt-dropdown-button"
+  class="trakt-dropdown-button no-wrap"
   class:is-selected={selected}
   data-selected-tint={selectedTint}
   data-variant={variant}
   data-font={font}
   aria-label={label}
 >
+  {#if glyph}
+    <MenuGlyph>{@render glyph()}</MenuGlyph>
+  {/if}
   {@render children()}
-  <IconChevronDown class="dropdown-button-caret" aria-hidden="true" />
+  <IconChevronDown
+    class="dropdown-button-caret trakt-icon-expander"
+    aria-hidden="true"
+  />
 </button>
 
 <style lang="scss">
@@ -37,10 +45,9 @@
     background: none;
     color: var(--color-text-primary);
     font-family: var(--font-family-body);
-    font-size: var(--dropdown-button-font-size, var(--font-size-button));
+    font-size: var(--font-size-button);
     font-weight: var(--font-weight-body);
     line-height: var(--line-height-text);
-    white-space: nowrap;
     cursor: pointer;
     transition: color var(--transition-default);
 
@@ -50,7 +57,7 @@
 
     &[data-variant='default'] {
       padding-block: var(--ni-6);
-      padding-inline: var(--ni-12);
+      padding-inline: var(--dropdown-padding-inline);
       border: var(--ni-1) solid var(--color-border-strong);
       border-radius: var(--border-radius-none);
       background: var(--color-surface-menu);

@@ -3,7 +3,7 @@ import type { Snippet } from 'svelte';
 
 export type PosterCardMedia =
   | { type: 'movie'; title: string; year?: number }
-  | { type: 'show'; title: string }
+  | { type: 'show'; title: string; year?: number }
   | { type: 'season'; show: string; number: number }
   | {
     type: 'episode';
@@ -40,6 +40,8 @@ export type PosterCardProps =
     // The quick-icons strip's background, which differs per page.
     strip?: 'recessed' | 'overlay';
     image: Snippet;
+    // A last dimmer line in the poster's tooltip.
+    tooltipLine?: string;
     // Centred over the poster's top edge, outside the poster link.
     rank?: Snippet;
     actions?: Snippet;

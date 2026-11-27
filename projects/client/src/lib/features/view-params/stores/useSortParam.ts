@@ -1,4 +1,6 @@
 import type { SortDirection } from '$lib/models/SortDirection.ts';
+import { DIRECTIONS } from '$lib/utils/sort/DIRECTIONS.ts';
+import { flipDirection } from '$lib/utils/sort/flipDirection.ts';
 import { distinctUntilChanged, map, type Observable } from 'rxjs';
 import { useViewParam } from './useViewParam.ts';
 
@@ -7,18 +9,18 @@ export type SortParam<K extends string> = Readonly<{
   how: SortDirection;
 }>;
 
+// Each key at its own default direction, in menu order; the first is the default sort.
+export type SortList<S extends SortParam<string>> = readonly [
+  S,
+  ...ReadonlyArray<S>,
+];
+
 export type SortParamSpec<K extends string> = Readonly<{
   param: string;
-  // Each key at its own default direction, in menu order; the first is the default sort.
-  sorts: readonly [SortParam<K>, ...ReadonlyArray<SortParam<K>>];
+  sorts: SortList<SortParam<K>>;
 }>;
 
-const DIRECTIONS: ReadonlyArray<SortDirection> = ['asc', 'desc'];
-
 const toValue = <K extends string>({ by, how }: SortParam<K>) => `${by},${how}`;
-
-const flipped = (how: SortDirection): SortDirection =>
-  how === 'asc' ? 'desc' : 'asc';
 
 export function useSortParam<K extends string>(
   { param, sorts }: SortParamSpec<K>,
@@ -66,7 +68,7 @@ export function useSortParam<K extends string>(
     reverse: () =>
       set((params) => {
         const { by, how } = toSort(params);
-        return { [param]: toValue({ by, how: flipped(how) }) };
+        return { [param]: toValue({ by, how: flipDirection(how) }) };
       }),
   };
 }

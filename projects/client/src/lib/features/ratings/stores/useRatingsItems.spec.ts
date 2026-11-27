@@ -13,12 +13,13 @@ import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
 import { describePagedReads } from '$test/beds/store/describePagedReads.ts';
+import { pagedItemsOf } from '$test/beds/store/pagedItemsOf.ts';
 import { readingOf } from '$test/beds/store/readingOf.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { statusOf } from '$test/beds/store/statusOf.ts';
 import { valueObservable } from '$test/beds/store/valueObservable.ts';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { type RatingsItemsValues, useRatingsItems } from './useRatingsItems.ts';
 
 const VALUES: RatingsItemsValues = {
@@ -31,18 +32,13 @@ type RatingsItemsOptions = Partial<RatingsItemsValues> & {
   filter?: WatchedFilter | null;
 };
 
-function ratingsItems({ filter = null, ...values }: RatingsItemsOptions = {}) {
-  const replacePage = vi.fn();
-  const store = () => ({
-    reading: useRatingsItems({
-      values: { ...VALUES, ...values },
-      watched: valueObservable(filter),
-      replacePage,
-    }),
-  });
-
-  return { store, replacePage };
-}
+const ratingsItems = (
+  { filter = null, ...values }: RatingsItemsOptions = {},
+) =>
+  pagedItemsOf(
+    (props) => useRatingsItems({ ...props, watched: valueObservable(filter) }),
+    VALUES,
+  )(values);
 
 describe('store: useRatingsItems', () => {
   describePagedReads({

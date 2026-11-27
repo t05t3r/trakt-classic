@@ -1,32 +1,28 @@
 <script lang="ts">
-  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
+  import { isInertTrigger } from '$lib/components/menus/isInertTrigger.ts';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import type { ActionSideIconProps } from './_internal/ActionSideIconProps.ts';
 
   const { icon: Glyph, label, disabled, ...rest }: ActionSideIconProps =
     $props();
 </script>
 
-<!-- A disabled icon has no tooltip: its button's own says why. -->
-<Tooltip
-  side="bottom"
-  content={label}
-  disabled={disabled ?? false}
-  disableHoverableContent
-  triggerProps={rest}
+<!-- A disabled or inert icon takes no input, so it shows no tooltip. -->
+<!-- After the spread, so a `Menu`'s untyped trigger props cannot override them. -->
+<button
+  {...rest}
+  type="button"
+  class="trakt-action-side-icon"
+  {disabled}
+  aria-label={label}
+  {@attach hint(() =>
+    disabled || isInertTrigger(rest)
+      ? undefined
+      : { content: label, side: 'bottom', isPassThrough: true }
+  )}
 >
-  {#snippet trigger({ props })}
-    <!-- After the spread, so a `Menu`'s untyped trigger props cannot override them. -->
-    <button
-      {...props}
-      type="button"
-      class="trakt-action-side-icon"
-      {disabled}
-      aria-label={label}
-    >
-      <Glyph class="action-side-glyph" aria-hidden="true" />
-    </button>
-  {/snippet}
-</Tooltip>
+  <Glyph class="action-side-glyph" aria-hidden="true" />
+</button>
 
 <style lang="scss">
   @use '$style/scss/mixins/index' as *;

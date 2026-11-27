@@ -1,7 +1,7 @@
 <script lang="ts">
   import EmptyState from '$lib/components/feedback/EmptyState.svelte';
-  import PendingSpinner from '$lib/components/feedback/PendingSpinner.svelte';
-  import SectionError from '$lib/components/feedback/SectionError.svelte';
+  import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
+  import StatusFrame from '$lib/components/feedback/StatusFrame.svelte';
   import LoadMore from '$lib/components/pagination/LoadMore.svelte';
   import PillTabs from '$lib/components/tabs/PillTabs.svelte';
   import { useHideCommentSpoilers } from '$lib/features/auth/stores/useHideCommentSpoilers.ts';
@@ -11,9 +11,12 @@
   import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
   import { CommentSortTypeSchema } from '$lib/requests/models/CommentSortType.ts';
   import { isProgressComplete } from '$lib/utils/media/isProgressComplete.ts';
+  import type { CommentsReveal } from '../_internal/revealComments.ts';
   import { useComments } from '../stores/useComments.ts';
   import CommentThread from './_internal/CommentThread.svelte';
   import type { CommentsBlockProps } from './CommentsBlockProps.ts';
+
+  type ShownComments = { data: CommentsReveal; treatAsSpoiler: boolean };
 
   const TABS = [
     {
@@ -64,17 +67,14 @@
   );
 
   // The cards wait for the setting, so a hidden spoiler never shows before it blurs.
-  const ready = $derived(
-    $status.kind === 'ready' && $hideSpoilers !== undefined
-      ? { data: $status.data, treatAsSpoiler: $hideSpoilers }
-      : undefined,
-  );
-
-  const isPending = $derived(
-    $status.kind === 'loading' || ($status.kind === 'ready' && !ready),
-  );
-
-  let pane: HTMLElement | undefined = $state();
+  const paneStatus: SectionStatus<ShownComments> = $derived.by(() => {
+    if ($status.kind !== 'ready') return $status;
+    if ($hideSpoilers === undefined) return { kind: 'loading' };
+    return {
+      kind: 'ready',
+      data: { data: $status.data, treatAsSpoiler: $hideSpoilers },
+    };
+  });
 </script>
 
 <div class="trakt-comments-block">
@@ -86,42 +86,31 @@
   >
     <!-- The shown tab names the pane, so it describes the pane's retry too. -->
     {#snippet children(_sort, tabId)}
-      <div
-        class="comments-pane"
-        aria-busy={isPending}
-        bind:this={pane}
-      >
-        {#if isPending}
-          <div class="comments-pending"><PendingSpinner /></div>
-        {:else if $status.kind === 'error'}
-          <SectionError
-            retry={$status.retry}
-            fallback={pane}
-            describedBy={tabId}
-          />
-        {:else if $status.kind === 'empty'}
+      <StatusFrame status={paneStatus} describedBy={tabId}>
+        {#snippet empty()}
           <EmptyState>{m.text_comments_empty()}</EmptyState>
-        {:else if ready}
+        {/snippet}
+        {#snippet children(shown)}
           <ul class="comment-cells" role="list">
-            {#each ready.data.comments as comment (comment.key)}
+            {#each shown.data.comments as comment (comment.key)}
               <li class="comment-cell">
                 <CommentThread
                   {comment}
                   {airedEpisodes}
-                  treatAsSpoiler={ready.treatAsSpoiler}
+                  treatAsSpoiler={shown.treatAsSpoiler}
                   revealSpoilers={isTargetWatched}
                 />
               </li>
             {/each}
           </ul>
           <LoadMore
-            showMore={ready.data.showMore}
-            showLess={ready.data.showLess}
+            showMore={shown.data.showMore}
+            showLess={shown.data.showLess}
             onmore={more}
             onless={less}
           />
-        {/if}
-      </div>
+        {/snippet}
+      </StatusFrame>
     {/snippet}
   </PillTabs>
 </div>
@@ -131,19 +120,9 @@
 
   .trakt-comments-block {
     // The positioned parent of the "more" pill, which sits out of flow.
-    .comments-pane {
+    :global(.trakt-status-frame) {
       position: relative;
       margin-block-start: var(--ni-20);
-
-      // It takes focus only as a retry's fallback, and a ring would outline the whole pane.
-      &:focus {
-        outline: none;
-      }
-    }
-
-    .comments-pending {
-      --pending-spinner-size: var(--icon-size-heading);
-      --pending-spinner-stroke: var(--icon-stroke-chrome);
     }
 
     .comment-cells {

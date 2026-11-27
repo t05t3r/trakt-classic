@@ -5,9 +5,11 @@ import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { recommendedMoviesQuery } from '$lib/requests/queries/recommendations/recommendedMoviesQuery.ts';
 import { recommendedShowsQuery } from '$lib/requests/queries/recommendations/recommendedShowsQuery.ts';
 import { waitForSuccess } from '$test/beds/query/waitForSuccess.ts';
+import { failOnce } from '$test/beds/request/failOnce.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
 import { HERETIC_HIDE_TARGET } from '$mocks/data/media-actions/HERETIC_HIDE_TARGET.ts';
 import { SILO_HIDE_TARGET } from '$mocks/data/media-actions/SILO_HIDE_TARGET.ts';
+import { RECOMMENDED_SHOWS_URL } from '$mocks/data/recommendations/RECOMMENDED_SHOWS_URL.ts';
 import { SILO_HIDE_URL } from '$mocks/data/recommendations/SILO_HIDE_URL.ts';
 import { server } from '$mocks/server.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
@@ -81,13 +83,21 @@ describe('store: useHideRecommendation', () => {
     },
   );
 
+  it('should keep the title hidden when the refetch after its hide fails', async () => {
+    const { hide, isHidden } = await renderWithRecommendations();
+    failOnce(RECOMMENDED_SHOWS_URL);
+
+    expect(await hide(SILO_HIDE_TARGET)).toBe(true);
+    expect((await firstValueFrom(isHidden))(SILO_HIDE_TARGET)).toBe(true);
+  });
+
   it('should show the title again and the error toast when the hide fails', async () => {
     server.use(
       http.delete(SILO_HIDE_URL, () => new HttpResponse(null, { status: 500 })),
     );
     const { hide, isHidden } = await renderStore(useHideRecommendation);
 
-    await hide(SILO_HIDE_TARGET);
+    expect(await hide(SILO_HIDE_TARGET)).toBe(false);
 
     expect((await firstValueFrom(isHidden))(SILO_HIDE_TARGET)).toBe(false);
     expect(
@@ -124,7 +134,7 @@ describe('store: useHideRecommendation', () => {
     expect(isHiddenAfterRefetch(SILO_HIDE_TARGET)).toBe(true);
   });
 
-  it('should send no second hide for a title already hidden', async () => {
+  it('should send no second hide for a title whose hide is in flight', async () => {
     const request = holdRequest({ method: 'delete', url: SILO_HIDE_URL });
     const { hide } = await renderStore(useHideRecommendation);
 

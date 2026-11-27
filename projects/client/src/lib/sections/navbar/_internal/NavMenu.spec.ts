@@ -7,6 +7,8 @@ import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import NavMenuHost from '$test/beds/navbar/NavMenuHost.svelte';
+import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { isMenuRowChecked } from '$test/beds/subnav/isMenuRowChecked.ts';
 
 // useMedia keeps each query's first answer, so the whole spec runs on a mouse.
 vi.spyOn(globalThis, 'matchMedia').mockImplementation((query: string) => ({
@@ -135,6 +137,23 @@ describe('component: NavMenu', () => {
       screen.getAllByRole('menuitem', { current: 'page' })
         .map((row) => row.textContent?.trim()),
     ).toEqual(['Lists']);
+  });
+
+  it("should draw the current page's row in the accent, with no check", async () => {
+    window.history.replaceState(null, '', '/users/me/lists/watched');
+    render(NavMenuHost);
+
+    await fireEvent.click(profileTrigger());
+
+    // Every item's row; the action row, a button, holds no menu row.
+    const rows = screen.getAllByRole('menuitem')
+      .filter((row) => row.hasAttribute('href'))
+      .map((row) => [
+        row.textContent?.trim(),
+        isMenuRowChecked(row),
+        glyphClasses(row),
+      ]);
+    expect(rows).toEqual([['History', false, []], ['Lists', true, []]]);
   });
 
   it('should mark no row on an error page', async () => {

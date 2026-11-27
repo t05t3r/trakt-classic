@@ -32,7 +32,7 @@
 
 {#if showLess || showMore}
   <div
-    class="trakt-load-more"
+    class="trakt-load-more no-wrap"
     data-variant={variant}
     bind:this={navigator}
     {@attach retention.track}
@@ -67,7 +67,6 @@
     border: var(--border-thickness-xxs) solid var(--color-border-navigator);
     border-radius: var(--border-radius-m);
     background: var(--color-surface-sunken);
-    white-space: nowrap;
     transform: translateX(-50%);
 
     .load-more-control {

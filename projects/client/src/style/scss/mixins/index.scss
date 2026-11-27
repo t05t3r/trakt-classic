@@ -169,7 +169,8 @@ $_episode-type-colors: (
 // background from the tag.
 @mixin caption-tag-box {
   display: inline-block;
-  margin-block: var(--ni-0) var(--ni-5);
+  // Hook a card sets to seat its tags on the title below them.
+  margin-block: var(--ni-0) var(--caption-tag-margin-block-end, var(--ni-5));
   margin-inline: var(--ni-0) var(--ni-5);
   padding-block: var(--ni-3);
   padding-inline: var(--ni-5);
@@ -177,6 +178,12 @@ $_episode-type-colors: (
   font-family: var(--font-family-heading);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-heading);
+}
+
+// Classic's heavy heading face, for a figure, a link or a label set apart from body text.
+@mixin heavy-heading-font {
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-heading-heavy);
 }
 
 // The box of an `ellipsis` element: the class does the clipping, this makes room for it.
@@ -235,15 +242,21 @@ $_episode-type-colors: (
   margin-inline: var(--gutter-half-negative);
 }
 
-// Phone poster rows run gutterless; the divider overlaps the poster before it,
-// so both stay half the width.
-@mixin phone-poster-cells($cell, $divider: true) {
+// Classic runs its phone poster and fanart cells edge to edge.
+@mixin phone-gutterless-cells($cell) {
   @include for-mobile {
     #{$cell} {
       padding-inline: var(--ni-0);
     }
+  }
+}
 
-    @if $divider {
+// The divider overlaps the poster before it, so both stay half the width.
+@mixin phone-poster-cells($cell, $divider: true) {
+  @include phone-gutterless-cells($cell);
+
+  @if $divider {
+    @include for-mobile {
       #{$cell}:nth-child(even) {
         --poster-card-divider: var(--border-thickness-xxs) solid
           var(--color-border-subtle);

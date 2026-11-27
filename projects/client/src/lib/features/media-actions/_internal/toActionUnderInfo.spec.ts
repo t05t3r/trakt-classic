@@ -23,8 +23,11 @@ describe('toActionUnderInfo', () => {
 
     it('should follow the counts it is given', () => {
       expect(
-        toActionUnderInfo({ kind: 'dropped', counts: '25/30 eps — 25 plays' }),
-      ).toBe('25/30 eps — 25 plays · Dropped');
+        toActionUnderInfo({
+          kind: 'dropped',
+          counts: '25 / 30 eps — 25 plays',
+        }),
+      ).toBe('25 / 30 eps — 25 plays · Dropped');
     });
   });
 

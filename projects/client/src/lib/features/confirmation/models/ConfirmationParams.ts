@@ -10,7 +10,9 @@ export type ConfirmationParams =
   }
   | {
     type:
+      | typeof ConfirmationType.HideWholeShow
       | typeof ConfirmationType.RemovePlay
-      | typeof ConfirmationType.RestoreShow;
+      | typeof ConfirmationType.RestoreShow
+      | typeof ConfirmationType.WatchRemaining;
     title: string;
   };

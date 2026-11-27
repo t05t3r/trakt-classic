@@ -39,13 +39,14 @@ describe('toListItemCard', () => {
       },
     });
     expect(card).not.toHaveProperty('episodeType');
+    expect(card).not.toHaveProperty('screenshot');
   });
 
   it('should map a show to its own card, poster and quick-icons Target', () => {
     const card = toListItemCard(itemOfType('show'));
 
     expect({ ...card, poster: card.poster.url.thumb }).toEqual({
-      media: { type: 'show', title: 'Slow Horses' },
+      media: { type: 'show', title: 'Slow Horses', year: 2022 },
       href: '/shows/slow-horses',
       poster: '/img/shows/000/155/534/posters/thumb/6b6d40b6de.jpg.webp',
       posterTitle: 'Slow Horses',
@@ -80,7 +81,7 @@ describe('toListItemCard', () => {
         number: 3,
         episodes: { count: 10, aired: 10 },
         airDate: new Date('2026-07-03T01:00:00.000Z'),
-        show: { id: 180770, title: 'Silo' },
+        show: { id: 180770, title: 'Silo', slug: 'silo' },
       },
       rating: {
         value: 0.823,
@@ -104,6 +105,10 @@ describe('toListItemCard', () => {
       showHref: '/shows/house-of-the-dragon',
       poster: '/img/shows/000/154/574/posters/thumb/5fea83a517.jpg.webp',
       posterTitle: 'House of the Dragon',
+      screenshot: {
+        src: '/img/episodes/004/735/526/screenshots/thumb/d16aaf0607.jpg.webp',
+        alt: 'House of the Dragon 1x01 screenshot',
+      },
       episodeType: 'series_premiere',
       target: {
         type: 'episode',

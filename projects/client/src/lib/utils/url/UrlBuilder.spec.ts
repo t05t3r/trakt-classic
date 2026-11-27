@@ -1,7 +1,9 @@
+import type { ProgressSortBy } from '$lib/features/progress/PROGRESS_SORTS.ts';
 import type { RatingFilter } from '$lib/features/media-actions/RATING_VALUES.ts';
 import type { RatingsTypeFilter } from '$lib/features/ratings/RATINGS_TYPES.ts';
 import { setTimeZone } from '$test/beds/date/setTimeZone.ts';
 import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
+import type { SortDirection } from '$lib/models/SortDirection.ts';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { UrlBuilder } from './UrlBuilder.ts';
 
@@ -136,8 +138,6 @@ describe('util: UrlBuilder', () => {
           | '/users/me/history/shows'
           | '/users/me/history/movies'
         >();
-      expectTypeOf(UrlBuilder.progress).returns
-        .toEqualTypeOf<'/users/me/progress'>();
       expectTypeOf(UrlBuilder.ratings).returns
         .toEqualTypeOf<
           | '/users/me/ratings'
@@ -145,6 +145,79 @@ describe('util: UrlBuilder', () => {
         >();
       expectTypeOf(UrlBuilder.lists.home).returns
         .toEqualTypeOf<'/users/me/lists'>();
+    });
+  });
+
+  describe('progress', () => {
+    it.each(
+      [
+        { params: undefined, url: '/users/me/progress' },
+        { params: { view: 'watched' }, url: '/users/me/progress' },
+        {
+          params: { sort: { by: 'added', how: 'asc' } },
+          url: '/users/me/progress/watched/added/asc',
+        },
+        {
+          params: { view: 'watched', sort: { by: 'title', how: 'desc' } },
+          url: '/users/me/progress/watched/title/desc',
+        },
+        { params: { view: 'dropped' }, url: '/users/me/progress/dropped' },
+        {
+          params: { view: 'dropped', sort: { by: 'added', how: 'asc' } },
+          url: '/users/me/progress/dropped/added/asc',
+        },
+        {
+          params: { view: 'dropped', sort: { by: 'hidden', how: 'desc' } },
+          url: '/users/me/progress/dropped/hidden/desc',
+        },
+      ] as const,
+    )('should build $url', ({ params, url }) => {
+      expect(UrlBuilder.progress(params)).toBe(url);
+    });
+
+    it.each(
+      [
+        {
+          params: {
+            sort: { by: 'added', how: 'asc' },
+            hideCompleted: true,
+          },
+          url: '/users/me/progress/watched/added/asc?hide_completed=true',
+        },
+        { params: { hideCompleted: false }, url: '/users/me/progress' },
+        { params: { show: 180770 }, url: '/users/me/progress?show=180770' },
+        {
+          params: { view: 'dropped', page: 2 },
+          url: '/users/me/progress/dropped?page=2',
+        },
+        {
+          params: {
+            sort: { by: 'plays', how: 'desc' },
+            hideCompleted: true,
+            show: 180770,
+            page: 3,
+          },
+          url:
+            '/users/me/progress/watched/plays/desc?hide_completed=true&show=180770&page=3',
+        },
+      ] as const,
+    )('should put the filters of $url in its search', ({ params, url }) => {
+      expect(UrlBuilder.progress(params)).toBe(url);
+    });
+
+    it('should keep the path literal in its type', () => {
+      type Path =
+        | '/users/me/progress'
+        | `/users/me/progress/watched/${ProgressSortBy<
+          'watched'
+        >}/${SortDirection}`
+        | '/users/me/progress/dropped'
+        | `/users/me/progress/dropped/${ProgressSortBy<
+          'dropped'
+        >}/${SortDirection}`;
+
+      expectTypeOf(UrlBuilder.progress).returns
+        .toEqualTypeOf<Path | `${Path}?${string}`>();
     });
   });
 

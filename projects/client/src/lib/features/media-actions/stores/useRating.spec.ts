@@ -1,12 +1,17 @@
+import { currentUserRatingsQuery } from '$lib/features/auth/queries/currentUserRatingsQuery.ts';
+import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { HERETIC } from '$mocks/data/media-actions/HERETIC.ts';
 import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { SILO_SEASON } from '$mocks/data/media-actions/SILO_SEASON.ts';
 import { SYNC_RATINGS_REMOVE_URL } from '$mocks/data/sync/SYNC_RATINGS_REMOVE_URL.ts';
 import { SYNC_RATINGS_URL } from '$mocks/data/sync/SYNC_RATINGS_URL.ts';
+import { RATED_MOVIES_URL } from '$mocks/data/users/RATED_MOVIES_URL.ts';
+import { RATED_SEASONS_URL } from '$mocks/data/users/RATED_SEASONS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { createRenderBound } from '$test/beds/media-actions/createRenderBound.ts';
+import { describeKeptWrite } from '$test/beds/media-actions/describeKeptWrite.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
-import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { screen, within } from '@testing-library/svelte';
 import { http, HttpResponse } from 'msw';
@@ -77,14 +82,7 @@ describe('store: useRating', () => {
 
   it('should ignore a second equal rating while the first is in flight', async () => {
     const { rate } = await renderBound(MATRIX);
-    const bodies: unknown[] = [];
-    const held = holdResponse(() => new HttpResponse(null, { status: 201 }));
-    server.use(
-      http.post(SYNC_RATINGS_URL, async ({ request }) => {
-        bodies.push(await request.json());
-        return held.answer();
-      }),
-    );
+    const { bodies, ...held } = holdPost(SYNC_RATINGS_URL);
 
     const first = rate(8);
     const second = await rate(8);
@@ -98,14 +96,7 @@ describe('store: useRating', () => {
 
   it('should post only the last of two different ratings made at once, and show it', async () => {
     const { rate, rating } = await renderBound(MATRIX);
-    const bodies: unknown[] = [];
-    const held = holdResponse(() => new HttpResponse(null, { status: 201 }));
-    server.use(
-      http.post(SYNC_RATINGS_URL, async ({ request }) => {
-        bodies.push(await request.json());
-        return held.answer();
-      }),
-    );
+    const { bodies, ...held } = holdPost(SYNC_RATINGS_URL);
 
     const first = rate(8);
     const second = rate(4);
@@ -172,5 +163,41 @@ describe('store: useRating', () => {
         seasons: [{ ids: { trakt: SILO_SEASON.id } }],
       }]);
     });
+  });
+
+  describeKeptWrite({
+    name: 'a rating whose refetch fails',
+    store: () => {
+      const { rating, isUpdating, rate } = useRating(MATRIX);
+      return {
+        value: rating,
+        isUpdating,
+        write: () => rate(8),
+        rewrite: () => rate(6),
+      };
+    },
+    reader: currentUserRatingsQuery().queryKey,
+    refetchUrl: RATED_MOVIES_URL,
+    invalidation: InvalidateAction.Rated('movie'),
+    rewriteUrl: SYNC_RATINGS_URL,
+    values: { before: null, written: 8, rewritten: 6 },
+  });
+
+  describeKeptWrite({
+    name: 'a season rating whose seasons request fails',
+    store: () => {
+      const { rating, isUpdating, rate } = useRating(SILO_SEASON);
+      return {
+        value: rating,
+        isUpdating,
+        write: () => rate(7),
+        rewrite: () => rate(6),
+      };
+    },
+    reader: currentUserRatingsQuery().queryKey,
+    refetchUrl: RATED_SEASONS_URL,
+    invalidation: InvalidateAction.Rated('season'),
+    rewriteUrl: SYNC_RATINGS_URL,
+    values: { before: 8, written: 7, rewritten: 6 },
   });
 });

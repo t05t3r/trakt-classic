@@ -4,10 +4,14 @@ import { ConfirmationType } from '../models/ConfirmationType.ts';
 import { mapToConfirmation } from './mapToConfirmation.ts';
 
 describe('mapToConfirmation', () => {
-  it('should take a count for every type but the restore and the one Play', () => {
+  it('should take a count for every type but the restore, the one Play, Watch remaining and the whole-show hide', () => {
     expectTypeOf<{ type: 'restore-show'; title: string }>()
       .toExtend<ConfirmationParams>();
     expectTypeOf<{ type: 'remove-play'; title: string }>()
+      .toExtend<ConfirmationParams>();
+    expectTypeOf<{ type: 'watch-remaining'; title: string }>()
+      .toExtend<ConfirmationParams>();
+    expectTypeOf<{ type: 'hide-whole-show'; title: string }>()
       .toExtend<ConfirmationParams>();
     expectTypeOf<{ type: 'remove-from-history'; title: string }>().not
       .toExtend<ConfirmationParams>();
@@ -34,6 +38,36 @@ describe('mapToConfirmation', () => {
       message: 'Devs',
       buttonText: 'Only this play',
       alternateText: 'All plays',
+      cancelText: 'No',
+    });
+  });
+
+  it('should ask what to do with a partly watched show or season, its title as the body', () => {
+    expect(
+      mapToConfirmation({
+        type: ConfirmationType.WatchRemaining,
+        title: 'Silo',
+      }),
+    ).toEqual({
+      title: 'What would you like to do?',
+      message: 'Silo',
+      buttonText: 'Watch remaining',
+      alternateText: 'Remove all',
+      cancelText: 'Nothing',
+    });
+  });
+
+  it("should ask to hide a show's last visible season, naming the show in the body", () => {
+    expect(
+      mapToConfirmation({
+        type: ConfirmationType.HideWholeShow,
+        title: 'Silo',
+      }),
+    ).toEqual({
+      title: 'Hide the whole show?',
+      message:
+        '"Silo" will have no visible seasons, so it will leave your progress. You can\'t unhide it in this app.',
+      buttonText: 'Yes, hide it!',
       cancelText: 'No',
     });
   });

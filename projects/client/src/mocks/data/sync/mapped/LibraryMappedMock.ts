@@ -268,6 +268,7 @@ export const LibraryMappedMock: LibraryItem[] = [
       'imdbId': 'tt0642348',
       'key': 'episode-298461',
       'number': 1,
+      'numberAbs': 0,
       'overview':
         'In this pilot we meet Al and Peg Bundy, a very dysfunctional Chicago family. In the pilot, Al and Peg, who have no friends, meet their new neighbors Steve and Marcy Rhoades. Steve and Marcy are a very happily married couple until they learn from the Bundys.',
       'postCredits': [],

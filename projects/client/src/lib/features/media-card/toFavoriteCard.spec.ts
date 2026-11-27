@@ -32,7 +32,7 @@ describe('toFavoriteCard', () => {
     const card = toFavoriteCard(assertDefined(FavoritedShowsMappedMock.at(0)));
 
     expect({ ...card, poster: card.poster.url.thumb }).toEqual({
-      media: { type: 'show', title: 'Silo' },
+      media: { type: 'show', title: 'Silo', year: 2023 },
       href: '/shows/silo',
       poster: '/img/shows/000/180/770/posters/thumb/5312f1d1cf.jpg.webp',
       posterTitle: 'Silo',

@@ -1,7 +1,5 @@
-import type {
-  FailedStatus,
-  SectionStatus,
-} from '$lib/components/feedback/SectionStatus.ts';
+import type { NeverEmptyStatus } from '$lib/components/feedback/SectionStatus.ts';
+import { toFailedStatus } from '$lib/features/query/toFailedStatus.ts';
 import {
   useSnapshot,
   useSnapshotStatus,
@@ -28,28 +26,13 @@ function toWatchedMap<T extends { id: number }>(
   return new Map(entries.map((entry) => [entry.id, entry]));
 }
 
-// A history is never empty: no plays is a known history like any other.
-export type HistoryStatus = Exclude<
-  SectionStatus<UserHistory>,
-  { kind: 'empty' }
->;
-
-type PartStatus<T> = SectionStatus<Map<number, T>>;
-
-function isFailed(part: SectionStatus<unknown>): part is FailedStatus {
-  return part.kind === 'error';
-}
+type PartStatus<T> = NeverEmptyStatus<Map<number, T>>;
 
 function toHistoryStatus(
   [movies, shows]: [PartStatus<WatchedMovie>, PartStatus<WatchedShow>],
-): HistoryStatus {
-  const failed = [movies, shows].filter(isFailed);
-  if (failed.length > 0) {
-    return {
-      kind: 'error',
-      retry: () => failed.forEach(({ retry }) => retry()),
-    };
-  }
+): NeverEmptyStatus<UserHistory> {
+  const failed = toFailedStatus([movies, shows]);
+  if (failed) return failed;
   if (movies.kind === 'ready' && shows.kind === 'ready') {
     return { kind: 'ready', data: { movies: movies.data, shows: shows.data } };
   }
@@ -60,7 +43,7 @@ function toHistoryStatus(
 type UseCurrentUserHistoryResult = {
   history: Observable<UserHistory | null>;
   // Held through a refetch, so a filter on it keeps what it hid.
-  historyStatus: Observable<HistoryStatus>;
+  historyStatus: Observable<NeverEmptyStatus<UserHistory>>;
 };
 
 export function useCurrentUserHistory(): UseCurrentUserHistoryResult {
@@ -88,15 +71,10 @@ export function useCurrentUserHistory(): UseCurrentUserHistoryResult {
     multicast(),
   );
 
+  // A history is never empty: no plays is a known history like any other.
   const historyStatus = combineLatest([
-    useSnapshotStatus(moviesQuery, {
-      select: toWatchedMap,
-      isEmpty: () => false,
-    }),
-    useSnapshotStatus(showsQuery, {
-      select: toWatchedMap,
-      isEmpty: () => false,
-    }),
+    useSnapshotStatus(moviesQuery, { select: toWatchedMap }),
+    useSnapshotStatus(showsQuery, { select: toWatchedMap }),
   ]).pipe(map(toHistoryStatus), multicast());
 
   return { history, historyStatus };

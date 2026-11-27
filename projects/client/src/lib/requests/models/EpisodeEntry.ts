@@ -10,6 +10,7 @@ export const EpisodeEntrySchema = z.object({
   key: z.string(),
   season: z.number(),
   number: z.number(),
+  numberAbs: z.number().nullish(),
   title: z.string(),
   overview: z.string(),
   cover: z.object({

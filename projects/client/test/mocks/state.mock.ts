@@ -11,32 +11,15 @@ const page = vi.hoisted(() => ({
   state: {},
 }));
 
-// No navigation is in flight; a spec spies on a getter to start one.
-const navigating = vi.hoisted(() => ({
-  get from() {
-    return null;
-  },
-  get to() {
-    return null;
-  },
-  get type() {
-    return null;
-  },
-  get willUnload() {
-    return null;
-  },
-  get delta() {
-    return null;
-  },
-  get complete() {
-    return null;
-  },
-}));
-
-vi.mock('$app/state', () => ({ page, navigating }));
+// No navigation is in flight; a spec starts one with startNavigation.
+vi.mock('$app/state', async () => {
+  const { navigating } = await import('$test/mocks/navigating.svelte.ts');
+  return { page, navigating };
+});
 
 afterEach(() => {
   page.error = null;
+  page.route.id = null;
 });
 
 // Server-side specs run without a window.

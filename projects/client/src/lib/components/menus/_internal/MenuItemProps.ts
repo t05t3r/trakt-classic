@@ -3,6 +3,8 @@ import type { MenuCheckState } from './MenuCheckState.ts';
 
 type MenuItemBase = {
   closeOnSelect?: boolean;
+  // The row's glyph, drawn in its leading column.
+  glyph?: Snippet;
   children: Snippet;
 };
 

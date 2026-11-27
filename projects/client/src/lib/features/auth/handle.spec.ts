@@ -6,6 +6,7 @@ import { server } from '$mocks/server.ts';
 import { mockRequestEvent } from '$test/request/mockRequestEvent.ts';
 import { time } from '$lib/utils/timing/time.ts';
 import { silenceWarnings } from '$test/beds/console/silenceWarnings.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { createSessionRotator } from './createSessionRotator.ts';
@@ -55,16 +56,9 @@ describe('auth handle', () => {
   });
 
   it('should rotate an expiring Session on an HTML navigation as the OAuth App', async () => {
-    const tokenBodies: Array<Record<string, unknown>> = [];
-    server.use(
-      http.post(
-        OAUTH_TOKEN_URL,
-        async ({ request }) => {
-          tokenBodies.push(await request.json() as Record<string, unknown>);
-          return HttpResponse.json(OAuthTokenResponseMock);
-        },
-      ),
-    );
+    const tokenBodies = recordBodies(OAUTH_TOKEN_URL, {
+      answer: () => HttpResponse.json(OAuthTokenResponseMock),
+    });
     const event = htmlEvent();
     sessionPersistence.begin(event, {
       access: 'expiring-access',

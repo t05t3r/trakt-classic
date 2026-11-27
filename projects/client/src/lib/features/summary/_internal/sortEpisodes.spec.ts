@@ -1,11 +1,8 @@
 import type { EpisodeEntry } from '$lib/requests/models/EpisodeEntry.ts';
-import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
-import { ShowSiloSeasonEpisodesMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonEpisodesMappedMock.ts';
+import { SILO_FIRST_EPISODE } from '$mocks/data/summary/shows/silo/SILO_FIRST_EPISODE.ts';
 import { describe, expect, it } from 'vitest';
 import { type EpisodesSort, sortEpisodes } from './sortEpisodes.ts';
-
-const FIRST = assertDefined(ShowSiloSeasonEpisodesMappedMock.at(0));
 
 function episode(
   { number, airDate = MAX_DATE, rating = null, votes = null }: {
@@ -16,7 +13,7 @@ function episode(
   },
 ): EpisodeEntry {
   return {
-    ...FIRST,
+    ...SILO_FIRST_EPISODE,
     id: number,
     key: `episode-${number}`,
     number,

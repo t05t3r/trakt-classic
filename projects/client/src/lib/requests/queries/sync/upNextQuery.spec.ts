@@ -107,6 +107,7 @@ describe('upNextQuery', () => {
       InvalidateAction.Restore,
       InvalidateAction.Watchlisted('show'),
       InvalidateAction.Watchlisted('season'),
+      InvalidateAction.HideProgress,
     ])('should refetch on %s', async (action) => {
       const invalidate = await observeInvalidation(() =>
         useQuery(upNextQuery())

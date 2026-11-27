@@ -11,6 +11,7 @@ import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { cards } from '$test/beds/dashboard/cards.ts';
 import { readyCards } from '$test/beds/dashboard/readyCards.ts';
 import { renderSection } from '$test/beds/dashboard/renderSection.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { collapsedCells } from '$test/beds/pagination/collapsedCells.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
@@ -272,9 +273,9 @@ describe('section: WatchlistSection', () => {
     it('should mark an episode card with its type ribbon, and no other card', async () => {
       const { region, episode } = await readyFixtureCards();
 
-      expect(region.querySelectorAll('.trakt-episode-type-ribbon'))
+      expect(region.querySelectorAll('.trakt-art-ribbon'))
         .toHaveLength(1);
-      expect(episode.querySelector('.trakt-episode-type-ribbon'))
+      expect(episode.querySelector('.trakt-art-ribbon'))
         .toHaveTextContent('Series Premiere');
     });
 
@@ -287,7 +288,7 @@ describe('section: WatchlistSection', () => {
         return found;
       });
 
-      expect(icons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
+      expect(ariaLabelsOf(icons)).toEqual([
         'Mark "The Batman" as watched',
         'Add or remove "The Batman" from lists',
       ]);
@@ -325,7 +326,7 @@ describe('section: WatchlistSection', () => {
         return found;
       });
 
-      expect(icons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
+      expect(ariaLabelsOf(icons)).toEqual([
         'Mark "Season 3 of Silo" as watched',
         'Add or remove "Season 3 of Silo" from lists',
       ]);

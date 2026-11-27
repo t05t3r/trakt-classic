@@ -1,7 +1,7 @@
 import * as m from '$lib/features/i18n/messages.ts';
 import type { MediaComment } from '$lib/requests/models/MediaComment.ts';
 import { countText } from '$lib/utils/formatting/number/countText.ts';
-import { toPercentage } from '$lib/utils/formatting/number/toPercentage.ts';
+import { toFlooredPercentage } from '$lib/utils/formatting/number/toFlooredPercentage.ts';
 
 type WatchedStatParams = {
   stats: MediaComment['user']['stats'];
@@ -28,10 +28,8 @@ function percentStat(
 ): WatchedStat | undefined {
   if (completedCount === 0) return undefined;
 
-  // Floored, as Classic reads 33 of 40 episodes as 82%, not 83%.
-  const percent = Math.floor((completedCount * 100) / aired);
   return {
-    figure: toPercentage(percent / 100),
+    figure: toFlooredPercentage({ value: completedCount, total: aired }),
     word: m.text_comment_watched(),
   };
 }

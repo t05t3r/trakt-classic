@@ -1,3 +1,4 @@
+import { currentUserWatchlistQuery } from '$lib/features/auth/queries/currentUserWatchlistQuery.ts';
 import { useUser } from '$lib/features/auth/stores/useUser.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import type { TargetMediaType } from '$lib/requests/models/TargetMediaType.ts';
@@ -8,6 +9,8 @@ import { map } from 'rxjs';
 import { toTargetKey } from '../_internal/toTargetKey.ts';
 import { useOptimisticWrite } from '../_internal/useOptimisticWrite.ts';
 import { useIsWatchlisted } from './_internal/useIsWatchlisted.ts';
+
+const READER_KEY = currentUserWatchlistQuery().queryKey;
 
 export type WatchlistStoreProps = {
   type: TargetMediaType;
@@ -20,8 +23,11 @@ export function useWatchlist({ type, id }: WatchlistStoreProps) {
     targetKey: toTargetKey(type, id),
   } as const;
   const body = toBulkPayload(type, [id]);
-  const invalidation = InvalidateAction.Watchlisted(type);
-  const { run } = useOptimisticWrite();
+  const write = useOptimisticWrite().bind({
+    keys: [key],
+    invalidation: InvalidateAction.Watchlisted(type),
+    keepUntil: [READER_KEY],
+  });
   const { isWatchlisted, isUpdating } = useIsWatchlisted({ type, id });
   const { watchlist } = useUser();
   const listedAt = watchlist.pipe(
@@ -29,19 +35,15 @@ export function useWatchlist({ type, id }: WatchlistStoreProps) {
   );
 
   const add = () =>
-    run({
-      keys: [key],
+    write({
       value: true,
       task: (params) => addToWatchlistRequest({ body, ...params }),
-      invalidation,
     });
 
   const remove = () =>
-    run({
-      keys: [key],
+    write({
       value: false,
       task: (params) => removeFromWatchlistRequest({ body, ...params }),
-      invalidation,
     });
 
   return { isWatchlisted, isUpdating, listedAt, add, remove };

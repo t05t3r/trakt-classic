@@ -1,4 +1,7 @@
+import { countStat } from '$test/beds/stats/countStat.ts';
+import { queryCountStat } from '$test/beds/stats/queryCountStat.ts';
 import { goto } from '$app/navigation';
+import { resolve } from '$app/paths';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { usePageParam } from '$lib/features/view-params/stores/usePageParam.ts';
 import { useViewParam } from '$lib/features/view-params/stores/useViewParam.ts';
@@ -15,8 +18,8 @@ import { MovieActivityHistoryResponseMock } from '$mocks/data/users/response/Mov
 import { SILO_PLAY_RESPONSE } from '$mocks/data/users/SILO_PLAY_RESPONSE.ts';
 import { USER_STATS_URL } from '$mocks/data/users/USER_STATS_URL.ts';
 import { server } from '$mocks/server.ts';
-import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
+import { renderFiltersPage } from '$test/beds/lists/renderFiltersPage.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
@@ -31,35 +34,19 @@ import { servePaged } from '$test/beds/request/servePaged.ts';
 import { watchedProgressRow } from '$test/beds/request/watchedProgressRow.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
-import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
 import { lastPush } from '$test/beds/url/lastPush.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
-import { openAt } from '$test/beds/url/openAt.ts';
+import { startNavigation } from '$test/beds/url/startNavigation.ts';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import HistoryPage from './HistoryPage.svelte';
 
-type RenderPageParams = { filters?: string; search?: string };
-
-async function renderPage(
-  { filters = '', search = '' }: RenderPageParams = {},
-) {
-  const path = filters === '' ? HISTORY_PATH : `${HISTORY_PATH}/${filters}`;
-  openAt(`${path}${search}`);
-  const { container, rerender, userLoaded } = renderComponent(HistoryPage, {
-    props: { filters },
-  });
-  await userLoaded;
-
-  return { container, rerender };
-}
+const renderPage = renderFiltersPage(HistoryPage, HISTORY_PATH);
 
 const cells = (container: HTMLElement) =>
   container.querySelectorAll('.trakt-poster-grid > li');
-
-const stat = (label: string) => screen.getByTitle(label);
 
 const serveItemCount = () =>
   servePaged({
@@ -75,7 +62,10 @@ const dividersToggle = () =>
   screen.getByRole('button', { name: 'Toggle Dividers' });
 
 const SILO_PROGRESS = [
-  watchedProgressRow(SILO_PLAY_RESPONSE.show, SILO_PLAY_RESPONSE.watched_at),
+  watchedProgressRow({
+    show: SILO_PLAY_RESPONSE.show,
+    lastWatchedAt: SILO_PLAY_RESPONSE.watched_at,
+  }),
 ];
 
 const serveTwoSiloPlays = () =>
@@ -207,11 +197,7 @@ describe('section: HistoryPage', () => {
         body: ActivityHistoryResponseMock,
         pageCount: 3,
       });
-      followReplaces(HISTORY_PATH);
-      const { userLoaded } = renderComponent(HistoryPage, {
-        props: { filters: '' },
-      });
-      await userLoaded;
+      await renderPage({ follows: true });
       const { replacePage } = await renderStore(() => usePageParam());
       await dayDivider();
       await replacePage(2);
@@ -235,7 +221,7 @@ describe('section: HistoryPage', () => {
       await read.requested;
 
       expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
-      expect(stat('Items')).toHaveTextContent(/^Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^Items$/);
       expect(screen.queryByText(EMPTY)).toBeNull();
       expect(cells(container)).toHaveLength(0);
     });
@@ -313,7 +299,7 @@ describe('section: HistoryPage', () => {
       await renderPage();
 
       await waitFor(() =>
-        expect(stat('Items')).toHaveTextContent(/^5,496 Items$/)
+        expect(countStat('Items')).toHaveTextContent(/^5,496 Items$/)
       );
     });
 
@@ -327,11 +313,11 @@ describe('section: HistoryPage', () => {
       await renderPage({ search });
 
       await waitFor(() =>
-        expect(stat('Items')).toHaveTextContent(/^729 Items$/)
+        expect(countStat('Items')).toHaveTextContent(/^729 Items$/)
       );
       await waitNegativeClaim();
 
-      expect(stat('Items')).toHaveTextContent(/^729 Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^729 Items$/);
     });
 
     it("should show the read's count when the stats fail", async () => {
@@ -340,11 +326,11 @@ describe('section: HistoryPage', () => {
       await renderPage();
 
       await waitFor(() =>
-        expect(stat('Items')).toHaveTextContent(/^729 Items$/)
+        expect(countStat('Items')).toHaveTextContent(/^729 Items$/)
       );
       await waitNegativeClaim();
 
-      expect(stat('Items')).toHaveTextContent(/^729 Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^729 Items$/);
     });
 
     it('should leave the items blank while the read loads, though the stats landed', async () => {
@@ -353,10 +339,10 @@ describe('section: HistoryPage', () => {
       await read.requested;
 
       await waitFor(() =>
-        expect(stat('Plays')).toHaveTextContent(/^6,100 Plays$/)
+        expect(countStat('Plays')).toHaveTextContent(/^6,100 Plays$/)
       );
 
-      expect(stat('Items')).toHaveTextContent(/^Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^Items$/);
     });
 
     it('should keep the pagination on the read, whatever the stats say', async () => {
@@ -370,7 +356,7 @@ describe('section: HistoryPage', () => {
       await renderPage({ search: '?page=2' });
 
       await waitFor(() =>
-        expect(stat('Items')).toHaveTextContent(/^5,496 Items$/)
+        expect(countStat('Items')).toHaveTextContent(/^5,496 Items$/)
       );
       expect(screen.getAllByRole('link', { name: '3' })).toHaveLength(2);
       expect(screen.queryByRole('link', { name: '4' })).toBeNull();
@@ -382,12 +368,12 @@ describe('section: HistoryPage', () => {
       await waitFor(() => expect(cells(container)).toHaveLength(2));
       await stats.requested;
 
-      expect(screen.queryByTitle('Plays')).toBeNull();
+      expect(queryCountStat('Plays')).toBeNull();
 
       stats.release();
 
       await waitFor(() =>
-        expect(stat('Plays')).toHaveTextContent(/^6,100 Plays$/)
+        expect(countStat('Plays')).toHaveTextContent(/^6,100 Plays$/)
       );
     });
 
@@ -397,7 +383,7 @@ describe('section: HistoryPage', () => {
       await waitFor(() => expect(cells(container)).toHaveLength(2));
       await waitNegativeClaim();
 
-      expect(screen.queryByTitle('Plays')).toBeNull();
+      expect(queryCountStat('Plays')).toBeNull();
     });
 
     it('should leave the plays out under a genre', async () => {
@@ -405,7 +391,7 @@ describe('section: HistoryPage', () => {
       await waitFor(() => expect(cells(container)).toHaveLength(2));
       await waitNegativeClaim();
 
-      expect(screen.queryByTitle('Plays')).toBeNull();
+      expect(queryCountStat('Plays')).toBeNull();
     });
   });
 
@@ -558,9 +544,9 @@ describe('section: HistoryPage', () => {
       servePaged({ url: SHOW_URL, body: [SILO_PLAY_RESPONSE], itemCount: 25 });
       await renderPage({ filters: 'episodes', search: `?show=${SHOW_ID}` });
 
-      await waitFor(() => expect(stat('Items')).toHaveTextContent('25'));
+      await waitFor(() => expect(countStat('Items')).toHaveTextContent('25'));
       await waitNegativeClaim();
-      expect(screen.queryByTitle('Plays')).toBeNull();
+      expect(queryCountStat('Plays')).toBeNull();
     });
 
     it('should say the generic line and nothing matches on an empty list', async () => {
@@ -646,17 +632,13 @@ describe('section: HistoryPage', () => {
         screen.queryByText('Silo', { selector: '.banner-name' });
 
       const renderFollowed = async () => {
-        followReplaces(`${HISTORY_PATH}/episodes`);
-        const { set } = await renderStore(() =>
-          useViewParam({ show: ITEM_ONLY })
-        );
-        await set({ show: String(SHOW_ID) });
-        const { userLoaded } = renderComponent(HistoryPage, {
-          props: { filters: 'episodes' },
+        const { setShow } = await renderPage({
+          filters: 'episodes',
+          follows: true,
+          show: SHOW_ID,
         });
-        await userLoaded;
 
-        return set;
+        return setShow;
       };
 
       it('should keep the title and image while the next page of its title loads', async () => {
@@ -689,11 +671,11 @@ describe('section: HistoryPage', () => {
         const OTHER_URL = `${HISTORY_SHOWS_URL.replace('*', '')}/13`;
         servePaged({ url: SHOW_URL, body: [SILO_PLAY_RESPONSE] });
         const other = holdRequest({ method: 'get', url: OTHER_URL });
-        const set = await renderFollowed();
+        const setShow = await renderFollowed();
         expect(await screen.findByText('Silo', { selector: '.banner-name' }))
           .toBeVisible();
 
-        await set({ show: '13' });
+        await setShow(13);
         await other.requested;
         await waitNegativeClaim();
 
@@ -724,9 +706,10 @@ describe('section: HistoryPage', () => {
 
       const clearButton = () =>
         screen.queryByRole('button', { name: 'Back to full history' });
+      const gear = () => screen.getByRole('button', { name: 'Options' });
 
       it.each(REMOVALS)(
-        'should hand the focus of the X to the type menu, where removal $removal',
+        'should hand the focus of the X to the phone gear, where removal $removal',
         async ({ emulate }) => {
           emulate();
           servePaged({ url: SHOW_URL, body: [SILO_PLAY_RESPONSE] });
@@ -737,18 +720,31 @@ describe('section: HistoryPage', () => {
           await userEvent.keyboard('{Enter}');
 
           await waitFor(() => expect(clearButton()).toBeNull());
-          await waitFor(() => expect(document.activeElement).toBe(typeMenu()));
+          await waitFor(() => expect(gear()).toHaveFocus());
         },
       );
 
+      it('should hand the focus of the X to the type menu where the gear is not displayed', async () => {
+        servePaged({ url: SHOW_URL, body: [SILO_PLAY_RESPONSE] });
+        await renderFollowed();
+        await screen.findByRole('button', { name: 'Back to full history' });
+        gear().hidden = true;
+
+        clearButton()?.focus();
+        await userEvent.keyboard('{Enter}');
+
+        await waitFor(() => expect(clearButton()).toBeNull());
+        await waitFor(() => expect(typeMenu()).toHaveFocus());
+      });
+
       it('should leave a focus that moved off the X where it is', async () => {
         servePaged({ url: SHOW_URL, body: [SILO_PLAY_RESPONSE] });
-        const set = await renderFollowed();
+        const setShow = await renderFollowed();
         await screen.findByRole('button', { name: 'Back to full history' });
         clearButton()?.focus();
         dividersToggle().focus();
 
-        await set({ show: null });
+        await setShow(null);
 
         await waitFor(() => expect(clearButton()).toBeNull());
         await waitNegativeClaim();
@@ -769,7 +765,7 @@ describe('section: HistoryPage', () => {
       const { container, rerender } = await renderPage();
       await waitFor(() => expect(cells(container)).toHaveLength(2));
       await waitFor(() =>
-        expect(stat('Plays')).toHaveTextContent(/^6,100 Plays$/)
+        expect(countStat('Plays')).toHaveTextContent(/^6,100 Plays$/)
       );
 
       await rerender({ filters: 'movies' });
@@ -777,16 +773,12 @@ describe('section: HistoryPage', () => {
       await waitFor(() => expect(cells(container)).toHaveLength(1));
       expect(screen.getByRole('button', { name: 'Type: Movies' }))
         .toBeInTheDocument();
-      expect(stat('Plays')).toHaveTextContent(/^900 Plays$/);
+      expect(countStat('Plays')).toHaveTextContent(/^900 Plays$/);
     });
 
     it('should read a new page when the URL changes it', async () => {
       const searches = recordSearches(HISTORY_URL, ActivityHistoryResponseMock);
-      followReplaces(HISTORY_PATH);
-      const { userLoaded } = renderComponent(HistoryPage, {
-        props: { filters: '' },
-      });
-      await userLoaded;
+      await renderPage({ follows: true });
       // page.url is shared, so a second instance's write moves the page's read.
       const { replacePage } = await renderStore(() => usePageParam());
       await waitFor(() => expect(searches).toHaveLength(1));
@@ -829,6 +821,26 @@ describe('section: HistoryPage', () => {
       await renderPage({ search: '?page=5' });
 
       await waitFor(() => expect(lastReplace()).toBe(`${HISTORY_PATH}?page=2`));
+    });
+
+    it('should replace a page of Shows past the last that a navigation reaches on a warm cache, once it lands, and show the cards', async () => {
+      servePaged({ url: WATCHED_PROGRESS_URL, body: SILO_PROGRESS });
+      const { container } = await renderPage({
+        filters: 'shows',
+        follows: true,
+      });
+      await waitFor(() => expect(cells(container)).toHaveLength(1));
+      const navigation = startNavigation('popstate');
+
+      // The URL moves while the navigation is in flight, as SvelteKit's does.
+      await goto(resolve(`${HISTORY_PATH}/shows?page=4`));
+      await waitNegativeClaim();
+      const beforeLanding = vi.mocked(goto).mock.calls.length;
+      navigation.land();
+
+      await waitFor(() => expect(cells(container)).toHaveLength(1));
+      expect(beforeLanding).toBe(1);
+      expect(lastReplace()).toBe(`${HISTORY_PATH}/shows`);
     });
   });
 });

@@ -1,5 +1,6 @@
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { WATCHLIST_PATH } from '$mocks/data/users/WATCHLIST_PATH.ts';
+import { controlledBy } from '$test/beds/dom/controlledBy.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
 import ListItemsSectionHost from '$test/beds/lists/ListItemsSectionHost.svelte';
 import { openMenuByTouch } from '$test/beds/menus/openMenuByTouch.ts';
@@ -9,16 +10,33 @@ import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { render, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const ENTRIES = [
   { id: 1, title: 'Heretic' },
   { id: 2, title: 'Silo' },
 ];
 
-const READY = { kind: 'ready', data: ENTRIES } as const;
-
 const DEVS = { id: 3, title: 'Devs' };
+
+const ready = <T>(data: ReadonlyArray<T>) => ({ kind: 'ready', data }) as const;
+
+const READY = ready(ENTRIES);
+
+const HERETIC = assertDefined(ENTRIES.at(0));
+
+const WITH_DEVS = ready([...ENTRIES, DEVS]);
+
+const SILO_REMOVED = ready([HERETIC, DEVS]);
+
+// Silo at a new revision, so its card is re-made in the cell that stays.
+const SILO_REMADE = ready([
+  HERETIC,
+  { ...assertDefined(ENTRIES.at(1)), revision: 1 },
+  DEVS,
+]);
+
+const card = (name: string) => screen.getByRole('button', { name });
 
 const gear = () => screen.getByRole('button', { name: 'Options' });
 const toolbar = () => screen.getByTestId('toolbar');
@@ -38,7 +56,7 @@ describe('section: ListItemsSection', () => {
       render(ListItemsSectionHost, { props: { status: READY } });
 
       expect(toolbar()).toHaveTextContent('Panel closed');
-      expect(gear()).toHaveAttribute('aria-controls', toolbar().id);
+      expect(controlledBy(gear())).toContainElement(toolbar());
       expect(gear()).toHaveAttribute('aria-expanded', 'false');
     });
 
@@ -189,6 +207,7 @@ describe('section: ListItemsSection', () => {
       const heading = screen.getByRole('heading', { level: 2 });
       expect(heading.querySelector('.trakt-pending-spinner')).not.toBeNull();
       expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+      expect(container.querySelector('.toolbar-spinner')).toBeNull();
       expect(container.querySelector('.trakt-poster-grid')).toBeNull();
     });
 
@@ -230,9 +249,6 @@ describe('section: ListItemsSection', () => {
   });
 
   describe('a card that leaves with the focus', () => {
-    const ready = (data: ReadonlyArray<typeof DEVS>) =>
-      ({ kind: 'ready', data }) as const;
-    const card = (name: string) => screen.getByRole('button', { name });
     const menuOf = (name: string) =>
       screen.queryByRole('menu', { name: `Menu ${name}` });
 
@@ -240,13 +256,13 @@ describe('section: ListItemsSection', () => {
       'should move the focus to the next card, where removal $removal',
       async ({ emulate }) => {
         const { rerender } = render(ListItemsSectionHost, {
-          props: { status: ready([...ENTRIES, DEVS]) },
+          props: { status: WITH_DEVS },
         });
         emulate();
 
         card('Silo').focus();
         await rerender({
-          status: ready([assertDefined(ENTRIES.at(0)), DEVS]),
+          status: SILO_REMOVED,
         });
 
         expect(card('Devs')).toHaveFocus();
@@ -257,7 +273,7 @@ describe('section: ListItemsSection', () => {
       'should move the focus to the previous card at the end, where removal $removal',
       async ({ emulate }) => {
         const { rerender } = render(ListItemsSectionHost, {
-          props: { status: ready([...ENTRIES, DEVS]) },
+          props: { status: WITH_DEVS },
         });
         emulate();
 
@@ -288,13 +304,13 @@ describe('section: ListItemsSection', () => {
       async ({ emulate }) => {
         stubClientRects();
         const { rerender } = render(ListItemsSectionHost, {
-          props: { status: ready([...ENTRIES, DEVS]) },
+          props: { status: WITH_DEVS },
         });
         await openMenuFromKeyboard(card('Silo'), 'Untick Silo');
         emulate();
 
         await rerender({
-          status: ready([assertDefined(ENTRIES.at(0)), DEVS]),
+          status: SILO_REMOVED,
         });
 
         await waitFor(() => expect(menuOf('Silo')).not.toBeInTheDocument());
@@ -307,13 +323,13 @@ describe('section: ListItemsSection', () => {
       async ({ emulate }) => {
         stubClientRects();
         const { rerender } = render(ListItemsSectionHost, {
-          props: { status: ready([...ENTRIES, DEVS]) },
+          props: { status: WITH_DEVS },
         });
         await openMenuByTouch(card('Silo'), 'Menu Silo');
         emulate();
 
         await rerender({
-          status: ready([assertDefined(ENTRIES.at(0)), DEVS]),
+          status: SILO_REMOVED,
         });
 
         await waitFor(() => expect(menuOf('Silo')).not.toBeInTheDocument());
@@ -324,14 +340,14 @@ describe('section: ListItemsSection', () => {
     it('should leave the focus where it was moved when a card with an open menu leaves', async () => {
       stubClientRects();
       const { rerender } = render(ListItemsSectionHost, {
-        props: { status: ready([...ENTRIES, DEVS]) },
+        props: { status: WITH_DEVS },
       });
       await openMenuFromKeyboard(card('Silo'), 'Untick Silo');
       const outside = screen.getByRole('button', { name: 'Outside' });
       outside.focus();
 
       await rerender({
-        status: ready([assertDefined(ENTRIES.at(0)), DEVS]),
+        status: SILO_REMOVED,
       });
       await waitFor(() => expect(menuOf('Silo')).not.toBeInTheDocument());
       await waitNegativeClaim();
@@ -438,13 +454,60 @@ describe('section: ListItemsSection', () => {
     });
   });
 
+  describe('a card that stays with the focus', () => {
+    it.each(REMOVALS)(
+      'should keep the focus on the card once its control is re-made, where removal $removal',
+      async ({ emulate }) => {
+        const { rerender } = render(ListItemsSectionHost, {
+          props: { status: WITH_DEVS },
+        });
+        emulate();
+        const before = card('Silo');
+
+        before.focus();
+        await rerender({ status: SILO_REMADE });
+
+        expect(card('Silo')).not.toBe(before);
+        expect(card('Silo')).toHaveFocus();
+      },
+    );
+
+    it('should keep the page where it was scrolled when the card keeps the focus', async () => {
+      const { rerender } = render(ListItemsSectionHost, {
+        props: { status: WITH_DEVS },
+      });
+      const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+      onTestFinished(() => void focus.mockRestore());
+
+      card('Silo').focus();
+      await rerender({ status: SILO_REMADE });
+
+      expect(card('Silo')).toHaveFocus();
+      expect(focus.mock.contexts.at(-1)).toBe(card('Silo'));
+      expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+    });
+
+    it('should hold the focus in the body when the re-made control of a card that stays cannot take it', async () => {
+      const { container, rerender } = render(ListItemsSectionHost, {
+        props: { status: WITH_DEVS },
+      });
+      const before = card('Silo');
+
+      before.focus();
+      assertDefined(before.closest('li')).style.display = 'none';
+      await rerender({ status: SILO_REMADE });
+
+      expect(container.querySelector('[aria-busy]')).toHaveFocus();
+    });
+  });
+
   describe('a grid snippet of several grids', () => {
     it.each(REMOVALS)(
       'should move the focus to the next card in the next grid, where removal $removal',
       async ({ emulate }) => {
         const { container, rerender } = render(ListItemsSectionHost, {
           props: {
-            status: { kind: 'ready', data: [...ENTRIES, DEVS] },
+            status: WITH_DEVS,
             isSplit: true,
           },
         });
@@ -453,13 +516,52 @@ describe('section: ListItemsSection', () => {
         expect(container.querySelectorAll('.trakt-poster-grid')).toHaveLength(
           2,
         );
-        screen.getByRole('button', { name: 'Silo' }).focus();
+        card('Silo').focus();
         await rerender({
-          status: { kind: 'ready', data: [assertDefined(ENTRIES.at(0)), DEVS] },
+          status: SILO_REMOVED,
           isSplit: true,
         });
 
-        expect(screen.getByRole('button', { name: 'Devs' })).toHaveFocus();
+        expect(card('Devs')).toHaveFocus();
+      },
+    );
+  });
+
+  describe('a grid snippet that names its own cells', () => {
+    const removeSilo = async (
+      { after, emulate }: {
+        after: ReadonlyArray<typeof DEVS>;
+        emulate: () => void;
+      },
+    ) => {
+      const { container, rerender } = render(ListItemsSectionHost, {
+        props: { status: ready([...ENTRIES, ...after]), isPlain: true },
+      });
+      emulate();
+
+      expect(container.querySelector('.trakt-poster-grid')).toBeNull();
+      card('Silo').focus();
+      await rerender({
+        status: ready([HERETIC, ...after]),
+        isPlain: true,
+      });
+    };
+
+    it.each(REMOVALS)(
+      'should move the focus to the next cell, where removal $removal',
+      async ({ emulate }) => {
+        await removeSilo({ after: [DEVS], emulate });
+
+        expect(card('Devs')).toHaveFocus();
+      },
+    );
+
+    it.each(REMOVALS)(
+      'should move the focus to the previous cell at the end, where removal $removal',
+      async ({ emulate }) => {
+        await removeSilo({ after: [], emulate });
+
+        expect(card('Heretic')).toHaveFocus();
       },
     );
   });
@@ -486,7 +588,7 @@ describe('section: ListItemsSection', () => {
       },
     ) => {
       const props = (data: ReadonlyArray<typeof onlyCard>) => ({
-        status: { kind: 'ready', data },
+        status: ready(data),
         isDivided: true,
       } as const);
       const { rerender } = render(ListItemsSectionHost, {
@@ -494,7 +596,7 @@ describe('section: ListItemsSection', () => {
       });
       emulate();
 
-      const devs = screen.getByRole('button', { name: 'Devs' });
+      const devs = card('Devs');
       expect(devs.closest('.trakt-poster-grid')?.querySelectorAll('li'))
         .toHaveLength(1);
       devs.focus();
@@ -506,7 +608,7 @@ describe('section: ListItemsSection', () => {
       async ({ emulate }) => {
         await removeOnlyCard({ after: nextDay, emulate });
 
-        expect(screen.getByRole('button', { name: 'Arcane' })).toHaveFocus();
+        expect(card('Arcane')).toHaveFocus();
       },
     );
 
@@ -515,7 +617,7 @@ describe('section: ListItemsSection', () => {
       async ({ emulate }) => {
         await removeOnlyCard({ after: [], emulate });
 
-        expect(screen.getByRole('button', { name: 'Silo' })).toHaveFocus();
+        expect(card('Silo')).toHaveFocus();
       },
     );
   });

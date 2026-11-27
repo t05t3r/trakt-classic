@@ -25,8 +25,8 @@ import { emulateFocusVisible } from '$test/beds/focus/emulateFocusVisible.ts';
 import { serveMoviePlays } from '$test/beds/media-actions/serveMoviePlays.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
-import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import SummaryRatingsHost from '$test/beds/summary/SummaryRatingsHost.svelte';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -289,8 +289,7 @@ describe('component: SummaryRatings', () => {
 
     it('should show the picked rating once the picker closes', async () => {
       stubClientRects();
-      const write = holdResponse(() => new HttpResponse(null, { status: 201 }));
-      server.use(http.post(SYNC_RATINGS_URL, write.answer));
+      const write = holdPost(SYNC_RATINGS_URL);
       renderRatings();
       await userEvent.click(await settledSlot(PROMPT));
 

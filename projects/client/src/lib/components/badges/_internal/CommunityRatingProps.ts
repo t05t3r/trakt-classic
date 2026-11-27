@@ -3,5 +3,6 @@ export type CommunityRatingProps = {
   votes?: number | Nil;
   earliestReleaseDate: Date;
   displayEarlyRatings: boolean;
-  variant?: 'default' | 'smaller' | 'summary';
+  // `inline` takes its container's type, as a pill's own text does.
+  variant?: 'default' | 'smaller' | 'summary' | 'inline';
 };

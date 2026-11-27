@@ -1,8 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { readHint } from '$lib/components/tooltip/hint.svelte.ts';
+import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import IconCheck from '@tabler/icons-svelte/icons/check';
 import { describe, expect, it, vi } from 'vitest';
 import ActionButtonHost from '$test/beds/buttons/ActionButtonHost.svelte';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import ActionButton from './ActionButton.svelte';
 
 function renderActionButton(
@@ -16,7 +19,7 @@ function renderActionButton(
   } = {},
 ) {
   const onclick = vi.fn();
-  const { container } = render(ActionButton, {
+  const { container } = renderComponent(ActionButton, {
     props: {
       color: 'watch',
       icon: IconCheck,
@@ -134,7 +137,6 @@ describe('component: ActionButton', () => {
       expect(onclick).not.toHaveBeenCalled();
       expect(mainButton()).toHaveFocus();
       expect(mainButton()).toHaveAttribute('aria-disabled', 'true');
-      expect(mainButton()).not.toHaveAttribute('title');
       expect(mainButton())
         .toHaveAccessibleName('Add to history, Not released yet');
       await waitFor(() =>
@@ -146,7 +148,7 @@ describe('component: ActionButton', () => {
     it('should carry no reason and no blocked look otherwise', () => {
       const { root } = renderActionButton({ selected: false, isInert: true });
 
-      expect(mainButton()).not.toHaveAttribute('title');
+      expect(readHint(mainButton())).toBeUndefined();
       expect(root).not.toHaveClass('is-blocked');
     });
   });
@@ -212,15 +214,13 @@ describe('component: ActionButton', () => {
   it('should lay its side icons beside the main button, not inside it', async () => {
     const onclick = vi.fn();
     const onside = vi.fn();
-    const { container } = render(ActionButtonHost, {
+    const { container } = renderComponent(ActionButtonHost, {
       props: { onclick, onside },
     });
 
     expect(container.querySelector('button button')).toBeNull();
     expect(
-      [...container.querySelectorAll('.action-button-side > button')].map((
-        button,
-      ) => button.getAttribute('aria-label')),
+      ariaLabelsOf(container.querySelectorAll('.action-button-side > button')),
     ).toEqual(['Add another play', 'Drop']);
 
     await userEvent.click(screen.getByRole('button', { name: 'Drop' }));

@@ -34,6 +34,11 @@ async function renderButton(search = '') {
 
 const openPopover = () => openDialogByClick(TRIGGER_NAME, 'Date Range');
 
+async function expectTooltip(text: string) {
+  await userEvent.hover(trigger());
+  await waitFor(() => expect(trigger()).toHaveAccessibleDescription(text));
+}
+
 async function closePopover() {
   await userEvent.keyboard('{Escape}');
   await waitFor(() => expect(dialog()).not.toBeInTheDocument());
@@ -61,8 +66,8 @@ describe('section: DateRangeButton', () => {
       await renderButton('?genres=drama&page=2');
 
       expect(trigger()).not.toHaveClass('is-selected');
-      expect(trigger()).toHaveAttribute('title', 'Date Range');
       expect(trigger()).toHaveAttribute('aria-label', 'Date Range');
+      await expectTooltip('Date Range');
     });
 
     it.each([
@@ -93,11 +98,11 @@ describe('section: DateRangeButton', () => {
 
         expect(trigger()).toHaveClass('is-selected');
         expect(trigger()).toHaveAttribute('data-selected-tint', 'accent');
-        expect(trigger()).toHaveAttribute('title', title);
         expect(trigger()).toHaveAttribute(
           'aria-label',
           `Date Range: ${title}`,
         );
+        await expectTooltip(title);
       },
     );
 
@@ -105,8 +110,8 @@ describe('section: DateRangeButton', () => {
       await renderButton('?start_at=2026-06-30&end_at=2026-06-07');
 
       expect(trigger()).not.toHaveClass('is-selected');
-      expect(trigger()).toHaveAttribute('title', 'Date Range');
       expect(trigger()).toHaveAttribute('aria-label', 'Date Range');
+      await expectTooltip('Date Range');
     });
   });
 
@@ -142,7 +147,8 @@ describe('section: DateRangeButton', () => {
 
       expect(startField()).toHaveValue('2026-03-07');
       expect(endField()).toHaveValue('2026-03-07');
-      expect(trigger()).toHaveAttribute('title', '7 Mar 2026 – 7 Mar 2026');
+      await closePopover();
+      await expectTooltip('7 Mar 2026 – 7 Mar 2026');
     });
 
     it('should show the new days when it opens after the range changed', async () => {

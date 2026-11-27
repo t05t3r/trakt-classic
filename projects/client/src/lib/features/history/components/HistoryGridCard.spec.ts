@@ -11,6 +11,7 @@ import { SHOW_PLAYS } from '$mocks/data/users/SHOW_PLAYS.ts';
 import { settledButton } from '$test/beds/buttons/settledButton.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
+import { dialogButtonLabels } from '$test/beds/dialogs/dialogButtonLabels.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
 import { blankCardLines } from '$test/beds/media-card/blankCardLines.ts';
 import { cardLines } from '$test/beds/media-card/cardLines.ts';
@@ -87,7 +88,7 @@ describe('component: HistoryGridCard', () => {
     it('should draw no ribbon on a movie card', async () => {
       const container = await renderCard(rowOf(MOVIE_PLAY));
 
-      expect(container.querySelector('.trakt-episode-type-ribbon'))
+      expect(container.querySelector('.trakt-art-ribbon'))
         .not.toBeInTheDocument();
     });
 
@@ -162,11 +163,7 @@ describe('component: HistoryGridCard', () => {
         const dialog = await screen.findByRole('dialog', {
           name: 'Remove from history?',
         });
-        expect(
-          within(dialog).getAllByRole('button').map((button) =>
-            button.textContent?.trim()
-          ),
-        ).toEqual(
+        expect(dialogButtonLabels(dialog)).toEqual(
           expect.arrayContaining(['Only this play', 'All plays', 'No']),
         );
         await answerDialog('Remove from history?', 'Only this play');
@@ -175,16 +172,19 @@ describe('component: HistoryGridCard', () => {
       },
     );
 
-    it('should read a show card selected and ask with the count, with no single-play choice', async () => {
+    it('should read a partly watched show card selected and ask Watch remaining, Remove all or Nothing, with no single-play choice', async () => {
       await renderCard(rowOf(SHOW_PLAYS));
 
       const watch = await settledButton('Remove "Silo" from your History');
       expect(watch).toHaveClass('is-selected');
       await userEvent.click(watch);
 
-      expect(
-        await screen.findByText('Remove the play of "Silo" from your history?'),
-      ).toBeVisible();
+      const dialog = await screen.findByRole('dialog', {
+        name: 'What would you like to do?',
+      });
+      expect(dialogButtonLabels(dialog)).toEqual(
+        expect.arrayContaining(['Watch remaining', 'Remove all', 'Nothing']),
+      );
       expect(screen.queryByRole('button', { name: 'Only this play' }))
         .toBeNull();
     });

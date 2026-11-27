@@ -1,4 +1,7 @@
-import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
+import type {
+  NeverEmptyStatus,
+  SectionStatus,
+} from '$lib/components/feedback/SectionStatus.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { userListItemIdsQuery } from '$lib/requests/queries/users/userListItemIdsQuery.ts';
 import { ITEMS_URL } from '$mocks/data/users/ITEMS_URL.ts';
@@ -23,10 +26,14 @@ import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http } from 'msw';
 import { filter, firstValueFrom, map, type Observable } from 'rxjs';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
 import { useQueryClient } from './_internal/queryClientContext.ts';
 import { useInvalidator } from './useInvalidator.ts';
-import { useSnapshot, useSnapshotStatus } from './useSnapshot.ts';
+import {
+  type SnapshotStatusOptions,
+  useSnapshot,
+  useSnapshotStatus,
+} from './useSnapshot.ts';
 
 const ACTION = InvalidateAction.ListedIn(LIST_ID);
 const QUERY_KEY = userListItemIdsQuery({ userId: 'me', listId: LIST_ID })
@@ -267,6 +274,54 @@ describe('useSnapshotStatus', () => {
     await nextOf(status, 'empty');
 
     expect(kinds).toEqual(['loading', 'empty']);
+  });
+
+  describe('with no isEmpty', () => {
+    function neverEmptyStore() {
+      return renderStore(() => ({
+        status: useSnapshotStatus(
+          userListItemIdsQuery({ userId: 'me', listId: LIST_ID }),
+          { select: idsOf },
+        ),
+      }));
+    }
+
+    it('should read every page as ready, though every page is empty', async () => {
+      serveOnePage([]);
+      const { status } = await neverEmptyStore();
+      const kinds = kindsOf(status);
+
+      expect(await nextOf(status, 'ready')).toEqual({
+        kind: 'ready',
+        data: [],
+      });
+      expect(kinds).toEqual(['loading', 'ready']);
+    });
+
+    it('should type its status with no empty kind', async () => {
+      serveOnePage([]);
+      const { status } = await neverEmptyStore();
+
+      expectTypeOf(status).toEqualTypeOf<
+        Observable<NeverEmptyStatus<ReadonlyArray<number>>>
+      >();
+    });
+  });
+
+  it('should type its status with an empty kind when its isEmpty may be undefined', async () => {
+    serveOnePage([]);
+    const snapshot: SnapshotStatusOptions<
+      { id: number },
+      ReadonlyArray<number>
+    > = { select: idsOf };
+    const { status } = await renderStore(() => ({
+      status: useSnapshotStatus(
+        userListItemIdsQuery({ userId: 'me', listId: LIST_ID }),
+        snapshot,
+      ),
+    }));
+
+    expectTypeOf(status).toEqualTypeOf<Observable<IdsStatus>>();
   });
 
   it('should read error when the first page fails, then ready once a retry lands', async () => {

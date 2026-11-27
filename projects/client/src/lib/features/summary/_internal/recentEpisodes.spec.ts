@@ -24,7 +24,12 @@ const seasonTwoEpisode = (number: number) =>
 
 const NEXT_EPISODE = assertDefined(ShowSiloProgressMappedMock.nextEpisode);
 
-const NOTHING_WATCHED = { completed: 0, nextEpisode: NEXT_EPISODE };
+const NOTHING_WATCHED = {
+  total: ShowSiloProgressMappedMock.total,
+  completed: 0,
+  nextEpisode: NEXT_EPISODE,
+  hiddenSeasons: [],
+};
 
 const COMPLETE = { ...ShowSiloProgressMappedMock, nextEpisode: null };
 
@@ -191,7 +196,11 @@ describe('recentEpisodes', () => {
       const reads = {
         ...SECOND_SEASON_READS,
         last: seasonTwoEpisode(1),
-        progress: { completed: 9, nextEpisode: episode(10) },
+        progress: {
+          ...ShowSiloProgressMappedMock,
+          completed: 9,
+          nextEpisode: episode(10),
+        },
       };
 
       expect(recentEpisodes(reads)).toEqual({
@@ -242,7 +251,11 @@ describe('recentEpisodes', () => {
 
   describe('when Up Next is a recently aired episode', () => {
     it('should take the two episodes before the last when Up Next is the last', () => {
-      const progress = { completed: 9, nextEpisode: episode(10) };
+      const progress = {
+        ...ShowSiloProgressMappedMock,
+        completed: 9,
+        nextEpisode: episode(10),
+      };
 
       expect(recentEpisodes({ ...READS, progress })).toEqual({
         upNext: episode(10),
@@ -251,7 +264,11 @@ describe('recentEpisodes', () => {
     });
 
     it('should take the last episode and the one before Up Next when Up Next is the one before the last', () => {
-      const progress = { completed: 8, nextEpisode: episode(9) };
+      const progress = {
+        ...ShowSiloProgressMappedMock,
+        completed: 8,
+        nextEpisode: episode(9),
+      };
 
       expect(recentEpisodes({ ...READS, progress })).toEqual({
         upNext: episode(9),

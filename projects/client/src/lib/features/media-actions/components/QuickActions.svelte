@@ -1,6 +1,6 @@
 <script lang="ts">
   import MessageWithBold from '$lib/components/text/MessageWithBold.svelte';
-  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import { useFavorite } from '$lib/features/media-actions/stores/useFavorite.ts';
   import { useWatched } from '$lib/features/media-actions/stores/useWatched.ts';
@@ -9,13 +9,10 @@
   import { toWatchedProps } from '$lib/features/media-actions/toWatchedProps.ts';
   import { toHumanPatternDate } from '$lib/utils/formatting/date/toHumanPatternDate.ts';
   import IconAlignLeft from '@tabler/icons-svelte/icons/align-left';
-  import IconCheck from '@tabler/icons-svelte/icons/check';
   import IconStarFilled from '@tabler/icons-svelte/icons/star-filled';
   import ListMenu from './ListMenu.svelte';
   import QuickIcon from './_internal/QuickIcon.svelte';
-  import { hasTargetAired } from './_internal/hasTargetAired.ts';
-  import { toWatchHover } from './_internal/toWatchHover.ts';
-  import WatchHover from './_internal/WatchHover.svelte';
+  import WatchIcon from './_internal/WatchIcon.svelte';
   import type {
     QuickActionsProps,
     QuickActionsTarget,
@@ -29,6 +26,7 @@
     playedAt,
     hasPlay,
     metadata,
+    status,
   }: QuickActionsProps = $props();
 
   // A new Target needs a new strip, so these stores serve the strip's whole life.
@@ -65,37 +63,10 @@
   const favoritedAt = favoriteStore?.favoritedAt;
 
   // A Play exists whatever the watched history reads, so its card never adds another;
-  // a partly watched show or season adds from its detail page only.
+  // a partly watched show or season adds its unwatched episodes through Watch remaining.
   const hasPlayRead = $derived(
     hasPlay || historyId !== undefined ? true : $hasPlayHeld,
   );
-  const isPlayed = $derived(hasPlayRead === true);
-  // Only a known absence of Plays blocks it: an unknown history may hold one.
-  const isUnreleased = $derived(
-    hasPlayRead === false && !hasTargetAired(target),
-  );
-  const watchHover = $derived(
-    toWatchHover({
-      target,
-      isPlayed: hasPlayRead,
-      playedAt,
-      plays: $plays,
-      watchedEpisodes: $watchedEpisodes,
-    }),
-  );
-  const watchLabel = $derived.by(() => {
-    if (isPlayed) return m.button_label_remove_from_watched({ title: target.title });
-
-    const action = m.button_label_mark_as_watched({ title: target.title });
-
-    // A touch screen reader never gets the tooltip, so the name holds its reason.
-    return isUnreleased
-      ? m.button_label_blocked_action({
-        action,
-        reason: m.tooltip_text_not_released_yet(),
-      })
-      : action;
-  });
   // The favourite's Target is the card's show for an episode or a season, as `hasShowPlay` reads.
   const favoriteGate = $derived(
     toPlayGate({ isSet: $isFavorite, hasPlay: $hasShowPlay }),
@@ -131,90 +102,75 @@
       : action;
   });
 
-  const toggleWatched = () => {
-    if (historyId !== undefined) return watched.removePlay(historyId);
-
-    return isPlayed ? watched.remove() : watched.add();
-  };
+  const removeWatched = () =>
+    historyId !== undefined
+      ? watched.removePlay(historyId)
+      : watched.removeOrWatchRemaining();
   const toggleFavorite = () =>
     $isFavorite ? favoriteStore?.remove() : favoriteStore?.add();
 </script>
 
+{#snippet listContent()}
+  <p><MessageWithBold message={listHover} /></p>
+{/snippet}
+
+{#snippet favoriteContent()}
+  <p><MessageWithBold message={favoriteHover} /></p>
+{/snippet}
+
 <div class="trakt-quick-actions" data-size={size}>
-  <div class="actions">
-    <!-- Always rendered, so a remove that leaves it blocked keeps the focus. The tooltip opens over the card's title, whose click it must not take. -->
-    <Tooltip
-      side="bottom"
-      disabled={watchHover === undefined}
-      disableHoverableContent
-      keepOpenOnPress={isUnreleased}
-      triggerProps={{ onclick: toggleWatched }}
-    >
-      {#snippet trigger({ props })}
-        <QuickIcon
-          {...props}
-          action="watch"
-          icon={IconCheck}
-          label={watchLabel}
-          isSelected={isPlayed}
-          isPending={$isWatchUpdating}
-          isInert={!$isWatchedKnown || $isWatchUpdating}
-          isBlocked={isUnreleased}
-        />
-      {/snippet}
-      {#snippet content()}
-        {#if watchHover}
-          <WatchHover hover={watchHover} />
-        {/if}
-      {/snippet}
-    </Tooltip>
-    <ListMenu type={target.type} id={target.id}>
-      {#snippet trigger({ props: menuProps })}
-        <Tooltip
-          side="bottom"
-          disableHoverableContent
-          triggerProps={menuProps}
-        >
-          {#snippet trigger({ props })}
-            <QuickIcon
-              {...props}
-              action="list"
-              icon={IconAlignLeft}
-              label={m.dropdown_label_add_remove_from_lists({ title: target.title })}
-              isSelected={$isWatchlisted === true}
-            />
-          {/snippet}
-          {#snippet content()}
-            <p><MessageWithBold message={listHover} /></p>
-          {/snippet}
-        </Tooltip>
-      {/snippet}
-    </ListMenu>
-    {#if isFavorite}
-      <Tooltip
-        side="bottom"
-        disabled={favoriteGate === 'unknown'}
-        disableHoverableContent
-        keepOpenOnPress={favoriteGate === 'blocked'}
-        triggerProps={{ onclick: toggleFavorite }}
-      >
+  {#if status}
+    <div class="status">{@render status()}</div>
+  {:else}
+    <div class="actions">
+      <WatchIcon
+        {target}
+        isPlayed={hasPlayRead}
+        isKnown={$isWatchedKnown}
+        isUpdating={$isWatchUpdating}
+        {playedAt}
+        plays={$plays}
+        watchedEpisodes={$watchedEpisodes}
+        onadd={watched.add}
+        onremove={removeWatched}
+      />
+      <ListMenu type={target.type} id={target.id}>
         {#snippet trigger({ props })}
           <QuickIcon
             {...props}
-            action="favorite"
-            icon={IconStarFilled}
-            label={favoriteLabel}
-            isSelected={$isFavorite === true}
-            isInert={favoriteGate === 'unknown'}
-            isBlocked={favoriteGate === 'blocked'}
+            action="list"
+            icon={IconAlignLeft}
+            label={m.dropdown_label_add_remove_from_lists({ title: target.title })}
+            isSelected={$isWatchlisted === true}
+            {@attach hint(() => ({
+              content: listContent,
+              side: 'bottom',
+              isPassThrough: true,
+            }))}
           />
         {/snippet}
-        {#snippet content()}
-          <p><MessageWithBold message={favoriteHover} /></p>
-        {/snippet}
-      </Tooltip>
-    {/if}
-  </div>
+      </ListMenu>
+      {#if isFavorite}
+        <QuickIcon
+          action="favorite"
+          icon={IconStarFilled}
+          label={favoriteLabel}
+          isSelected={$isFavorite === true}
+          isInert={favoriteGate === 'unknown'}
+          isBlocked={favoriteGate === 'blocked'}
+          onclick={toggleFavorite}
+          {@attach hint(() =>
+            favoriteGate === 'unknown' ? undefined : {
+              content: favoriteContent,
+              side: 'bottom',
+              isPassThrough: true,
+              keepOpenOnPress: favoriteGate === 'blocked',
+            }
+          )}
+        />
+      {/if}
+    </div>
+  {/if}
   {#if metadata}
     <div class="metadata">{@render metadata(hasPlayRead)}</div>
   {/if}
@@ -244,13 +200,23 @@
       display: flex;
     }
 
+    .status {
+      padding-inline-start: var(--ni-10);
+    }
+
     .metadata {
       margin-inline-start: auto;
       padding-inline-end: var(--ni-10);
     }
 
-    &[data-size='smaller'] .metadata {
-      padding-inline-end: var(--ni-5);
+    &[data-size='smaller'] {
+      .status {
+        padding-inline-start: var(--ni-5);
+      }
+
+      .metadata {
+        padding-inline-end: var(--ni-5);
+      }
     }
   }
 </style>

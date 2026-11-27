@@ -71,7 +71,7 @@
       <div class="genre-percentage">{toPercentage(genre.share)}</div>
       <div class="genre-label">
         <div class="genre-name">{genre.name}</div>
-        <div class="genre-counts">
+        <div class="genre-counts no-wrap">
           {#each countLinks(genre) as count, position (count.unit)}
             {#if position > 0}
               <span class="genre-count-separator">
@@ -160,7 +160,6 @@
     .genre-counts {
       color: var(--color-genre-count);
       font-size: var(--font-size-label);
-      white-space: nowrap;
       transition: color var(--transition-default);
     }
 

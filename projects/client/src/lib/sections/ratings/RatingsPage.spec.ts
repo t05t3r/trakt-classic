@@ -1,11 +1,13 @@
+import { countStat } from '$test/beds/stats/countStat.ts';
 import { usePageParam } from '$lib/features/view-params/stores/usePageParam.ts';
 import { useDividers } from '$lib/stores/useDividers.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { RATINGS_PATH } from '$mocks/data/users/RATINGS_PATH.ts';
 import { UserRatingsResponseMock } from '$mocks/data/users/response/UserRatingsResponseMock.ts';
 import { USER_RATINGS_URL } from '$mocks/data/users/USER_RATINGS_URL.ts';
-import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { controlledBy } from '$test/beds/dom/controlledBy.ts';
+import { renderFiltersPage } from '$test/beds/lists/renderFiltersPage.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
@@ -16,40 +18,16 @@ import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
-import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
-import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import RatingsPage from './RatingsPage.svelte';
 
-type RenderPageParams =
-  | { filters?: string; search?: string; follows?: never }
-  // page.url then follows each replace the page makes.
-  | { filters?: never; search?: never; follows: true };
-
-async function renderPage(
-  { filters = '', search = '', follows }: RenderPageParams = {},
-) {
-  if (follows) {
-    followReplaces(RATINGS_PATH);
-  } else {
-    const path = filters === '' ? RATINGS_PATH : `${RATINGS_PATH}/${filters}`;
-    openAt(`${path}${search}`);
-  }
-  const { container, rerender, userLoaded } = renderComponent(RatingsPage, {
-    props: { filters },
-  });
-  await userLoaded;
-
-  return { container, rerender };
-}
+const renderPage = renderFiltersPage(RatingsPage, RATINGS_PATH);
 
 const cells = (container: HTMLElement) =>
   container.querySelectorAll('.trakt-poster-grid > li');
-
-const stat = (label: string) => screen.getByTitle(label);
 
 const dayDivider = () =>
   screen.findByRole('button', { name: /^Thursday 16 January 2025/ });
@@ -94,6 +72,44 @@ describe('section: RatingsPage', () => {
 
       expect(await screen.findAllByRole('navigation', { name: /^Pagination/ }))
         .toHaveLength(2);
+    });
+  });
+
+  describe('card art', () => {
+    const cardArt = (container: HTMLElement) =>
+      [...container.querySelectorAll('.trakt-poster-card .trakt-lazy-image')]
+        .map((image) => image.getAttribute('data-kind'));
+
+    const grid = (container: HTMLElement) =>
+      assertDefined(
+        container.querySelector<HTMLElement>('.trakt-poster-grid'),
+        'RatingsPage drew no poster grid',
+      );
+
+    it('should draw wide cards in 4, 3, 2 and 1 columns on Episodes, with no phone divider', async () => {
+      const { container } = await renderPage({ filters: 'episodes/all' });
+
+      await screen.findByRole('img', { name: 'Silo 1x01 screenshot' });
+
+      expect(cardArt(container)).toEqual(['fanart']);
+      expect(grid(container)).toHaveAttribute('data-phone-divider', 'none');
+      expect(
+        [
+          '--poster-grid-columns-desktop',
+          '--poster-grid-columns-tablet-lg',
+          '--poster-grid-columns-tablet-sm',
+          '--poster-grid-columns-mobile',
+        ].map((column) => grid(container).style.getPropertyValue(column)),
+      ).toEqual(['4', '3', '2', '1']);
+    });
+
+    it('should keep posters on the mixed view', async () => {
+      const { container } = await renderPage();
+
+      await waitFor(() => expect(cells(container)).toHaveLength(4));
+
+      expect(new Set(cardArt(container))).toEqual(new Set(['poster']));
+      expect(grid(container)).not.toHaveAttribute('data-phone-divider', 'none');
     });
   });
 
@@ -161,7 +177,7 @@ describe('section: RatingsPage', () => {
       await read.requested;
 
       expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
-      expect(stat('Items')).toHaveTextContent(/^Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^Items$/);
       expect(screen.queryByText(EMPTY)).toBeNull();
       expect(cells(container)).toHaveLength(0);
     });
@@ -229,7 +245,7 @@ describe('section: RatingsPage', () => {
       await renderPage();
 
       await waitFor(() =>
-        expect(stat('Items')).toHaveTextContent(/^641 Items$/)
+        expect(countStat('Items')).toHaveTextContent(/^641 Items$/)
       );
     });
   });
@@ -295,18 +311,17 @@ describe('section: RatingsPage', () => {
   });
 
   describe('the phone panel', () => {
-    it('should open the rating and sort menus from the gear in the toolbar', async () => {
+    it('should open the type and rating menus from the gear in the toolbar', async () => {
       const { container } = await renderPage();
 
       await userEvent.click(gear());
 
       const panel = assertDefined(controlledBy(gear()));
       expect(panel).toHaveClass('is-open');
-      expect(
-        within(panel).getAllByRole('button').map((found) =>
-          found.getAttribute('aria-label')
-        ),
-      ).toEqual(['Rating: All Ratings', 'Sort by: Rated Date']);
+      expect(ariaLabelsOf(within(panel).getAllByRole('button'))).toEqual([
+        'Type: All Types',
+        'Rating: All Ratings',
+      ]);
       expect(container.querySelector('.trakt-subnav-toolbar'))
         .toContainElement(gear());
     });
@@ -322,15 +337,15 @@ describe('section: RatingsPage', () => {
       expect(controlledBy(gear())).not.toHaveClass('is-open');
     });
 
-    it('should stay open on a pick of the checked rating row', async () => {
+    it('should close on a pick of the checked rating row, handing the focus to the gear', async () => {
       await renderPage();
       await userEvent.click(gear());
       await openMenuByClick('Rating: All Ratings', 'Rating');
 
       await pickMenuRadio('All Ratings');
-      await waitNegativeClaim();
 
-      expect(controlledBy(gear())).toHaveClass('is-open');
+      await waitFor(() => expect(gear()).toHaveFocus());
+      expect(controlledBy(gear())).not.toHaveClass('is-open');
     });
 
     it('should stay open when the eye writes', async () => {

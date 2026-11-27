@@ -321,7 +321,7 @@
       }
     }
 
-    // A button sets its own font and colour, so it takes the subtitle's muted text.
+    // A button sets its own colour, so it takes the subtitle's muted text.
     .recommendations-hide {
       display: inline-flex;
       align-items: center;
@@ -330,7 +330,6 @@
       border: none;
       background: none;
       color: inherit;
-      font: inherit;
       cursor: pointer;
 
       :global(.recommendations-hide-glyph) {

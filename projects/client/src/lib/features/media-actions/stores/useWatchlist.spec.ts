@@ -1,4 +1,6 @@
+import { currentUserWatchlistQuery } from '$lib/features/auth/queries/currentUserWatchlistQuery.ts';
 import { useUser } from '$lib/features/auth/stores/useUser.ts';
+import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { ShowDevsResponseMock } from '$mocks/data/summary/shows/devs/ShowDevsResponseMock.ts';
 import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
 import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
@@ -10,6 +12,7 @@ import { SYNC_WATCHLIST_URL } from '$mocks/data/sync/SYNC_WATCHLIST_URL.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
 import { server } from '$mocks/server.ts';
 import { createRenderBound } from '$test/beds/media-actions/createRenderBound.ts';
+import { describeKeptWrite } from '$test/beds/media-actions/describeKeptWrite.ts';
 import { listedAtOf } from '$test/beds/media-actions/listedAtOf.ts';
 import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
@@ -287,5 +290,18 @@ describe('store: useWatchlist', () => {
       expect(await firstValueFrom(matrix.isWatchlisted)).toBe(true);
       expect(await firstValueFrom(devs.isWatchlisted)).toBe(false);
     });
+  });
+
+  describeKeptWrite({
+    name: 'an addition whose refetch fails',
+    store: () => {
+      const { isWatchlisted, isUpdating, add, remove } = useWatchlist(DEVS);
+      return { value: isWatchlisted, isUpdating, write: add, rewrite: remove };
+    },
+    reader: currentUserWatchlistQuery().queryKey,
+    refetchUrl: WATCHLIST_URL,
+    invalidation: InvalidateAction.Watchlisted('show'),
+    rewriteUrl: SYNC_WATCHLIST_REMOVE_URL,
+    values: { before: false, written: true, rewritten: false },
   });
 });

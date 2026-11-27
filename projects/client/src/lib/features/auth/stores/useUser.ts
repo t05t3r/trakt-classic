@@ -1,14 +1,17 @@
-import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
+import type { DroppedProgressEntry } from '$lib/requests/models/ProgressEntry.ts';
 import { blockedUsersQuery } from '$lib/requests/queries/users/blockedUsersQuery.ts';
-import { droppedShowsQuery } from '$lib/requests/queries/users/droppedShowsQuery.ts';
 import { map } from 'rxjs';
 import { getContext, setContext } from 'svelte';
 import { useQuery } from '$lib/features/query/useQuery.ts';
-import { useSnapshot } from '$lib/features/query/useSnapshot.ts';
+import {
+  useSnapshot,
+  useSnapshotStatus,
+} from '$lib/features/query/useSnapshot.ts';
 import {
   currentUserCommentReactionsQuery,
   type UserReactions,
 } from '../queries/currentUserCommentReactionsQuery.ts';
+import { currentUserDroppedQuery } from '../queries/currentUserDroppedQuery.ts';
 import { currentUserFavoritesQuery } from '../queries/currentUserFavoritesQuery.ts';
 import {
   currentUserLikesQuery,
@@ -43,6 +46,14 @@ type UserWatchlist = {
 };
 export type UserDropped = Readonly<{ shows: ListedDates }>;
 
+function toDroppedSnapshot(
+  entries: ReadonlyArray<DroppedProgressEntry>,
+): UserDropped {
+  return {
+    shows: new Map(entries.map((entry) => [entry.show.id, entry.hiddenAt])),
+  };
+}
+
 function toWatchlistSnapshot(
   entries: ReadonlyArray<WatchlistedTarget>,
 ): UserWatchlist {
@@ -73,6 +84,7 @@ function createUseUserInstance() {
   const rewatchingQuerySignal = useQuery(currentUserRewatchingQuery());
   const blockedQuerySignal = useQuery(blockedUsersQuery());
   const { history, historyStatus } = useCurrentUserHistory();
+  const droppedQuery = currentUserDroppedQuery();
 
   return {
     user: userQuerySignal,
@@ -88,13 +100,13 @@ function createUseUserInstance() {
       select: toWatchlistSnapshot,
       whileUnsettled: 'hold',
     }),
-    dropped: useSnapshot(droppedShowsQuery({ limit: MAX_PAGE_LIMIT }), {
-      select: (entries): UserDropped => ({
-        shows: new Map(
-          entries.map((entry) => [entry.show.id, entry.hiddenAt]),
-        ),
-      }),
+    dropped: useSnapshot(droppedQuery, {
+      select: toDroppedSnapshot,
       whileUnsettled: 'hold',
+    }),
+    // Never empty: no dropped shows is a known list like any other.
+    droppedStatus: useSnapshotStatus(droppedQuery, {
+      select: toDroppedSnapshot,
     }),
     network: networkQuerySignal.pipe(
       map((query): UserNetwork | undefined => query.data),

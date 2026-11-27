@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import MenuRow from '$lib/components/menus/MenuRow.svelte';
   import { useUser } from '$lib/features/auth/stores/useUser.ts';
   import LazyImage from '$lib/features/image/components/LazyImage.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
@@ -35,7 +36,10 @@
         >
           <LazyImage src={$profile?.avatar.url} alt="" kind="avatar" />
         </span>
-        <IconChevronDown class="profile-chevron" aria-hidden="true" />
+        <IconChevronDown
+          class="profile-chevron trakt-icon-expander"
+          aria-hidden="true"
+        />
       </span>
     {/snippet}
 
@@ -47,7 +51,9 @@
         action={resolve(UrlBuilder.auth.logout())}
         data-sveltekit-reload
       >
-        <button type="submit" {...row}>{m.button_text_sign_out()}</button>
+        <button type="submit" {...row}>
+          <MenuRow variant="nav">{m.button_text_sign_out()}</MenuRow>
+        </button>
       </form>
     {/snippet}
   </NavMenu>
@@ -67,7 +73,8 @@
       min-width: var(--ni-130);
       height: var(--ni-42);
       padding-block: var(--ni-6);
-      padding-inline: var(--ni-16);
+      // Its menu's rows start at the same inset.
+      padding-inline: var(--menu-padding-inline);
       box-sizing: border-box;
       border-start-start-radius: var(--border-radius-l);
       border-start-end-radius: var(--border-radius-l);

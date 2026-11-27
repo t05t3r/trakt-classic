@@ -37,15 +37,22 @@ const LOADING: SectionStatus<RecentEpisodes> = { kind: 'loading' };
 const isEmpty = ({ upNext, recentlyAired }: RecentEpisodes) =>
   upNext === null && recentlyAired.length === 0;
 
-// Up Next's season number; null when progress does not read nothing watched or no season has episodes,
-// undefined while the seasons read is unsettled.
+// Up Next's season number, of the seasons the progress does not hide; null when progress does not read
+// nothing watched, hides every season or no such season has episodes, undefined while the seasons read is unsettled.
 function upNextSeason(
   { progress, seasons }: Pick<Reads, 'progress' | 'seasons'>,
 ): number | null | undefined {
-  if (progress.result.data?.completed !== 0) return null;
+  const { data } = progress.result;
+  if (data?.completed !== 0) return null;
+  if (data.total === 0 && data.hiddenSeasons.length > 0) return null;
   if (isUnsettled(seasons.result)) return undefined;
 
-  return firstSeasonNumber(seasons.result.data ?? []) ?? null;
+  const hidden = new Set(data.hiddenSeasons.map(({ number }) => number));
+  const shown = (seasons.result.data ?? []).filter(({ number }) =>
+    !hidden.has(number)
+  );
+
+  return firstSeasonNumber(shown) ?? null;
 }
 
 // The season that fills the row when the last episode's season may hold too few cards;

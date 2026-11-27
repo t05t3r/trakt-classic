@@ -1,5 +1,7 @@
 import { glyphSnippet } from '$test/beds/buttons/glyphSnippet.ts';
-import { render, screen } from '@testing-library/svelte';
+import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import IconToggle from './IconToggle.svelte';
@@ -19,10 +21,26 @@ describe('component: IconToggle', () => {
       'type',
       'button',
     );
-    expect(screen.getByRole('button', { name: 'Direction' })).toHaveAttribute(
-      'title',
-      'Direction',
+  });
+
+  it('should show its label in a tooltip on a hover', async () => {
+    stubClientRects();
+    renderComponent(IconToggle, {
+      props: {
+        label: 'Direction',
+        pressed: false,
+        onToggle: vi.fn(),
+        children: glyphSnippet,
+      },
+    });
+    const toggle = screen.getByRole('button', { name: 'Direction' });
+
+    await userEvent.hover(toggle);
+
+    await waitFor(() =>
+      expect(toggle).toHaveAccessibleDescription('Direction')
     );
+    expect(toggle).not.toHaveAttribute('title');
   });
 
   it.each([true, false])(

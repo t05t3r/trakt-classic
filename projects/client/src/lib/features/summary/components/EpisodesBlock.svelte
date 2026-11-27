@@ -4,9 +4,11 @@
   import { hasEpisodeTypeTag } from '$lib/components/badges/hasEpisodeTypeTag.ts';
   import type { PosterGridColumns } from '$lib/components/media/PosterGridProps.ts';
   import ClampedText from '$lib/components/text/ClampedText.svelte';
+  import CountTitle from '$lib/components/text/CountTitle.svelte';
   import { useUser } from '$lib/features/auth/stores/useUser.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import { findWatchedEpisode } from '$lib/features/media-actions/findWatchedEpisode.ts';
+  import EpisodeFanartCard from '$lib/features/media-card/components/EpisodeFanartCard.svelte';
   import type { EpisodeEntry } from '$lib/requests/models/EpisodeEntry.ts';
   import { isKnownDate } from '$lib/utils/date/isKnownDate.ts';
   import { toHumanMinutes } from '$lib/utils/formatting/date/toHumanMinutes.ts';
@@ -16,8 +18,6 @@
   import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
   import { EPISODES_SORT } from '../_internal/EPISODES_SORT.ts';
   import { sortEpisodes } from '../_internal/sortEpisodes.ts';
-  import CountTitle from './_internal/CountTitle.svelte';
-  import EpisodeFanartCard from './_internal/EpisodeFanartCard.svelte';
   import type { EpisodesBlockProps } from './_internal/EpisodesBlockProps.ts';
   import SortableBlock from './_internal/SortableBlock.svelte';
 
@@ -141,11 +141,9 @@
     .episode-card {
       --grid-column-span-tablet: var(--episode-card-column-span-tablet);
       --grid-column-span-desktop: var(--episode-card-column-span-desktop);
-
-      @include for-mobile {
-        padding-inline: var(--ni-0);
-      }
     }
+
+    @include phone-gutterless-cells('.episode-card');
 
     .under-info {
       --grid-column-span-tablet: var(--episode-info-column-span-tablet);

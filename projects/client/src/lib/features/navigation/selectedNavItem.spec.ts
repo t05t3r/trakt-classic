@@ -87,4 +87,27 @@ describe('selectedNavItem', () => {
 
     expect(selected).toBe('lists');
   });
+
+  it.each([
+    '/users/tequila_sunset/lists/watched',
+    '/users/me/lists/watched',
+  ])("should select the signed-in user's item on %s", (pathname) => {
+    const items: ReadonlyArray<NavItem<'history' | 'lists'>> = [
+      {
+        key: 'history',
+        route: '/users/me/history',
+        match: '/users/me/history',
+        label: () => '',
+      },
+      {
+        key: 'lists',
+        route: '/users/me/lists',
+        match: '/users/me/lists',
+        label: () => '',
+      },
+    ];
+
+    expect(selectedNavItem({ pathname, hasError: false, items }))
+      .toBe('lists');
+  });
 });

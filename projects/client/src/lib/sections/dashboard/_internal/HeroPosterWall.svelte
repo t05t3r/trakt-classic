@@ -1,16 +1,16 @@
 <script lang="ts">
   import PosterWall from '$lib/components/media/PosterWall.svelte';
+  import { useUpNext } from '$lib/features/dashboard/stores/useUpNext.ts';
   import { useQuery } from '$lib/features/query/useQuery.ts';
-  import { upNextQuery } from '$lib/requests/queries/sync/upNextQuery.ts';
   import { watchlistPreviewQuery } from '$lib/requests/queries/sync/watchlistPreviewQuery.ts';
   import { toHeroPosters } from './toHeroPosters.ts';
 
-  const upNext = useQuery(upNextQuery());
+  const upNext = useUpNext();
   const watchlist = useQuery(watchlistPreviewQuery());
 
   const posters = $derived(
     toHeroPosters({
-      upNext: $upNext.data ?? [],
+      upNext: $upNext.kind === 'ready' ? $upNext.data : [],
       watchlist: $watchlist.data?.entries ?? [],
     }),
   );

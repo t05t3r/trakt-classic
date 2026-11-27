@@ -27,6 +27,12 @@ describe('component: WatchHover', () => {
     expect(screen.getByText('4 Nov 2026').tagName).toBe('B');
   });
 
+  it("should draw its second line as the tooltip's detail line", () => {
+    lines({ kind: 'plays', count: 3, minutes: 159 });
+
+    expect(screen.getByText('2h 39m')).toHaveClass('trakt-tooltip-detail');
+  });
+
   it('should read the plays and their time', () => {
     expect(lines({ kind: 'plays', count: 3, minutes: 159 }))
       .toEqual(['3 plays', '2h 39m']);
@@ -51,11 +57,11 @@ describe('component: WatchHover', () => {
         percent: 83,
         completed: 25,
         total: 30,
-        counts: '25/30 eps — 25 plays',
+        counts: '25 / 30 eps — 25 plays',
       },
     });
 
-    expect(shown).toEqual(['83% watched', '25/30 eps — 25 plays']);
+    expect(shown).toEqual(['83% watched', '25 / 30 eps — 25 plays']);
     expect(screen.getByText('83%').tagName).toBe('B');
     expect(
       screen.getByRole('progressbar', { name: '83% watched', hidden: true }),

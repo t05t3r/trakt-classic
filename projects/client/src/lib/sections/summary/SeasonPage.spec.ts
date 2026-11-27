@@ -14,6 +14,7 @@ import { ShowSiloPeopleMappedMock } from '$mocks/data/summary/shows/silo/mapped/
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
+import { ratingCornerNames } from '$test/beds/summary/ratingCornerNames.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { server } from '$mocks/server.ts';
 import { SILO_SEASONS_URL } from '$mocks/data/shows/SILO_SEASONS_URL.ts';
@@ -31,9 +32,7 @@ const setLayout = fakeLayouts({
 
 // The episode rows' fanart cards carry corners of their own.
 const posterCornerNames = () =>
-  screen.queryAllByRole('img', { name: /^Your rating/ })
-    .filter((corner) => !corner.closest('.trakt-fanart-card'))
-    .map((corner) => corner.getAttribute('aria-label'));
+  ratingCornerNames((corner) => !corner.closest('.trakt-fanart-card'));
 
 const historyButton = () =>
   screen.findByRole('button', { name: /^100% watched/ });
@@ -255,7 +254,7 @@ describe('component: SeasonPage', () => {
       renderPage();
 
       expect(await historyButton()).toHaveTextContent(
-        '10/10 eps — 1 play',
+        '10 / 10 eps — 1 play',
       );
     });
 
@@ -302,12 +301,14 @@ describe('component: SeasonPage', () => {
     it("should show the viewer's season rating in both poster corners", async () => {
       renderPage();
 
-      await waitFor(() =>
+      // Waits for episode 1x01's corner too, so the filter has a corner to drop.
+      await waitFor(() => {
+        expect(ratingCornerNames()).toContain('Your rating: 10');
         expect(posterCornerNames()).toEqual([
           'Your rating: 8',
           'Your rating: 8',
-        ])
-      );
+        ]);
+      });
     });
   });
 

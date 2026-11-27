@@ -1,13 +1,11 @@
 <script lang="ts" generics="T, K extends string">
-  import SortDirectionToggle from '$lib/components/buttons/SortDirectionToggle.svelte';
   import SectionState from '$lib/components/feedback/SectionState.svelte';
   import PosterGrid from '$lib/components/media/PosterGrid.svelte';
-  import ChoiceMenu from '$lib/components/menus/ChoiceMenu.svelte';
+  import SortControls from '$lib/components/menus/SortControls.svelte';
   import { applyWatchedFilter } from '$lib/features/filters/applyWatchedFilter.ts';
   import { useWatchedFilter } from '$lib/features/filters/stores/useWatchedFilter.ts';
   import WatchedFilterMenu from '$lib/features/filters/WatchedFilterMenu.svelte';
   import { withWatchedKnown } from '$lib/features/filters/withWatchedKnown.ts';
-  import * as m from '$lib/features/i18n/messages.ts';
   import { useSortParam } from '$lib/features/view-params/stores/useSortParam.ts';
   import type { SortableBlockProps } from './SortableBlockProps.ts';
 
@@ -40,32 +38,22 @@
   const sortChoices = $derived(
     spec.sorts.map(({ by }) => ({ value: by, label: spec.labels[by]() })),
   );
-
-  // Without an All row, the menu never reports null.
-  const selectSort = (by: K | null) => {
-    if (by === null) return;
-    select(by);
-  };
 </script>
 
 {#snippet tools()}
   <div class="sort-wrapper">
-    <ChoiceMenu
-      label={m.label_sort_by()}
-      triggerLabel={(sort) => m.button_label_sort_by({ sort })}
+    <SortControls
       value={$sort.by}
       choices={sortChoices}
-      onChange={selectSort}
-      font="heading"
-    />
-    <span class="sort-direction">
-      <SortDirectionToggle
-        pressed={$isReversed}
-        onToggle={reverse}
-        size="heading"
-      />
-    </span>
-    <WatchedFilterMenu value={$filter} onValueChange={setFilter} />
+      onSelect={select}
+      pressed={$isReversed}
+      onReverse={reverse}
+      size="heading"
+    >
+      {#snippet toggles()}
+        <WatchedFilterMenu value={$filter} onValueChange={setFilter} />
+      {/snippet}
+    </SortControls>
   </div>
 {/snippet}
 
@@ -97,11 +85,6 @@
       display: flex;
       align-items: center;
       height: var(--ni-0);
-    }
-
-    .sort-direction {
-      display: inline-flex;
-      margin-inline: var(--ni-4) var(--ni-10);
     }
 
     .sortable-item.is-faded {

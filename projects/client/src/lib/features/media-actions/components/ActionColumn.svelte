@@ -16,7 +16,7 @@
   import IconStar from '@tabler/icons-svelte/icons/star';
   import IconStarFilled from '@tabler/icons-svelte/icons/star-filled';
   import { toActionUnderInfo } from '../_internal/toActionUnderInfo.ts';
-  import { toWatchProgress } from '../_internal/toWatchProgress.ts';
+  import { toWatchProgress } from '../toWatchProgress.ts';
   import ListMenu from './ListMenu.svelte';
   import HistoryChoice from './_internal/HistoryChoice.svelte';
   import MoreActionsMenu from './_internal/MoreActionsMenu.svelte';
@@ -132,7 +132,7 @@
   });
 
   const toggleWatched = () =>
-    isHistorySelected ? watched.remove() : watched.add('now');
+    isHistorySelected ? watched.removeOrWatchRemaining() : watched.add('now');
   const toggleWatchlist = () =>
     $isWatchlisted ? watchlist.remove() : watchlist.add();
   const toggleFavorite = () =>

@@ -69,10 +69,10 @@
     }
 
     .greeting-member-since {
+      @include heavy-heading-font;
+
       color: var(--color-text-help);
-      font-family: var(--font-family-heading);
       font-size: var(--font-size-heading-muted);
-      font-weight: var(--font-weight-heading-heavy);
       line-height: var(--line-height-heading);
       text-shadow: var(--text-shadow-on-image);
       text-transform: uppercase;

@@ -26,7 +26,6 @@ import { ExtendedUserSettingsResponseMock } from '$mocks/data/users/response/Ext
 import { FavoritedMediaResponseMock } from '$mocks/data/users/response/FavoritedMediaResponseMock.ts';
 import { FavoritedMoviesResponseMock } from '$mocks/data/users/response/FavoritedMoviesResponseMock.ts';
 import { FavoritedShowsResponseMock } from '$mocks/data/users/response/FavoritedShowsResponseMock.ts';
-import { HiddenShowProgressResponseMock } from '$mocks/data/users/response/HiddenShowProgressResponseMock.ts';
 import { MinimalLikedListsResponseMock } from '$mocks/data/users/response/MinimalLikedListsResponseMock.ts';
 import { MovieActivityHistoryResponseMock } from '$mocks/data/users/response/MovieActivityHistoryResponseMock.ts';
 import { RatedEpisodesResponseMock } from '$mocks/data/users/response/RatedEpisodesResponseMock.ts';
@@ -54,6 +53,10 @@ import { HISTORY_SHOWS_URL } from '$mocks/data/users/HISTORY_SHOWS_URL.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
 import { LISTS_URL } from '$mocks/data/users/LISTS_URL.ts';
 import { RESTORE_URL } from '$mocks/data/users/RESTORE_URL.ts';
+import { HIDE_PROGRESS_URL } from '$mocks/data/users/HIDE_PROGRESS_URL.ts';
+import { UNHIDE_PROGRESS_URL } from '$mocks/data/users/UNHIDE_PROGRESS_URL.ts';
+import { HideProgressResponseMock } from '$mocks/data/users/response/HideProgressResponseMock.ts';
+import { UnhideProgressResponseMock } from '$mocks/data/users/response/UnhideProgressResponseMock.ts';
 import { USER_FAVORITES_URL } from '$mocks/data/users/USER_FAVORITES_URL.ts';
 import { USER_RATINGS_URL } from '$mocks/data/users/USER_RATINGS_URL.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
@@ -92,12 +95,19 @@ export const users = [
     RESTORE_URL,
     () => HttpResponse.json(RestoreShowResponseMock, { status: 200 }),
   ),
+  http.post(
+    HIDE_PROGRESS_URL,
+    () => HttpResponse.json(HideProgressResponseMock, { status: 201 }),
+  ),
+  http.post(
+    UNHIDE_PROGRESS_URL,
+    () => HttpResponse.json(UnhideProgressResponseMock, { status: 200 }),
+  ),
   http.get('http://localhost/users/hidden/progress_watched_reset*', () => {
     return HttpResponse.json(RewatchingShowsResponseMock);
   }),
-  http.get('http://localhost/users/hidden/progress_watched*', () => {
-    return HttpResponse.json(HiddenShowProgressResponseMock);
-  }),
+  // No show hides a season unless a spec serves one.
+  http.get(HIDE_PROGRESS_URL, () => HttpResponse.json([])),
   http.get(WATCHED_SHOWS_URL, (response) => {
     const { searchParams } = new URL(response.request.url);
     const extended = searchParams.get('extended');

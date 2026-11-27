@@ -8,7 +8,7 @@ export type QuickIconProps =
     label: string;
     isSelected: boolean;
     isPending?: boolean;
-    // Ignores clicks, as while the state is not known.
+    // Ignores clicks and dimmed, as while the state is not known; a pending icon spins instead.
     isInert?: boolean;
     // Ignores clicks and dimmed: the action is not allowed yet, and a caller's tooltip says why.
     isBlocked?: boolean;

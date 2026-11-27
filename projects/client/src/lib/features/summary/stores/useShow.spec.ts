@@ -33,6 +33,7 @@ import {
   useWatched,
   type WatchedStoreProps,
 } from '$lib/features/media-actions/stores/useWatched.ts';
+import { serveSiloProgress } from '$test/beds/progress/serveSiloProgress.ts';
 import { kindsOf } from '$test/beds/query/kindsOf.ts';
 import { nextOf } from '$test/beds/query/nextOf.ts';
 import { runQuery } from '$test/beds/query/runQuery.ts';
@@ -54,10 +55,6 @@ function serveStats(answer: () => Response) {
 
 function serveSeasons(body: SeasonsResponse) {
   server.use(http.get(SILO_SEASONS_URL, () => HttpResponse.json(body)));
-}
-
-function serveProgress(answer: () => Response) {
-  server.use(http.get(SILO_PROGRESS_URL, answer));
 }
 
 function servePeople(answer: () => Response) {
@@ -159,13 +156,13 @@ describe('store: useShow', () => {
 
       expect(during.data).toEqual(before.data);
       expect(kinds).toEqual(['ready']);
-      expect(before.data.seasons.at(1)).toEqual({
+      expect(before.data.seasons.at(1)).toMatchObject({
         number: 2,
         total: 7,
         completed: 1,
         lastWatchedAt: new Date('2024-12-27T19:40:28.000Z'),
       });
-      expect(after.data.seasons.at(1)).toEqual({
+      expect(after.data.seasons.at(1)).toMatchObject({
         number: 2,
         total: 7,
         completed: 2,
@@ -189,14 +186,14 @@ describe('store: useShow', () => {
     });
 
     it('should read the progress of a show with no plays as empty', async () => {
-      serveProgress(() => HttpResponse.json(NO_PLAYS));
+      serveSiloProgress(NO_PLAYS);
       const { progressStatus } = await renderShow();
 
       expect(await nextOf(progressStatus, 'empty')).toEqual({ kind: 'empty' });
     });
 
     it('should read a failed progress read as error', async () => {
-      serveProgress(notFound);
+      server.use(http.get(SILO_PROGRESS_URL, notFound));
       const { progressStatus } = await renderShow();
 
       const failed = await nextOf(progressStatus, 'error');

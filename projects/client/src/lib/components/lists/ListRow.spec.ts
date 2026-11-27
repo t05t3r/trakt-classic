@@ -1,3 +1,4 @@
+import { countStat } from '$test/beds/stats/countStat.ts';
 import { render, screen } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { describe, expect, it } from 'vitest';
@@ -89,7 +90,7 @@ describe('component: ListRow', () => {
   it('should show the item count, grouped, labelled Items', () => {
     renderRow({ count: 1190 });
 
-    expect(screen.getByTitle('Items')).toHaveTextContent(/^1,190 Items$/);
+    expect(countStat('Items')).toHaveTextContent(/^1,190 Items$/);
   });
 
   it('should show the description, clamped', () => {

@@ -9,6 +9,9 @@ import type { HistoryItem } from '$lib/features/history/HISTORY_ITEM_TYPES.ts';
 import type { HistoryType } from '$lib/features/history/HISTORY_TYPES.ts';
 import type { RatingFilter } from '$lib/features/media-actions/RATING_VALUES.ts';
 import type { RatingsTypeFilter } from '$lib/features/ratings/RATINGS_TYPES.ts';
+import type { ProgressSortBy } from '$lib/features/progress/PROGRESS_SORTS.ts';
+import type { SortParam } from '$lib/features/view-params/stores/useSortParam.ts';
+import type { SortDirection } from '$lib/models/SortDirection.ts';
 import { formatLocalDate } from '$lib/utils/date/formatLocalDate.ts';
 import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
 import { buildParamString } from './buildParamString.ts';
@@ -51,6 +54,35 @@ type RatingsUrlParams = {
   type?: RatingsTypeFilter;
   rating?: RatingFilter;
 };
+
+type ProgressSortParams =
+  | { view?: 'watched'; sort?: SortParam<ProgressSortBy<'watched'>> }
+  | { view: 'dropped'; sort?: SortParam<ProgressSortBy<'dropped'>> };
+
+type ProgressUrlParams = ProgressSortParams & {
+  hideCompleted?: boolean;
+  show?: number;
+  page?: number;
+};
+
+type ProgressPath =
+  | '/users/me/progress'
+  | `/users/me/progress/watched/${ProgressSortBy<'watched'>}/${SortDirection}`
+  | '/users/me/progress/dropped'
+  | `/users/me/progress/dropped/${ProgressSortBy<'dropped'>}/${SortDirection}`;
+
+// A sort it is given stays in the path, the default included.
+function progressPath(params: ProgressSortParams): ProgressPath {
+  if (params.view === 'dropped') {
+    return params.sort
+      ? `/users/me/progress/dropped/${params.sort.by}/${params.sort.how}`
+      : '/users/me/progress/dropped';
+  }
+
+  return params.sort
+    ? `/users/me/progress/watched/${params.sort.by}/${params.sort.how}`
+    : '/users/me/progress';
+}
 
 type UrlBuilderParams =
   & TypeParams
@@ -209,7 +241,12 @@ export const UrlBuilder = {
       return '/social/activity';
     },
   },
-  progress: (): '/users/me/progress' => '/users/me/progress',
+  progress: (params: ProgressUrlParams = {}) =>
+    withSearch(progressPath(params), {
+      hide_completed: params.hideCompleted ? 'true' : undefined,
+      show: params.show?.toString(),
+      page: params.page?.toString(),
+    }),
   ratings: (
     { type = 'all', rating = 'all' }: RatingsUrlParams = {},
   ):
@@ -284,10 +321,6 @@ export const UrlBuilder = {
     me: () => UrlBuilder.profile.user('me'),
     history: (username: string) => `/profile/${username}/history`,
     social: (username: string) => `/profile/${username}/social`,
-    progress: (username: string, params: Record<string, string> = {}) =>
-      `/profile/${username}/progress${
-        buildParamString(sanitizeParams(params))
-      }`,
   },
   users: (id: string) => ({
     lists: (

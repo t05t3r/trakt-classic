@@ -2,18 +2,17 @@ import { HERETIC } from '$mocks/data/media-actions/HERETIC.ts';
 import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { SYNC_RATINGS_REMOVE_URL } from '$mocks/data/sync/SYNC_RATINGS_REMOVE_URL.ts';
 import { SYNC_RATINGS_URL } from '$mocks/data/sync/SYNC_RATINGS_URL.ts';
-import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { setDocumentDirection } from '$test/beds/direction/setDocumentDirection.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { emulateFocusVisible } from '$test/beds/focus/emulateFocusVisible.ts';
 import RatingPopoverHost from '$test/beds/media-actions/RatingPopoverHost.svelte';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
-import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const HEART_NAMES = [
@@ -45,19 +44,6 @@ const openFromKeyboard = async (focused: number) => {
   (await trigger()).focus();
   await userEvent.keyboard('{Enter}');
   await waitFor(() => expect(heart(focused)).toHaveFocus());
-};
-
-// Holds each rating write until released, keeping its body.
-const holdWrites = ({ url, status }: { url: string; status: number }) => {
-  const bodies: unknown[] = [];
-  const held = holdResponse(() => new HttpResponse(null, { status }));
-  server.use(
-    http.post(url, async ({ request }) => {
-      bodies.push(await request.json());
-      return held.answer();
-    }),
-  );
-  return { bodies, requested: held.requested, release: held.release };
 };
 
 const closed = async () => {
@@ -122,11 +108,8 @@ describe('component: RatingPopover', () => {
 
       const dialog = await openPicker(1);
 
-      expect(
-        within(dialog).getAllByRole('button').map((button) =>
-          button.getAttribute('aria-label')
-        ),
-      ).toEqual(HEART_NAMES);
+      expect(ariaLabelsOf(within(dialog).getAllByRole('button')))
+        .toEqual(HEART_NAMES);
     });
 
     it('should press only the current heart and focus it on open', async () => {
@@ -331,7 +314,7 @@ describe('component: RatingPopover', () => {
   describe('pick', () => {
     it('should close, then rate the clicked heart', async () => {
       const writes = recordWrites();
-      const write = holdWrites({ url: SYNC_RATINGS_URL, status: 201 });
+      const write = holdPost(SYNC_RATINGS_URL);
       renderComponent(RatingPopoverHost, { props: { target: MATRIX } });
       await openPicker(1);
 
@@ -353,7 +336,7 @@ describe('component: RatingPopover', () => {
     it.each([['Enter', '{Enter}'], ['Space', ' ']])(
       'should rate the focused heart on %s',
       async (_name, key) => {
-        const write = holdWrites({ url: SYNC_RATINGS_URL, status: 201 });
+        const write = holdPost(SYNC_RATINGS_URL);
         renderComponent(RatingPopoverHost, {
           props: { target: MATRIX },
         });
@@ -372,7 +355,7 @@ describe('component: RatingPopover', () => {
 
     it('should close, then remove the rating on the current heart', async () => {
       const writes = recordWrites();
-      const write = holdWrites({ url: SYNC_RATINGS_REMOVE_URL, status: 200 });
+      const write = holdPost(SYNC_RATINGS_REMOVE_URL, 200);
       renderComponent(RatingPopoverHost, { props: { target: HERETIC } });
       await waitFor(() => expect(shown()).not.toBeNull());
       await openPicker(10);
@@ -389,7 +372,7 @@ describe('component: RatingPopover', () => {
     });
 
     it('should hand back the stored rating when the write fails', async () => {
-      holdWrites({ url: SYNC_RATINGS_URL, status: 500 }).release();
+      holdPost(SYNC_RATINGS_URL, 500).release();
       renderComponent(RatingPopoverHost, { props: { target: HERETIC } });
       await waitFor(() => expect(shown()).not.toBeNull());
       await openPicker(10);

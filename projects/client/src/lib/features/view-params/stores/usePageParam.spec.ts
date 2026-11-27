@@ -1,9 +1,11 @@
+import { goto } from '$app/navigation';
 import { HISTORY_PATH } from '$mocks/data/users/HISTORY_PATH.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { expectOneReplace } from '$test/beds/url/expectOneReplace.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
+import { startNavigation } from '$test/beds/url/startNavigation.ts';
 import { describe, expect, it } from 'vitest';
 import { usePageParam } from './usePageParam.ts';
 import { useViewParam } from './useViewParam.ts';
@@ -43,6 +45,19 @@ describe('store: usePageParam', () => {
     expect(lastReplace()).toBe(`${HISTORY_PATH}?genres=drama`);
   });
 
+  it('should leave a page the URL moved to after the call', async () => {
+    openAt(`${HISTORY_PATH}?page=5`);
+    const { replacePage } = await renderStore(() => usePageParam());
+    const navigation = startNavigation();
+
+    const replaced = replacePage(2);
+    openAt(`${HISTORY_PATH}?page=3`);
+    navigation.land();
+    await replaced;
+
+    expect(goto).not.toHaveBeenCalled();
+  });
+
   it('should drop the page in the one replace of a write it wraps', async () => {
     openAt(`${HISTORY_PATH}?genres=drama&page=5`);
     const { withPageDropped, set } = await renderStore(() => ({
@@ -51,6 +66,23 @@ describe('store: usePageParam', () => {
     }));
 
     await withPageDropped(set({ genres: 'horror' }));
+
+    expectOneReplace();
+    expect(lastReplace()).toBe(`${HISTORY_PATH}?genres=horror`);
+  });
+
+  it('should drop the page in a write it wraps, whatever page the URL moved to after the call', async () => {
+    openAt(`${HISTORY_PATH}?genres=drama&page=5`);
+    const { withPageDropped, set } = await renderStore(() => ({
+      ...usePageParam(),
+      ...useViewParam({ genres: { values: () => true, fallback: null } }),
+    }));
+    const navigation = startNavigation();
+
+    const write = withPageDropped(set({ genres: 'horror' }));
+    openAt(`${HISTORY_PATH}?genres=drama&page=3`);
+    navigation.land();
+    await write;
 
     expectOneReplace();
     expect(lastReplace()).toBe(`${HISTORY_PATH}?genres=horror`);

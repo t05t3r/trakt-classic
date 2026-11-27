@@ -1,17 +1,20 @@
+import { goto } from '$app/navigation';
 import { useViewParam } from '$lib/features/view-params/stores/useViewParam.ts';
 import { HISTORY_PATH } from '$mocks/data/users/HISTORY_PATH.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { collectStates } from '$test/beds/store/collectStates.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { valueObservable } from '$test/beds/store/valueObservable.ts';
 import { expectOneReplace } from '$test/beds/url/expectOneReplace.ts';
+import { holdFirstNavigation } from '$test/beds/url/holdFirstNavigation.ts';
 import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
 import { lastPush } from '$test/beds/url/lastPush.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { BehaviorSubject, firstValueFrom, type Observable } from 'rxjs';
 import { tick } from 'svelte';
-import { describe, expect, expectTypeOf, it } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import {
   type HistoryTypeFilter,
   useHistoryParams,
@@ -386,6 +389,24 @@ describe('store: useHistoryParams', () => {
           .toBe(`${HISTORY_PATH}/shows?start_at=2026-06-07`);
       },
     );
+
+    it('should keep a range set just before, while its replace waits', async () => {
+      const held = holdFirstNavigation();
+      openAt(HISTORY_PATH);
+      const { setRange, setType } = await renderParams();
+
+      const ranged = setRange({ start: '2026-06-07', end: '2026-06-30' });
+      await vi.waitFor(() => expect(goto).toHaveBeenCalledOnce());
+      const typed = setType('movies');
+      await waitNegativeClaim();
+      expect(goto).toHaveBeenCalledOnce();
+      held.resolve();
+      await Promise.all([ranged, typed]);
+
+      expect(lastPush()).toBe(
+        `${HISTORY_PATH}/movies?start_at=2026-06-07&end_at=2026-06-30`,
+      );
+    });
 
     it('should push the bare path for all', async () => {
       openAt(`${HISTORY_PATH}/shows?page=4&genres=drama`);

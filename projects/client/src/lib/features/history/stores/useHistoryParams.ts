@@ -6,6 +6,7 @@ import type {
   HistoryItemType,
 } from '$lib/features/history/HISTORY_ITEM_TYPES.ts';
 import type { HistoryType } from '$lib/features/history/HISTORY_TYPES.ts';
+import { ITEM_ID } from '$lib/features/view-params/ITEM_ID.ts';
 import { pushKeepingSearch } from '$lib/features/view-params/pushKeepingSearch.ts';
 import {
   type PageParam,
@@ -14,7 +15,6 @@ import {
 import { useViewParam } from '$lib/features/view-params/stores/useViewParam.ts';
 import type { DateRangeDays } from '$lib/models/DateRangeDays.ts';
 import type { DateRangeParams } from '$lib/requests/models/DateRangeParams.ts';
-import { isPositiveIntegerText } from '$lib/utils/number/isPositiveIntegerText.ts';
 import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
 import {
   combineLatest,
@@ -41,12 +41,6 @@ const GENRE_SLUG = /^[a-z0-9-]+$/;
 const isGenreSlug = (value: string) => GENRE_SLUG.test(value);
 
 const ANY_VALUE = { values: () => true, fallback: null };
-
-// Trakt's ids start at 1, and a read takes an id of 0 as no id.
-const ITEM_ID = {
-  values: isPositiveIntegerText,
-  fallback: null,
-};
 
 const NO_ITEM = { movie: null, episode: null, show: null, season: null };
 

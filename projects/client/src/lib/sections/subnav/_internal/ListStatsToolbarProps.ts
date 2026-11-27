@@ -6,6 +6,7 @@ import type { ToolbarControls } from '$lib/sections/lists/ListItemsSectionProps.
 export type ListStatsToolbarProps<T extends ListDisplayType> = {
   // The screen's own instance, so the toolbar adds no second one.
   params: ListParams<T>;
+  hasWatchedShare: boolean;
   // Each count is blank while it is undefined.
   watched?: WatchedPercentage;
   itemCount?: number;
@@ -13,6 +14,6 @@ export type ListStatsToolbarProps<T extends ListDisplayType> = {
   minutes?: number;
   // Past one page, the loaded items are not the List, so no runtime shows.
   pageCount?: number;
-  // Its `close` runs after a choice in the options that changes a value.
+  // Its `close` runs after any choice in the options.
   controls: ToolbarControls;
 };

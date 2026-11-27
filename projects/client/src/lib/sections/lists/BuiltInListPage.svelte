@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { FANART_COLUMNS } from '$lib/components/media/FANART_COLUMNS.ts';
   import PosterGrid from '$lib/components/media/PosterGrid.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import ListGridCard from '$lib/features/lists/components/ListGridCard.svelte';
@@ -18,13 +19,11 @@
   import { createKeyedReader } from '$lib/utils/store/createKeyedReader.ts';
   import {
     combineLatest,
-    distinctUntilChanged,
     EMPTY,
-    map,
+    identity,
     type Observable,
     type ObservedValueOf,
     of,
-    scan,
   } from 'rxjs';
   import { BUILT_IN_LISTS } from './_internal/BUILT_IN_LISTS.ts';
   import ListReader from './ListReader.svelte';
@@ -36,23 +35,6 @@
   };
 
   const { list, slug }: BuiltInListPageProps = $props();
-
-  type WatchedRead = {
-    set: string;
-    read: Observable<WatchedPercentage | undefined>;
-  };
-  type WatchedReading = { set: string; value: WatchedPercentage | undefined };
-
-  // A sort or page pick over the same items and count keeps the last share until the new read lands.
-  function keepWhilePending(
-    previous: WatchedReading,
-    next: WatchedReading,
-  ): WatchedReading {
-    if (next.value !== undefined) return next;
-    if (next.set !== previous.set) return next;
-
-    return previous;
-  }
 
   // Each route passes a constant list, so the params made here serve the page's whole life.
   // svelte-ignore state_referenced_locally
@@ -70,18 +52,10 @@
     ObservedValueOf<ListItems['reading']>
   >({ initial: undefined, read: (current) => current?.reading ?? EMPTY });
 
-  const { latest: watchedReads, reading: watchedReading } = createKeyedReader<
-    WatchedRead,
-    WatchedReading
-  >({
-    initial: { set: '', read: of(undefined) },
-    read: ({ set, read }) => read.pipe(map((value) => ({ set, value }))),
-  });
-  const watched = watchedReading.pipe(
-    scan(keepWhilePending),
-    map(({ value }) => value),
-    distinctUntilChanged(),
-  );
+  const { latest: watchedReads, reading: watched } = createKeyedReader<
+    Observable<WatchedPercentage | undefined>,
+    WatchedPercentage | undefined
+  >({ initial: of(undefined), read: identity });
 
   const valuesKey = $derived(JSON.stringify($values));
   const itemCount = $derived($reading?.itemCount);
@@ -96,18 +70,13 @@
     />
   {/key}
 
-  {#if $items && itemCount !== undefined}
+  {#if built.hasWatchedShare && $items && itemCount !== undefined}
     {@const reader = $items}
     {@const count = itemCount}
-    {@const set = JSON.stringify({
-      type: current.type,
-      genre: current.genre,
-      count,
-    })}
     {#key `${valuesKey}:${count}`}
       <ListReader
         read={() => reader.watched(count)}
-        onread={(next) => watchedReads.next({ set, read: next })}
+        onread={(next) => watchedReads.next(next)}
       />
     {/key}
   {/if}
@@ -127,6 +96,7 @@
       {#snippet toolbar(controls)}
         <ListStatsToolbar
           {params}
+          hasWatchedShare={built.hasWatchedShare}
           watched={itemCount === undefined ? undefined : $watched}
           {itemCount}
           minutes={$reading?.minutes}
@@ -135,7 +105,13 @@
         />
       {/snippet}
       {#snippet grid(rows: ReadonlyArray<ListItemsRow>)}
-        <PosterGrid items={rows} key={(row) => row.entry.key}>
+        {@const isFanart = current.type === 'episode'}
+        <PosterGrid
+          items={rows}
+          key={(row) => row.entry.key}
+          columns={isFanart ? FANART_COLUMNS : undefined}
+          phoneDivider={isFanart ? 'none' : undefined}
+        >
           {#snippet item(row)}
             <ListGridCard
               entry={row.entry}
@@ -145,6 +121,7 @@
               sortBy={current.sort.by}
               hasRank={built.hasRank}
               favorite={built.hasFavorite}
+              art={isFanart ? 'fanart' : undefined}
             />
           {/snippet}
         </PosterGrid>

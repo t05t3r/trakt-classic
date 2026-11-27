@@ -1,10 +1,10 @@
 <script lang="ts" generics="T">
   import SectionHeader from '$lib/components/headers/SectionHeader.svelte';
+  import StatusBody from './_internal/StatusBody.svelte';
   import EmptyState from './EmptyState.svelte';
-  import SectionError from './SectionError.svelte';
   import type { SectionStateProps } from './SectionStateProps.ts';
 
-  const { header, lead, label, status, emptyText, children }:
+  const { header, lead, label, status, emptyText, children: content }:
     SectionStateProps<T> = $props();
 
   const titleId = $props.id();
@@ -30,13 +30,14 @@
   {:else}
     <SectionHeader {...header} {titleId} loading={isLoading} />
   {/if}
-  {#if status.kind === 'empty'}
-    <EmptyState>{emptyText}</EmptyState>
-  {:else if status.kind === 'error'}
-    <SectionError retry={status.retry} fallback={section} describedBy={titleId} />
-  {:else if status.kind === 'ready'}
-    {@render children?.(status.data)}
-  {/if}
+  <StatusBody {status} fallback={section} describedBy={titleId}>
+    {#snippet empty()}
+      <EmptyState>{emptyText}</EmptyState>
+    {/snippet}
+    {#snippet children(data)}
+      {@render content?.(data)}
+    {/snippet}
+  </StatusBody>
 </section>
 
 <style lang="scss">

@@ -3,6 +3,7 @@
   import EmptyState from '$lib/components/feedback/EmptyState.svelte';
   import SectionState from '$lib/components/feedback/SectionState.svelte';
   import PillTabs from '$lib/components/tabs/PillTabs.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import LazyImage from '$lib/features/image/components/LazyImage.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import type { CastMember } from '$lib/requests/models/MediaCrew.ts';
@@ -43,10 +44,9 @@
       : countText.of({ count: episodeCount, unit: 'episodes' });
 
   // A movie cell has no episode line, and a role the API left blank no character line.
-  const toTooltip = (member: CastMember) =>
-    [member.name, member.characterName, episodesOf(member)]
-      .filter(Boolean)
-      .join('\n');
+  const toTooltipDetail = (member: CastMember) =>
+    [member.characterName, episodesOf(member)].filter(Boolean).join('\n') ||
+    undefined;
 
   const selectTab = (groups: ReadonlyArray<CastGroup>, value: string) => {
     const group = groupOf(groups, value);
@@ -79,7 +79,10 @@
                   <a
                     class="cast-link"
                     href={resolve(UrlBuilder.people(member.key))}
-                    title={toTooltip(member)}
+                    {@attach hint(() => ({
+                      content: member.name,
+                      detail: toTooltipDetail(member),
+                    }))}
                   >
                     <span class="cast-headshot">
                       <LazyImage src={member.headshot.url.thumb} alt="" kind="poster" />

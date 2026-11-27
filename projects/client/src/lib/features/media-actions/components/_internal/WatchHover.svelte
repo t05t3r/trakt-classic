@@ -1,6 +1,8 @@
 <script lang="ts">
   import TickProgressBar from '$lib/components/progress/TickProgressBar.svelte';
   import MessageWithBold from '$lib/components/text/MessageWithBold.svelte';
+  import TooltipBand from '$lib/components/tooltip/TooltipBand.svelte';
+  import TooltipDetail from '$lib/components/tooltip/TooltipDetail.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
   import { toHumanMinutes } from '$lib/utils/formatting/date/toHumanMinutes.ts';
   import { toHumanPatternDate } from '$lib/utils/formatting/date/toHumanPatternDate.ts';
@@ -47,19 +49,21 @@
 <div class="trakt-watch-hover" class:has-bar={hover.kind === 'progress'}>
   <p><MessageWithBold message={lines.main} /></p>
   {#if lines.detail}
-    <p class="hover-detail">{lines.detail}</p>
+    <TooltipDetail text={lines.detail} />
   {/if}
   {#if hover.kind === 'progress'}
     <!-- The percent line already says it, so a screen reader hears it once. -->
     <div class="hover-bar" aria-hidden="true">
-      <TickProgressBar
-        value={hover.progress.percent}
-        total={100}
-        size="sm"
-        label={m.text_watched_percent({
-          percent: toPercentage(hover.progress.percent / 100),
-        })}
-      />
+      <TooltipBand edge="end" fill="none">
+        <TickProgressBar
+          value={hover.progress.percent}
+          total={100}
+          size="sm"
+          label={m.text_watched_percent({
+            percent: toPercentage(hover.progress.percent / 100),
+          })}
+        />
+      </TooltipBand>
     </div>
   {/if}
 </div>
@@ -70,18 +74,10 @@
       min-width: var(--ni-240);
     }
 
-    .hover-detail {
-      color: var(--color-text-muted);
-    }
-
-    // The rule runs the tooltip's full width, past its padding.
     .hover-bar {
       --color-progress-track: var(--color-tooltip-progress-track);
 
-      margin-block: var(--ni-10) var(--ni-neg-10);
-      margin-inline: var(--ni-neg-10);
-      padding: var(--ni-10);
-      border-block-start: var(--ni-1) solid var(--color-border);
+      margin-block-start: var(--ni-10);
     }
   }
 </style>

@@ -45,6 +45,39 @@ describe('component: FormattedDate', () => {
     expect(toggle).toHaveTextContent('6 Jul 2026 20:04');
   });
 
+  it('should put the trigger props on the toggle', () => {
+    render(FormattedDate, {
+      props: {
+        date: WATCHED_AT,
+        pattern: 'd MMM yyyy HH:mm',
+        triggerProps: { id: 'own', 'aria-describedby': 'why' },
+      },
+    });
+
+    expect(screen.getByRole('button')).toHaveAttribute('id', 'own');
+    expect(screen.getByRole('button'))
+      .toHaveAttribute('aria-describedby', 'why');
+  });
+
+  it('should still swap on a press when the trigger props bring a click of their own', async () => {
+    const onclick = vi.fn();
+    render(FormattedDate, {
+      props: {
+        date: WATCHED_AT,
+        pattern: 'd MMM yyyy HH:mm',
+        triggerProps: { onclick },
+      },
+    });
+    const toggle = screen.getByRole('button');
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveTextContent('10 hours ago');
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveTextContent('6 Jul 2026 20:04');
+    expect(onclick).toHaveBeenCalledTimes(2);
+  });
+
   it('should render nothing for an invalid date', () => {
     const { container } = render(FormattedDate, {
       props: { date: new Date(NaN), pattern: 'd MMM' },

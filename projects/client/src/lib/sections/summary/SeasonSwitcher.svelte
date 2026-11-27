@@ -9,7 +9,7 @@
   const labelId = $props.id();
 </script>
 
-<nav class="trakt-season-switcher" aria-labelledby={labelId}>
+<nav class="trakt-season-switcher no-wrap" aria-labelledby={labelId}>
   <ContainerPage>
     <div data-layout="grid">
       <div class="switcher-column" data-grid-column>
@@ -43,7 +43,6 @@
     background: var(--color-surface-recessed);
     font-size: var(--font-size-switcher);
     line-height: var(--line-height-switcher);
-    white-space: nowrap;
 
     // The strip lines up with the info column below it.
     .switcher-column {
@@ -105,9 +104,9 @@
       }
 
       &.is-current {
+        @include heavy-heading-font;
+
         color: var(--color-text-primary);
-        font-family: var(--font-family-heading);
-        font-weight: var(--font-weight-heading-heavy);
       }
     }
   }

@@ -8,6 +8,7 @@ import { kindsOf } from '$test/beds/query/kindsOf.ts';
 import { nextOf } from '$test/beds/query/nextOf.ts';
 import { failOnce } from '$test/beds/request/failOnce.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
+import type { PagedItems } from '$test/beds/store/pagedItemsOf.ts';
 import { readingOf } from '$test/beds/store/readingOf.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { statusOf } from '$test/beds/store/statusOf.ts';
@@ -15,14 +16,9 @@ import { waitFor } from '@testing-library/svelte';
 import type { Observable } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 
-type PagedItems<E, C extends PagedCard> = {
-  store: () => { reading: Observable<PagedReading<E, C>> };
-  replacePage: (page: number) => void;
-};
-
 type DescribePagedReadsProps<E, C extends PagedCard> = {
   url: string;
-  items: (page: number) => PagedItems<E, C>;
+  items: (page: number) => PagedItems<Observable<PagedReading<E, C>>>;
   cover: ImageUrl;
 };
 

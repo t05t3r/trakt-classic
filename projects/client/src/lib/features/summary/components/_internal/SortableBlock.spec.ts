@@ -1,10 +1,13 @@
 import type { SortParam } from '$lib/features/view-params/stores/useSortParam.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
+import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
+import { readCheckedMenuRow } from '$test/beds/menus/readCheckedMenuRow.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
-import { render, screen, within } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet } from 'svelte';
 import { describe, expect, it } from 'vitest';
@@ -123,13 +126,10 @@ describe('component: SortableBlock', () => {
     openAt(`${PATH}?things=name,asc`);
     renderBlock();
 
-    const menu = await openMenuByClick('Sort by: Name', 'Sort by');
-    const rows = within(menu).getAllByRole('menuitemradio');
+    await openMenuByClick('Sort by: Name', 'Sort by');
 
-    expect(rows.map((row) => row.textContent?.trim()))
-      .toEqual(['Number', 'Name']);
-    expect(rows.map((row) => row.getAttribute('aria-checked')))
-      .toEqual(['false', 'true']);
+    expect(readMenuRows('menuitemradio')).toEqual(['Number', 'Name']);
+    expect(readCheckedMenuRow()).toBe('Name');
   });
 
   it('should sort by a chosen entry from its own default direction', async () => {
@@ -137,12 +137,8 @@ describe('component: SortableBlock', () => {
     openAt(PATH);
     renderBlock();
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Sort by: Number' }),
-    );
-    await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Name' }),
-    );
+    await openMenuByClick('Sort by: Number', 'Sort by');
+    await pickMenuRadio('Name');
 
     expect(lastReplace()).toBe(`${PATH}?things=name,desc`);
   });
@@ -213,10 +209,8 @@ describe('component: SortableBlock', () => {
     openAt(`${PATH}?things=name,asc`);
     renderBlock();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
-    await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Hide watched' }),
-    );
+    await openMenuByClick('Filters', 'Filters');
+    await pickMenuRadio('Hide watched');
 
     expect(lastReplace()).toBe(`${PATH}?things=name,asc&hide=watched`);
   });

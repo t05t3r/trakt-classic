@@ -1,11 +1,9 @@
 import type {
   FailedStatus,
+  NeverEmptyStatus,
   SectionStatus,
 } from '$lib/components/feedback/SectionStatus.ts';
-import type {
-  HistoryStatus,
-  UserHistory,
-} from '$lib/features/auth/stores/useCurrentUserHistory.ts';
+import type { UserHistory } from '$lib/features/auth/stores/useCurrentUserHistory.ts';
 import {
   type UserDropped,
   useUser,
@@ -20,6 +18,7 @@ import { toSectionStatus } from '$lib/features/query/toSectionStatus.ts';
 import { useInfiniteQuery } from '$lib/features/query/useQuery.ts';
 import type { ImageUrl } from '$lib/requests/models/ImageUrlSchema.ts';
 import type { PageMeta } from '$lib/requests/models/Paginatable.ts';
+import { toPageCount } from '$lib/features/paging/_internal/toPageCount.ts';
 import { withPageClamp } from '$lib/features/paging/withPageClamp.ts';
 import { isEmpty } from '$lib/utils/array/isEmpty.ts';
 import { FIRST_PAGE } from '$lib/utils/FIRST_PAGE.ts';
@@ -105,10 +104,9 @@ function countsOfMeta(meta: PageMeta | undefined): PageCounts {
 }
 
 function countsOfCount(count: number, pageSize: number): PageCounts {
-  // No items still read as one page.
   return {
     itemCount: count,
-    pageCount: Math.max(1, Math.ceil(count / pageSize)),
+    pageCount: toPageCount(count, pageSize),
     isPending: false,
   };
 }
@@ -144,7 +142,7 @@ function toPageRead<E, C extends PagedCard>(
     carded: entries?.map((entry) => ({ entry, card: toCard(entry) })),
     entries,
     counts,
-    cover: first && toCover(first),
+    cover: first === undefined ? undefined : toCover(first),
   };
 }
 
@@ -218,7 +216,7 @@ function toRows<E, C extends PagedCard>(
 type ReadingParams<E, C> = Omit<RowsParams<E, C>, 'carded' | 'history'> & {
   page: PageRead<E, C>;
   current: number;
-  historyStatus: HistoryStatus;
+  historyStatus: NeverEmptyStatus<UserHistory>;
 };
 
 function isPastLastPage<E, C>(

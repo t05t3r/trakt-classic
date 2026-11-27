@@ -15,6 +15,8 @@
   }: QuickIconProps = $props();
 
   const isIgnoringClicks = $derived(isInert || isBlocked);
+  // A pending icon's spinner already shows why it ignores clicks.
+  const isShownInert = $derived(isInert && !isPending);
 
   const handleClick: QuickIconProps['onclick'] = (event) => {
     if (isIgnoringClicks) return;
@@ -31,6 +33,7 @@
   data-action={action}
   class:is-selected={isSelected}
   class:is-blocked={isBlocked}
+  class:is-inert={isShownInert}
   aria-label={label}
   aria-busy={isPending}
   aria-disabled={isIgnoringClicks}
@@ -46,7 +49,7 @@
 <style lang="scss">
   @use '$style/scss/mixins/index' as *;
 
-  // `QuickActions` sets the slot and glyph sizes for its strip size.
+  // The caller sets the slot and glyph sizes, for its strip or its toggle.
   .trakt-quick-icon {
     --quick-icon-color: var(--color-action-watch);
     --pending-spinner-size: var(--quick-icon-glyph-size);
@@ -83,12 +86,13 @@
       color: var(--color-text-primary);
     }
 
-    &.is-blocked {
+    &.is-blocked,
+    &.is-inert {
       @include blocked-control;
     }
 
     @include for-mouse {
-      &:not(.is-blocked):hover {
+      &:not(.is-blocked):not(.is-inert):hover {
         background: var(--quick-icon-color);
         color: var(--color-text-primary);
       }

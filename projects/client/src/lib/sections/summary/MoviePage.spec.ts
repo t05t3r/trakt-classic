@@ -9,11 +9,12 @@ import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { stubOverflow } from '$test/beds/layout/stubOverflow.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
-import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { commentPage } from '$test/beds/request/commentPage.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
+import { ratingCornerNames } from '$test/beds/summary/ratingCornerNames.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -27,11 +28,6 @@ const setLayout = fakeLayouts({
 
 const HERETIC_SLUG = MovieHereticResponseMock.ids.slug;
 const MATRIX_SLUG = MovieMatrixResponseMock.ids.slug;
-
-const cornerNames = () =>
-  screen.queryAllByRole('img', { name: /^Your rating/ }).map((corner) =>
-    corner.getAttribute('aria-label')
-  );
 
 function renderPage(slug = HERETIC_SLUG) {
   return renderComponent(MoviePage, { props: { slug } });
@@ -65,14 +61,16 @@ describe('component: MoviePage', () => {
     it('should show a picked rating in the slot and both poster corners', async () => {
       setLayout('desktop');
       stubClientRects();
-      const write = holdResponse(() => new HttpResponse(null, { status: 201 }));
-      server.use(http.post(SYNC_RATINGS_URL, write.answer));
+      const write = holdPost(SYNC_RATINGS_URL);
       renderPage();
       const slot = await screen.findByRole('button', {
         name: '10 Totally Ninja!',
       });
       await waitFor(() =>
-        expect(cornerNames()).toEqual(['Your rating: 10', 'Your rating: 10'])
+        expect(ratingCornerNames()).toEqual([
+          'Your rating: 10',
+          'Your rating: 10',
+        ])
       );
 
       await userEvent.click(slot);
@@ -82,7 +80,7 @@ describe('component: MoviePage', () => {
 
       await write.requested;
       expect(screen.getByRole('button', { name: '8 Great' })).toHaveFocus();
-      expect(cornerNames()).toEqual(['Your rating: 8', 'Your rating: 8']);
+      expect(ratingCornerNames()).toEqual(['Your rating: 8', 'Your rating: 8']);
     });
   });
 

@@ -9,4 +9,7 @@ export type ListGridCardProps =
     // Whether the card carries its entry's rank badge.
     hasRank?: boolean;
   }
-  & Pick<UserGridCardProps, 'card' | 'droppedAt' | 'isFaded' | 'favorite'>;
+  & Pick<
+    UserGridCardProps,
+    'card' | 'droppedAt' | 'isFaded' | 'favorite' | 'art'
+  >;
