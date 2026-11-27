@@ -1,5 +1,6 @@
 <script lang="ts">
   import DividedPosterGrid from '$lib/components/media/DividedPosterGrid.svelte';
+  import { FANART_COLUMNS } from '$lib/components/media/FANART_COLUMNS.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import { isHiddenAll } from '$lib/features/paging/isHiddenAll.ts';
   import RatingGridCard from '$lib/features/ratings/components/RatingGridCard.svelte';
@@ -17,7 +18,7 @@
   import { useDividers } from '$lib/stores/useDividers.ts';
   import { createKeyedReader } from '$lib/utils/store/createKeyedReader.ts';
   import { fromRune } from '$lib/utils/store/fromRune.svelte.ts';
-  import { combineLatest, EMPTY, type Observable } from 'rxjs';
+  import { combineLatest, EMPTY, identity, type Observable } from 'rxjs';
 
   const { filters }: { filters: string } = $props();
 
@@ -44,9 +45,9 @@
   const { shown } = dividers;
 
   const { latest: items, reading } = createKeyedReader<
-    Observable<RatingsReading> | undefined,
+    Observable<RatingsReading>,
     RatingsReading
-  >({ initial: undefined, read: (current) => current ?? EMPTY });
+  >({ initial: EMPTY, read: identity });
 
   const valuesKey = $derived(JSON.stringify($values));
 </script>
@@ -79,15 +80,18 @@
         />
       {/snippet}
       {#snippet grid(rows: ReadonlyArray<RatingRow>)}
+        {@const isFanart = current.type === 'episodes'}
         {#key valuesKey}
           <DividedPosterGrid
             items={rows}
             divided={$shown}
             dayOf={(row) => row.entry.ratedAt}
             key={(row) => row.entry.key}
+            columns={isFanart ? FANART_COLUMNS : undefined}
+            phoneDivider={isFanart ? 'none' : undefined}
           >
             {#snippet item(row)}
-              <RatingGridCard {row} />
+              <RatingGridCard {row} art={isFanart ? 'fanart' : undefined} />
             {/snippet}
           </DividedPosterGrid>
         {/key}

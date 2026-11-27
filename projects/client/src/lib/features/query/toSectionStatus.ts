@@ -1,11 +1,21 @@
-import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
+import type {
+  NeverEmptyStatus,
+  SectionStatus,
+} from '$lib/components/feedback/SectionStatus.ts';
 import type { QueryObserverResult } from '@tanstack/query-core';
 import { readStatus } from './_internal/readStatus.ts';
 
 type ToSectionStatusParams<T> = {
   result: QueryObserverResult<T>;
-  isEmpty: (data: T) => boolean;
+  select?: never;
+  // Without one, known data always reads as ready.
+  isEmpty?: (data: T) => boolean;
 };
+
+// Tried before the maybe-empty overload; params that may hold an isEmpty fall through to it.
+type ToNeverEmptyStatusParams<T> =
+  & Pick<ToSectionStatusParams<T>, 'result' | 'select'>
+  & { isEmpty?: never };
 
 type ToSelectedSectionStatusParams<T, U> = {
   result: QueryObserverResult<T>;
@@ -27,6 +37,9 @@ export function toSectionStatus<T, U>(
   params: ToSelectedSectionStatusParams<T, U>,
 ): SectionStatus<U>;
 export function toSectionStatus<T>(
+  params: ToNeverEmptyStatusParams<T>,
+): NeverEmptyStatus<T>;
+export function toSectionStatus<T>(
   params: ToSectionStatusParams<T>,
 ): SectionStatus<T>;
 export function toSectionStatus<T, U>(
@@ -34,7 +47,7 @@ export function toSectionStatus<T, U>(
 ): SectionStatus<T> | SectionStatus<U> {
   const { result } = params;
 
-  if (!('select' in params)) {
+  if (params.select === undefined) {
     return readStatus({ data: result.data, result, isEmpty: params.isEmpty });
   }
 

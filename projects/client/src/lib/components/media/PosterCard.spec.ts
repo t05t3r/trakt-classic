@@ -1,7 +1,14 @@
+import HintHost from '$lib/components/tooltip/HintHost.svelte';
+import { readHint } from '$lib/components/tooltip/hint.svelte.ts';
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { cardLines } from '$test/beds/media-card/cardLines.ts';
 import { cardActions } from '$test/beds/media/cardActions.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { hoverTooltipLines } from '$test/beds/tooltip/hoverTooltipLines.ts';
 import { controlViewport } from '$test/beds/viewport/controlViewport.ts';
-import { render, screen, within } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet, type Snippet, tick } from 'svelte';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import PosterCard from './PosterCard.svelte';
@@ -38,6 +45,7 @@ const image = createRawSnippet(() => ({
 }));
 
 function renderCard(props: Partial<PosterCardProps> = {}) {
+  render(HintHost);
   const { container } = render(PosterCard, {
     props: {
       media: { type: 'show', title: 'Slow Horses' },
@@ -90,36 +98,36 @@ describe('component: PosterCard', () => {
   });
 
   describe('titles', () => {
-    it.each<[string, PosterCardMedia, string, string]>([
+    it.each<[string, PosterCardMedia, string, ReadonlyArray<string>]>([
       [
         'movie',
         { type: 'movie', title: 'The Batman', year: 2022 },
         'The Batman',
-        'The Batman (2022)',
+        ['The Batman (2022)'],
       ],
       [
         'movie without a year',
         { type: 'movie', title: 'The Batman' },
         'The Batman',
-        'The Batman',
+        ['The Batman'],
       ],
       [
         'show',
         { type: 'show', title: 'Slow Horses' },
         'Slow Horses',
-        'Slow Horses',
+        ['Slow Horses'],
       ],
       [
         'season',
         { type: 'season', show: 'Silo', number: 3 },
         'Season 3',
-        'Silo\nSeason 3',
+        ['Silo', 'Season 3'],
       ],
       [
         'specials season',
         { type: 'season', show: 'Silo', number: 0 },
         'Specials',
-        'Silo\nSpecials',
+        ['Silo', 'Specials'],
       ],
       [
         'episode',
@@ -131,22 +139,87 @@ describe('component: PosterCard', () => {
           title: 'Our History',
         },
         '1x06 Our History',
-        `Widow's Bay\n1x06 "Our History"`,
+        ["Widow's Bay", '1x06 "Our History"'],
       ],
     ])(
-      'should title a %s card, its full-title tooltip and its poster tooltip',
-      (_, media, heading, tooltip) => {
+      'should title a %s card, its full-title tooltip, its poster tooltip and its poster link',
+      async (_, media, heading, tooltip) => {
+        stubClientRects();
         const { posterLink } = renderCard({ media });
 
         const title = screen.getByRole('heading', { level: 3, name: heading });
-        expect(title).toHaveAttribute('title', heading);
         expect(title.querySelector('a')).toHaveAttribute(
           'href',
           '/shows/slow-horses',
         );
-        expect(posterLink).toHaveAttribute('title', tooltip);
+        expect(posterLink).toHaveAccessibleName(
+          'show' in media ? `${media.show} ${heading}` : heading,
+        );
+        expect(await hoverTooltipLines(assertDefined(posterLink)))
+          .toEqual(tooltip);
+        expect(posterLink).not.toHaveAttribute('title');
+        await userEvent.hover(title);
+        await waitFor(() => expect(title).toHaveAccessibleDescription(heading));
+        expect(title).not.toHaveAttribute('title');
       },
     );
+
+    it("should let the pointer through its title's tooltip, which opens over its icons", () => {
+      renderCard();
+
+      const title = screen.getByRole('heading', { level: 3 });
+      expect(readHint(title)?.isPassThrough).toBe(true);
+    });
+
+    it('should let the pointer through its poster tooltip, which opens outside the poster', () => {
+      const { posterLink } = renderCard();
+
+      expect(readHint(assertDefined(posterLink))?.isPassThrough).toBe(true);
+    });
+
+    it("should set a line as its poster tooltip's last line", async () => {
+      stubClientRects();
+      const { posterLink } = renderCard({
+        media: { type: 'movie', title: 'The Batman', year: 2022 },
+        tooltipLine: '16 Jan 2025 17:39',
+      });
+
+      expect(await hoverTooltipLines(assertDefined(posterLink)))
+        .toEqual(['The Batman (2022)', '16 Jan 2025 17:39']);
+    });
+
+    it("should show its poster tooltip on the poster link's focus, and none on its title link's", async () => {
+      stubClientRects();
+      const { posterLink } = renderCard();
+
+      await userEvent.tab();
+
+      expect(posterLink).toHaveFocus();
+      await waitFor(() =>
+        expect(posterLink).toHaveAccessibleDescription('Slow Horses')
+      );
+      await userEvent.tab();
+      const title = screen.getByRole('heading', { level: 3 });
+      expect(title.querySelector('a')).toHaveFocus();
+      await waitNegativeClaim();
+      expect(posterLink).not.toHaveAttribute('aria-describedby');
+      expect(title).not.toHaveAttribute('aria-describedby');
+    });
+
+    it("should hand its poster tooltip over to the dropped badge's and take it back", async () => {
+      stubClientRects();
+      const { posterLink } = renderCard({ droppedAt: new Date(2026, 2, 4) });
+      const poster = assertDefined(posterLink);
+      const badge = screen.getByRole('img', { name: /Dropped on/ });
+
+      await userEvent.hover(badge);
+      await waitFor(() =>
+        expect(badge).toHaveAccessibleDescription(/Dropped on/)
+      );
+      expect(poster).not.toHaveAttribute('aria-describedby');
+
+      expect(await hoverTooltipLines(poster)).toEqual(['Slow Horses']);
+    });
 
     // A heading that clipped the ellipsis would clip its link's focus ring too.
     it('should clip a long title on its link, not on the heading', () => {
@@ -265,6 +338,19 @@ describe('component: PosterCard', () => {
   });
 
   describe('slots', () => {
+    it('should name the poster link by its badges and dropped date too, not by its image', () => {
+      const { posterLink } = renderCard({
+        badges: createRawSnippet(() => ({
+          render: () => '<span role="img" aria-label="Your rating: 8"></span>',
+        })),
+        droppedAt: new Date(2026, 2, 4, 21, 5),
+      });
+
+      expect(posterLink).toHaveAccessibleName(
+        'Slow Horses Your rating: 8 Dropped on 4 Mar 2026 21:05',
+      );
+    });
+
     it('should set the badges inside the poster link', () => {
       const { posterLink } = renderCard({ badges });
 

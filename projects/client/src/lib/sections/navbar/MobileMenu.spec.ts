@@ -1,6 +1,8 @@
 import { page } from '$app/state';
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
+import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { isMenuRowChecked } from '$test/beds/subnav/isMenuRowChecked.ts';
 import MobileMenu from './MobileMenu.svelte';
 
 const renderAt = (pathname: string) => {
@@ -53,5 +55,15 @@ describe('component: MobileMenu', () => {
         .getAllByRole('menuitem', { current: 'page' })
         .map((row) => row.textContent?.trim()),
     ).toEqual(['Movies']);
+  });
+
+  it("should draw the current page's row in the accent, with no check", async () => {
+    renderAt('/movies/trending');
+
+    const menu = await openMenu();
+
+    const current = within(menu).getByRole('menuitem', { current: 'page' });
+    expect(isMenuRowChecked(current)).toBe(true);
+    expect(glyphClasses(current)).toEqual([]);
   });
 });

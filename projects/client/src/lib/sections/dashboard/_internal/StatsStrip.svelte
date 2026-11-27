@@ -63,14 +63,14 @@
             {@render figure(stats?.episodes.watched)}
             {countText.word({ count: stats?.episodes.watched, unit: 'episodes' })}
           </a>
-          {m.text_dashboard_stats_plays_bracket_open()}<a class="stats-link" href={resolve(EPISODES_HISTORY)}>
+          {m.text_bracketed_value_open()}<a class="stats-link" href={resolve(EPISODES_HISTORY)}>
             {@render figure(stats?.episodes.plays)}
             {countText.word({ count: stats?.episodes.plays, unit: 'plays' })}
           </a>
           <a class="stats-link" href={resolve(SHOWS_HISTORY)}>
             {m.text_dashboard_stats_of()}
             {@render figure(stats?.shows.watched)}
-            {countText.word({ count: stats?.shows.watched, unit: 'shows' })}</a>{m.text_dashboard_stats_plays_bracket_close()}
+            {countText.word({ count: stats?.shows.watched, unit: 'shows' })}</a>{m.text_bracketed_value_close()}
         </div>
 
         <div class="stats-cell">
@@ -81,8 +81,8 @@
             <br />
             {@render figure(stats?.movies.watched)}
             {countText.word({ count: stats?.movies.watched, unit: 'movies' })}
-            {m.text_dashboard_stats_plays_bracket_open()}{@render figure(stats?.movies.plays)}
-            {countText.word({ count: stats?.movies.plays, unit: 'plays' })}{m.text_dashboard_stats_plays_bracket_close()}
+            {m.text_bracketed_value_open()}{@render figure(stats?.movies.plays)}
+            {countText.word({ count: stats?.movies.plays, unit: 'plays' })}{m.text_bracketed_value_close()}
           </a>
         </div>
       </div>
@@ -136,8 +136,7 @@
     }
 
     .stats-number {
-      font-family: var(--font-family-heading);
-      font-weight: var(--font-weight-heading-heavy);
+      @include heavy-heading-font;
     }
 
     @include for-tablet-sm-and-below {

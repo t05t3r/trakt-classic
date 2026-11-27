@@ -1,12 +1,18 @@
+import { isGearDotted } from '$test/beds/subnav/isGearDotted.ts';
+import { isTriggerChanged } from '$test/beds/subnav/isTriggerChanged.ts';
+import { countStat } from '$test/beds/stats/countStat.ts';
 import { goto } from '$app/navigation';
 import { useRatingsParams } from '$lib/features/ratings/stores/useRatingsParams.ts';
 import { useDividers } from '$lib/stores/useDividers.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { RATINGS_PATH } from '$mocks/data/users/RATINGS_PATH.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { controlledBy } from '$test/beds/dom/controlledBy.ts';
 import { toolbarControls } from '$test/beds/lists/toolbarControls.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
+import { readCheckedMenuRow } from '$test/beds/menus/readCheckedMenuRow.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
@@ -48,16 +54,6 @@ async function renderToolbar(
 }
 
 const button = (name: string) => screen.getByRole('button', { name });
-const stat = (label: string) => screen.getByTitle(label);
-
-const rowsOf = (menu: HTMLElement) =>
-  within(menu).getAllByRole('menuitemradio');
-
-const labelsOf = (rows: ReadonlyArray<HTMLElement>) =>
-  rows.map((row) => row.textContent?.trim());
-
-const ariaLabelsOf = (buttons: ReadonlyArray<HTMLElement>) =>
-  buttons.map((found) => found.getAttribute('aria-label'));
 
 beforeEach(() => {
   stubClientRects();
@@ -68,11 +64,11 @@ describe('section: RatingsToolbar', () => {
     it('should list All Types and the four types, All checked', async () => {
       await renderToolbar();
 
-      const rows = rowsOf(await openMenuByClick('Type: All Types', 'Type'));
+      await openMenuByClick('Type: All Types', 'Type');
 
-      expect(labelsOf(rows))
+      expect(readMenuRows('menuitemradio'))
         .toEqual(['All Types', 'Movies', 'Shows', 'Seasons', 'Episodes']);
-      expect(rows.at(0)).toHaveAttribute('aria-checked', 'true');
+      expect(readCheckedMenuRow()).toBe('All Types');
     });
 
     it('should show the type the path holds', async () => {
@@ -101,14 +97,19 @@ describe('section: RatingsToolbar', () => {
       await waitFor(() => expect(lastPush()).toBe(RATINGS_PATH));
     });
 
-    it('should write nothing on a pick of the checked row again', async () => {
-      await renderToolbar({ filters: 'movies/all' });
+    it('should write nothing and close the panel on a pick of the checked row again', async () => {
+      const close = vi.fn();
+      await renderToolbar({
+        filters: 'movies/all',
+        controls: toolbarControls({ close }),
+      });
       await openMenuByClick('Type: Movies', 'Type');
 
       await pickMenuRadio('Movies');
       await waitNegativeClaim();
 
       expect(goto).not.toHaveBeenCalled();
+      expect(close).toHaveBeenCalledOnce();
     });
 
     it('should sit in the start block, alone', async () => {
@@ -122,16 +123,15 @@ describe('section: RatingsToolbar', () => {
         .toEqual(['Type: All Types']);
     });
 
-    it('should leave the panel alone on a pick, outside it', async () => {
+    it('should close the panel on a pick that changes the type', async () => {
       const close = vi.fn();
       await renderToolbar({ controls: toolbarControls({ close }) });
       await openMenuByClick('Type: All Types', 'Type');
 
       await pickMenuRadio('Movies');
       await waitFor(() => expect(goto).toHaveBeenCalledOnce());
-      await waitNegativeClaim();
 
-      expect(close).not.toHaveBeenCalled();
+      expect(close).toHaveBeenCalledOnce();
     });
   });
 
@@ -139,15 +139,15 @@ describe('section: RatingsToolbar', () => {
     it('should leave the item count blank while it loads, its word unmarked', async () => {
       await renderToolbar();
 
-      expect(stat('Items')).toHaveTextContent(/^Items$/);
-      expect(stat('Items')).not.toHaveAttribute('data-label');
+      expect(countStat('Items')).toHaveTextContent(/^Items$/);
+      expect(countStat('Items')).not.toHaveAttribute('data-label');
     });
 
     it('should show the item count, with its word wide', async () => {
       await renderToolbar({ itemCount: 641 });
 
-      expect(stat('Items')).toHaveTextContent(/^641 Items$/);
-      expect(stat('Items')).toHaveAttribute('data-label', 'wide');
+      expect(countStat('Items')).toHaveTextContent(/^641 Items$/);
+      expect(countStat('Items')).toHaveAttribute('data-label', 'wide');
     });
   });
 
@@ -155,11 +155,9 @@ describe('section: RatingsToolbar', () => {
     it('should list All Ratings, then 10 down to 1 as plain text, All checked', async () => {
       await renderToolbar();
 
-      const rows = rowsOf(
-        await openMenuByClick('Rating: All Ratings', 'Rating'),
-      );
+      await openMenuByClick('Rating: All Ratings', 'Rating');
 
-      expect(labelsOf(rows)).toEqual([
+      expect(readMenuRows('menuitemradio')).toEqual([
         'All Ratings',
         '10 - Totally Ninja!',
         '9 - Superb',
@@ -172,7 +170,7 @@ describe('section: RatingsToolbar', () => {
         '2 - Terrible',
         '1 - Weak Sauce :(',
       ]);
-      expect(rows.at(0)).toHaveAttribute('aria-checked', 'true');
+      expect(readCheckedMenuRow()).toBe('All Ratings');
     });
 
     it('should show the rating the path holds', async () => {
@@ -225,7 +223,7 @@ describe('section: RatingsToolbar', () => {
       { filters: '', trigger: 'Rating: All Ratings', row: 'All Ratings' },
       { filters: 'all/8', trigger: 'Rating: 8 - Great', row: '8 - Great' },
     ])(
-      'should write nothing and leave the panel open on a pick of the checked $row row',
+      'should write nothing and close the panel on a pick of the checked $row row',
       async ({ filters, trigger, row }) => {
         const close = vi.fn();
         await renderToolbar({ filters, controls: toolbarControls({ close }) });
@@ -235,60 +233,19 @@ describe('section: RatingsToolbar', () => {
         await waitNegativeClaim();
 
         expect(goto).not.toHaveBeenCalled();
-        expect(close).not.toHaveBeenCalled();
+        expect(close).toHaveBeenCalledOnce();
       },
     );
   });
 
-  describe('sort', () => {
-    it('should list Rated Date alone, checked', async () => {
+  describe('dividers toggle', () => {
+    // The panel hides on phones until the gear opens it; the toggle stays.
+    it('should follow the panel, outside it', async () => {
       await renderToolbar();
 
-      const rows = rowsOf(
-        await openMenuByClick('Sort by: Rated Date', 'Sort by'),
-      );
-
-      expect(labelsOf(rows)).toEqual(['Rated Date']);
-      expect(rows.at(0)).toHaveAttribute('aria-checked', 'true');
-    });
-
-    it('should write nothing and leave the panel open on a pick of its one row', async () => {
-      const close = vi.fn();
-      await renderToolbar({ controls: toolbarControls({ close }) });
-      await openMenuByClick('Sort by: Rated Date', 'Sort by');
-
-      await pickMenuRadio('Rated Date');
-      await waitNegativeClaim();
-
-      expect(goto).not.toHaveBeenCalled();
-      expect(close).not.toHaveBeenCalled();
-    });
-
-    it('should follow the rating menu in the options, in its own margin box', async () => {
-      const { container } = await renderToolbar();
-
-      const options = assertDefined(container.querySelector<HTMLElement>(
-        `#${PANEL_ID}`,
-      ));
-
-      expect(ariaLabelsOf(within(options).getAllByRole('button')))
-        .toEqual(['Rating: All Ratings', 'Sort by: Rated Date']);
-      expect(options.querySelector('.toolbar-sort'))
-        .toContainElement(button('Sort by: Rated Date'));
-    });
-  });
-
-  describe('dividers toggle', () => {
-    // The options hide on phones; the toggle stays.
-    it('should follow the options, outside them', async () => {
-      const { container } = await renderToolbar();
-
-      expect(
-        container.querySelector('.toolbar-options + .trakt-dividers-toggle'),
-      )
-        .toContainElement(button('Toggle Dividers'));
-      expect(container.querySelector(`#${PANEL_ID}`))
-        .not.toContainElement(button('Toggle Dividers'));
+      const panel = assertDefined(controlledBy(button('Options')));
+      expect(panel.compareDocumentPosition(button('Toggle Dividers')))
+        .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it('should flip the instance the screen hands it', async () => {
@@ -315,9 +272,9 @@ describe('section: RatingsToolbar', () => {
     it('should show the filter the URL holds', async () => {
       await renderToolbar({ search: '?fade=watched' });
 
-      const rows = rowsOf(await openMenuByClick('Filters', 'Filters'));
+      await openMenuByClick('Filters', 'Filters');
 
-      expect(rows.at(0)).toHaveAttribute('aria-checked', 'true');
+      expect(readCheckedMenuRow()).toBe('Fade watched');
     });
 
     it('should leave the panel alone on a pick, outside it', async () => {
@@ -338,21 +295,13 @@ describe('section: RatingsToolbar', () => {
   });
 
   describe('the frame', () => {
-    it('should keep the controls on phones', async () => {
-      const { container } = await renderToolbar();
-
-      expect(container.querySelector('.trakt-subnav-toolbar'))
-        .toHaveAttribute('data-phone', 'controls');
-    });
-
-    it('should hold the controls in order, the gear before the toggle and the eye', async () => {
-      await renderToolbar({ controls: toolbarControls({ untitled: {} }) });
+    it('should hold the controls in order, the gear before the panel and the toggle and the eye after it', async () => {
+      await renderToolbar();
 
       expect(ariaLabelsOf(screen.getAllByRole('button'))).toEqual([
+        'Options',
         'Type: All Types',
         'Rating: All Ratings',
-        'Sort by: Rated Date',
-        'Options',
         'Toggle Dividers',
         'Filters',
       ]);
@@ -360,20 +309,18 @@ describe('section: RatingsToolbar', () => {
   });
 
   describe('the phone gear', () => {
-    it('should control the panel that holds the rating and sort menus', async () => {
-      await renderToolbar({ controls: toolbarControls({ untitled: {} }) });
+    it('should control the panel that holds the type menu, then the rating menu', async () => {
+      await renderToolbar();
 
       const panel = assertDefined(controlledBy(button('Options')));
 
-      expect(panel).toContainElement(button('Rating: All Ratings'));
-      expect(panel).toContainElement(button('Sort by: Rated Date'));
+      expect(ariaLabelsOf(within(panel).getAllByRole('button')))
+        .toEqual(['Type: All Types', 'Rating: All Ratings']);
     });
 
     it('should press through to the toggle the controls carry', async () => {
       const toggle = vi.fn();
-      await renderToolbar({
-        controls: toolbarControls({ untitled: { toggle } }),
-      });
+      await renderToolbar({ controls: toolbarControls({ toggle }) });
 
       await userEvent.click(button('Options'));
 
@@ -384,7 +331,7 @@ describe('section: RatingsToolbar', () => {
       'should mark the panel open %s',
       async (open) => {
         const { container } = await renderToolbar({
-          controls: toolbarControls({ untitled: {}, open }),
+          controls: toolbarControls({ open }),
         });
 
         expect(
@@ -393,5 +340,32 @@ describe('section: RatingsToolbar', () => {
         ).toBe(open);
       },
     );
+  });
+
+  describe('off the default', () => {
+    it('should draw no trigger in the accent and dot no gear at the defaults', async () => {
+      await renderToolbar();
+
+      expect([
+        isTriggerChanged('Type: All Types'),
+        isTriggerChanged('Rating: All Ratings'),
+        isGearDotted(),
+      ]).toEqual([false, false, false]);
+    });
+
+    it.each([
+      ['type', 'shows', 'Type: Shows'],
+      ['rating', 'all/8', 'Rating: 8 - Great'],
+    ])('should accent the %s and dot the gear', async (_, filters, name) => {
+      await renderToolbar({ filters });
+
+      expect([isTriggerChanged(name), isGearDotted()]).toEqual([true, true]);
+    });
+
+    it('should leave the gear undotted by the eye, which stays in the row', async () => {
+      await renderToolbar({ search: '?hide=watched' });
+
+      expect(isGearDotted()).toBe(false);
+    });
   });
 });

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HintHost from '$lib/components/tooltip/HintHost.svelte';
   import AuthProvider from '$lib/features/auth/AuthProvider.svelte';
   import { mapToAuthData } from '$lib/features/auth/mapToAuthData.ts';
   import type { Session } from '$lib/features/auth/models/Session.ts';
@@ -35,6 +36,7 @@
           <UserLoadedProbe onLoaded={onUserLoaded} />
         {/if}
         {@render children()}
+        <HintHost />
       </AuthProvider>
     </ConfirmationProvider>
   </WriteQueueProvider>

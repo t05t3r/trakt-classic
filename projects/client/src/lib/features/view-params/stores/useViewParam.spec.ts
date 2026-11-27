@@ -1,10 +1,13 @@
 import { goto } from '$app/navigation';
-import { navigating } from '$app/state';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
-import { holdFirstReplace } from '$test/beds/url/holdFirstReplace.ts';
+import { dispatchPageShow } from '$test/beds/url/dispatchPageShow.ts';
+import { holdFirstNavigation } from '$test/beds/url/holdFirstNavigation.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
+import { reloadFirstNavigation } from '$test/beds/url/reloadFirstNavigation.ts';
+import { startNavigation } from '$test/beds/url/startNavigation.ts';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { useViewParam } from './useViewParam.ts';
 
@@ -192,25 +195,53 @@ describe('store: useViewParam', () => {
     expect(lastReplace()).toBe('/shows/silo?actors=guest');
   });
 
-  it('should drop a queued set while a navigation is in flight', async () => {
-    const held = holdReplaces();
+  it('should run a set made during a navigation once it lands', async () => {
     openAt('/movies/heretic-2024');
     const { set } = await renderViewParam();
+    const navigation = startNavigation();
 
-    const first = set({ actors: 'guest' });
-    await vi.waitFor(() => expect(goto).toHaveBeenCalledOnce());
-    const sets = Promise.all([first, set({ comments: 'likes' })]);
-    const inFlight = vi.spyOn(navigating, 'type', 'get')
-      .mockReturnValue('link');
-    onTestFinished(() => void inFlight.mockRestore());
-    held.resolve();
-    await sets;
+    const queued = set({ actors: 'guest' });
+    await waitNegativeClaim();
+    const beforeLanding = vi.mocked(goto).mock.calls.length;
+    navigation.land();
+    await queued;
 
-    expect(goto).toHaveBeenCalledOnce();
+    expect(beforeLanding).toBe(0);
+    expect(lastReplace()).toBe('/movies/heretic-2024?actors=guest');
+  });
+
+  it('should run the sets made while a replace reloads the page once a bfcache restore brings it back', async () => {
+    openAt('/movies/heretic-2024');
+    const { set } = await renderViewParam();
+    const unloading = reloadFirstNavigation();
+
+    void set({ comments: 'recent' });
+    await unloading;
+    const queued = set({ actors: 'guest' });
+    dispatchPageShow({ persisted: true });
+    await queued;
+    const restored = lastReplace();
+    await set({ comments: 'likes' });
+
+    expect(restored).toBe('/movies/heretic-2024?actors=guest');
+    expect(lastReplace()).toBe('/movies/heretic-2024?comments=likes');
+  });
+
+  it('should drop a set made during a navigation that lands on another pathname', async () => {
+    openAt('/movies/heretic-2024');
+    const { set } = await renderViewParam();
+    const navigation = startNavigation();
+
+    const queued = set({ actors: 'guest' });
+    openAt('/shows/silo');
+    navigation.land();
+    await queued;
+
+    expect(goto).not.toHaveBeenCalled();
   });
 
   it('should merge a burst of sets behind a replace into one replace', async () => {
-    const held = holdFirstReplace();
+    const held = holdFirstNavigation();
     openAt('/movies/heretic-2024');
     const { set } = await renderViewParam();
 
@@ -222,6 +253,8 @@ describe('store: useViewParam', () => {
       set({ actors: 'guest' }),
       set({ comments: 'recent' }),
     ]);
+    await waitNegativeClaim();
+    expect(goto).toHaveBeenCalledOnce();
     held.resolve();
     await Promise.all([first, burst]);
 
@@ -232,7 +265,7 @@ describe('store: useViewParam', () => {
   });
 
   it('should keep a queued key that a later set leaves undefined', async () => {
-    const held = holdFirstReplace();
+    const held = holdFirstNavigation();
     openAt('/movies/heretic-2024');
     const { set } = await renderViewParam();
 
@@ -250,7 +283,7 @@ describe('store: useViewParam', () => {
   });
 
   it("should omit each queued key set to its own hook's fallback", async () => {
-    const held = holdFirstReplace();
+    const held = holdFirstNavigation();
     openAt('/shows/silo?seasons=rating,desc');
     const { cast, seasons } = await renderStore(() => ({
       cast: useViewParam(SPEC),
@@ -276,7 +309,7 @@ describe('store: useViewParam', () => {
   });
 
   it('should hand an updater the values the sets before it leave', async () => {
-    const held = holdFirstReplace();
+    const held = holdFirstNavigation();
     openAt('/movies/heretic-2024');
     const { set } = await renderViewParam();
 
@@ -294,6 +327,21 @@ describe('store: useViewParam', () => {
 
     expect(goto).toHaveBeenCalledTimes(2);
     expect(lastReplace()).toBe('/movies/heretic-2024?comments=recent');
+  });
+
+  it('should hand an updater the values the URL held at the call', async () => {
+    openAt('/movies/heretic-2024?actors=guest');
+    const { set } = await renderViewParam();
+    const navigation = startNavigation();
+
+    const queued = set((values, made) =>
+      values.actors === made.actors ? {} : { comments: made.actors }
+    );
+    openAt('/movies/heretic-2024?comments=likes');
+    navigation.land();
+    await queued;
+
+    expect(lastReplace()).toBe('/movies/heretic-2024?comments=guest');
   });
 
   it('should not replace a URL that a set leaves unchanged', async () => {

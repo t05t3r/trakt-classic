@@ -8,6 +8,7 @@ import { closeFromOutside } from '$test/beds/menus/closeFromOutside.ts';
 import MenuHost from '$test/beds/menus/MenuHost.svelte';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 
@@ -87,10 +88,7 @@ describe('component: Menu', () => {
     render(MenuHost, { props: { onSelect: vi.fn(), checked: false } });
     await openMenu();
 
-    expect(
-      screen.getAllByRole('menuitem').map((item) => item.textContent?.trim()),
-    )
-      .toEqual(['Added Date', 'Title']);
+    expect(readMenuRows()).toEqual(['Added Date', 'Title']);
   });
 
   it('should turn a plain item into a checkbox item once it has a checked state', async () => {

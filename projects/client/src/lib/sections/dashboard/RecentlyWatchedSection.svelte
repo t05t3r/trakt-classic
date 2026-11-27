@@ -1,16 +1,11 @@
 <script lang="ts">
-  import CaptionTag from '$lib/components/badges/CaptionTag.svelte';
+  import CaptionDateTag from '$lib/components/badges/CaptionDateTag.svelte';
   import EpisodeTypeTag from '$lib/components/badges/EpisodeTypeTag.svelte';
   import SectionState from '$lib/components/feedback/SectionState.svelte';
   import SeeMoreLink from '$lib/components/headers/SeeMoreLink.svelte';
-  import FanartCard from '$lib/components/media/FanartCard.svelte';
   import RowRevealGrid from '$lib/components/pagination/RowRevealGrid.svelte';
-  import FormattedDate from '$lib/components/stats/FormattedDate.svelte';
   import * as m from '$lib/features/i18n/messages.ts';
-  import LazyImage from '$lib/features/image/components/LazyImage.svelte';
-  import QuickActions from '$lib/features/media-actions/components/QuickActions.svelte';
-  import CardCommunityRating from '$lib/features/media-card/components/CardCommunityRating.svelte';
-  import UserRatingCorner from '$lib/features/media-card/components/UserRatingCorner.svelte';
+  import MediaFanartCard from '$lib/features/media-card/components/MediaFanartCard.svelte';
   import { toSectionStatus } from '$lib/features/query/toSectionStatus.ts';
   import { useInfiniteQuery } from '$lib/features/query/useQuery.ts';
   import { activityHistoryQuery } from '$lib/requests/queries/users/activityHistoryQuery.ts';
@@ -69,44 +64,20 @@
       >
         {#snippet item(entry)}
           {@const card = toRecentlyWatchedCard(entry)}
-          <FanartCard
-            media={card.media}
-            href={card.href}
-            showHref={card.showHref}
-          >
-            {#snippet image()}
-              <LazyImage src={card.image} alt={card.imageAlt} kind="fanart" />
-            {/snippet}
-            {#snippet caption()}
-              {#if card.episodeType}
-                <EpisodeTypeTag type={card.episodeType} />
-              {/if}
-              <CaptionTag>
-                <FormattedDate date={entry.watchedAt} pattern="d MMM yyyy HH:mm" />
-              </CaptionTag>
-            {/snippet}
-            {#snippet badges()}
-              <UserRatingCorner
-                target={{ type: card.target.type, id: card.target.id }}
-              />
-            {/snippet}
-            {#snippet actions()}
-              <QuickActions
-                target={card.target}
-                favorite
-                historyId={entry.id}
-                playedAt={entry.watchedAt}
-              >
-                {#snippet metadata(hasPlay)}
-                  <CardCommunityRating
-                    rating={card.rating}
-                    target={card.target}
-                    {hasPlay}
-                  />
-                {/snippet}
-              </QuickActions>
-            {/snippet}
-          </FanartCard>
+          {#snippet caption()}
+            {#if card.episodeType}
+              <EpisodeTypeTag type={card.episodeType} />
+            {/if}
+            <CaptionDateTag date={entry.watchedAt} pattern="d MMM yyyy HH:mm" />
+          {/snippet}
+          <MediaFanartCard
+            {card}
+            fanart={card.fanart}
+            {caption}
+            favorite
+            historyId={entry.id}
+            playedAt={entry.watchedAt}
+          />
         {/snippet}
       </RowRevealGrid>
     {/snippet}

@@ -1,5 +1,5 @@
 import { collectStates } from '$test/beds/store/collectStates.ts';
-import { BehaviorSubject, EMPTY, of } from 'rxjs';
+import { BehaviorSubject, EMPTY, identity, of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { createKeyedReader } from './createKeyedReader.ts';
 
@@ -9,7 +9,7 @@ describe('util: createKeyedReader', () => {
   it('should read through the initial value at once', () => {
     const { reading } = createKeyedReader({
       initial: of('Ready'),
-      read: (current) => current,
+      read: identity,
     });
 
     expect(collectStates(reading)).toEqual(['Ready']);

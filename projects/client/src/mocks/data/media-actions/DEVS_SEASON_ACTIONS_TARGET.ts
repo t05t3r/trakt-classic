@@ -20,5 +20,5 @@ export const DEVS_SEASON_ACTIONS_TARGET = {
     aired: DEVS_PROGRESS_SEASON.total,
   },
   airDate: AIRED,
-  show: { id: DEVS.id, title: 'Devs' },
+  show: { id: DEVS.id, title: 'Devs', slug: 'devs' },
 } satisfies QuickActionsTarget;

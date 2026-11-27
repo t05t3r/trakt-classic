@@ -1,11 +1,16 @@
 import { ShowDevsResponseMock } from '$mocks/data/summary/shows/devs/ShowDevsResponseMock.ts';
 import { EpisodeSiloResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloResponseMock.ts';
+import { ShowSiloMinimalResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloMinimalResponseMock.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
+import { HIDE_PROGRESS_URL } from '$mocks/data/users/HIDE_PROGRESS_URL.ts';
+import { HiddenSeasonsAllSiloResponseMock } from '$mocks/data/users/response/HiddenSeasonsAllSiloResponseMock.ts';
 import { server } from '$mocks/server.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { serveUpNext } from '$test/beds/dashboard/serveUpNext.ts';
 import { imageHrefs } from '$test/beds/media/imageHrefs.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
+import { watchedProgressRow } from '$test/beds/request/watchedProgressRow.ts';
 import { waitFor } from '@testing-library/svelte';
 import type { UpNextResponse } from '@trakt/api';
 import { http, HttpResponse } from 'msw';
@@ -13,7 +18,8 @@ import { describe, expect, it } from 'vitest';
 import HeroPosterWall from './HeroPosterWall.svelte';
 
 function shard(id: number) {
-  return `000/000/${String(id).padStart(3, '0')}`;
+  const digits = String(id).padStart(9, '0');
+  return `${digits.slice(0, 3)}/${digits.slice(3, 6)}/${digits.slice(6)}`;
 }
 
 function posterCandidate(id: number) {
@@ -24,7 +30,7 @@ function posterCandidate(id: number) {
 
 // A show of its own; `withPoster: false` leaves it the Placeholder.
 function upNext(id: number, withPoster = true): UpNextResponse {
-  return {
+  return watchedProgressRow({
     show: {
       ...ShowDevsResponseMock,
       ids: { ...ShowDevsResponseMock.ids, trakt: id, slug: `show-${id}` },
@@ -37,15 +43,11 @@ function upNext(id: number, withPoster = true): UpNextResponse {
         thumb: [],
       },
     },
-    progress: {
-      aired: 8,
-      completed: 1,
-      last_watched_at: null,
-      reset_at: null,
-      next_episode: EpisodeSiloResponseMock,
-      last_episode: null,
-    },
-  };
+    lastWatchedAt: null,
+    aired: 8,
+    completed: 1,
+    nextEpisode: EpisodeSiloResponseMock,
+  });
 }
 
 function proxied(id: number) {
@@ -126,6 +128,29 @@ describe('section: HeroPosterWall', () => {
         proxied(1),
       ])
     );
+  });
+
+  it('should leave out a show with nothing watched whose next episode is in a hidden season', async () => {
+    const siloId = ShowSiloMinimalResponseMock.ids.trakt;
+    const silo = upNext(siloId);
+    servePaged({
+      url: HIDE_PROGRESS_URL,
+      body: HiddenSeasonsAllSiloResponseMock,
+    });
+    const container = renderWall(() =>
+      HttpResponse.json([
+        upNext(1),
+        { ...silo, progress: { ...silo.progress, completed: 0 } },
+        upNext(3),
+      ])
+    );
+
+    await waitFor(() => expect(imageHrefs(container)).toHaveLength(24));
+    expect(imageHrefs(container).slice(0, 3)).toEqual([
+      proxied(1),
+      proxied(3),
+      proxied(1),
+    ]);
   });
 
   it('should render nothing while Up Next is pending and the Watchlist is empty', async () => {

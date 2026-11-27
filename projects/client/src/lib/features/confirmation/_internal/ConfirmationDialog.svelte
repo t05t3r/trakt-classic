@@ -42,19 +42,21 @@
 </Modal>
 
 <style lang="scss">
+  @use '$style/scss/mixins/index' as *;
+
   .trakt-confirmation-dialog {
     color: var(--color-text-primary);
   }
 
   .confirmation-button {
+    @include heavy-heading-font;
+
     padding-block: var(--ni-10);
     padding-inline: var(--ni-16);
     border: none;
     border-radius: var(--btn-radius);
     color: var(--color-text-primary);
-    font-family: var(--font-family-heading);
     font-size: var(--font-size-dialog-button);
-    font-weight: var(--font-weight-heading-heavy);
     text-transform: uppercase;
     cursor: pointer;
 

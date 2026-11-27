@@ -1,7 +1,13 @@
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { UpNextResponseMock } from '$mocks/data/sync/response/UpNextResponseMock.ts';
+import { UP_NEXT_URL } from '$mocks/data/sync/UP_NEXT_URL.ts';
 import { EpisodeSiloResponseMock } from '$mocks/data/summary/episodes/silo/response/EpisodeSiloResponseMock.ts';
 import { ShowDevsResponseMock } from '$mocks/data/summary/shows/devs/ShowDevsResponseMock.ts';
 import { DROP_URL } from '$mocks/data/users/DROP_URL.ts';
+import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
+import { HIDE_PROGRESS_URL } from '$mocks/data/users/HIDE_PROGRESS_URL.ts';
+import { HiddenSeasonsAllSiloResponseMock } from '$mocks/data/users/response/HiddenSeasonsAllSiloResponseMock.ts';
+import { HiddenSeasonsResponseMock } from '$mocks/data/users/response/HiddenSeasonsResponseMock.ts';
 import { EarlyRatingsUserSettingsResponseMock } from '$mocks/data/users/response/EarlyRatingsUserSettingsResponseMock.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
@@ -12,14 +18,24 @@ import { cards } from '$test/beds/dashboard/cards.ts';
 import { readyCards } from '$test/beds/dashboard/readyCards.ts';
 import { renderSection } from '$test/beds/dashboard/renderSection.ts';
 import { serveUpNext } from '$test/beds/dashboard/serveUpNext.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
-import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
+import { applyDateField } from '$test/beds/forms/applyDateField.ts';
+import { DATE_FIELD_CLOSES } from '$test/beds/forms/DATE_FIELD_CLOSES.ts';
+import { fixNow } from '$test/beds/date/fixNow.ts';
+import { dateField } from '$test/beds/forms/dateField.ts';
+import { dateFieldDialog } from '$test/beds/forms/dateFieldDialog.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { collapsedCells } from '$test/beds/pagination/collapsedCells.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { recordBodies } from '$test/beds/request/recordBodies.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
+import { watchedProgressRow } from '$test/beds/request/watchedProgressRow.ts';
 import { stubScrollIntoView } from '$test/beds/scroll/stubScrollIntoView.ts';
 import { cleanup, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -36,23 +52,19 @@ if (!SILO) throw new Error('UpNextResponseMock has no Silo row');
 
 // Devs with the episodes before `number` watched; the mocks hold no play of it.
 function devsAt(number: number): UpNextResponse {
-  return {
+  return watchedProgressRow({
     show: ShowDevsResponseMock,
-    progress: {
-      aired: 8,
-      completed: number - 1,
-      last_watched_at: null,
-      reset_at: null,
-      next_episode: {
-        ...EpisodeSiloResponseMock,
-        ids: { ...EpisodeSiloResponseMock.ids, trakt: 7000 + number },
-        number,
-        title: `Episode ${number}`,
-        episode_type: 'standard',
-      },
-      last_episode: null,
+    lastWatchedAt: null,
+    aired: 8,
+    completed: number - 1,
+    nextEpisode: {
+      ...EpisodeSiloResponseMock,
+      ids: { ...EpisodeSiloResponseMock.ids, trakt: 7000 + number },
+      number,
+      title: `Episode ${number}`,
+      episode_type: 'standard',
     },
-  };
+  });
 }
 
 const SECTION = { component: UpNextSection, name: 'Up Next' };
@@ -77,8 +89,10 @@ async function readyWatchButton() {
   return { region, card, watch };
 }
 
-// Silo's card, its Drop menu open, among the entries served.
-async function openSiloDropMenu(entries = [devsAt(2), SILO]) {
+const DROP_LABEL = 'When did you drop this?';
+
+// Silo's card, its Drop field open, among the entries served.
+async function openSiloDropField(entries = [devsAt(2), SILO]) {
   stubClientRects();
   serveUpNext(() => HttpResponse.json(entries));
   const region = await renderSection(SECTION);
@@ -92,9 +106,10 @@ async function openSiloDropMenu(entries = [devsAt(2), SILO]) {
     name: 'Flag show "Silo" as dropped',
   });
   await userEvent.click(trigger);
-  await screen.findByRole('menu', { name: 'When did you drop this?' });
+  await waitFor(() => expect(dateField(DROP_LABEL)).toHaveFocus());
+  const dialog = assertDefined(dateFieldDialog(DROP_LABEL));
 
-  return { region, silo, trigger };
+  return { region, silo, trigger, dialog };
 }
 
 async function readyDevsWatchButton(region: HTMLElement, silo: HTMLElement) {
@@ -103,15 +118,6 @@ async function readyDevsWatchButton(region: HTMLElement, silo: HTMLElement) {
   const watch = await settledButton('Mark "Episode 2" as watched', devs);
 
   return watch;
-}
-
-// Holds the drop in flight until its release or the test ends.
-function holdDrop(status = 201) {
-  return holdRequest({
-    method: 'post',
-    url: DROP_URL,
-    answer: () => new HttpResponse(null, { status }),
-  });
 }
 
 describe('section: UpNextSection', () => {
@@ -139,11 +145,14 @@ describe('section: UpNextSection', () => {
       .toHaveAttribute('data-help-text-gap', 'none');
   });
 
-  it('should link the header to the progress page', async () => {
+  it('should link the header to the progress page by Watched Date, watched shows hidden', async () => {
     const region = await renderSection(SECTION);
 
     expect(within(region).getByRole('link', { name: 'Progress' }))
-      .toHaveAttribute('href', '/users/me/progress');
+      .toHaveAttribute(
+        'href',
+        '/users/me/progress/watched/added/asc?hide_completed=true',
+      );
   });
 
   it.each([
@@ -275,9 +284,9 @@ describe('section: UpNextSection', () => {
       if (!card) throw new Error('no card');
 
       const poster = card.querySelector('a.poster');
-      const title = within(card).getByRole('link', {
-        name: '1x01 Freedom Day',
-      });
+      const title = assertDefined(
+        within(card).getByRole('heading', { level: 3 }).querySelector('a'),
+      );
       const show = within(card).getByRole('link', { name: 'Silo' });
 
       expect(poster).toHaveAttribute(
@@ -326,7 +335,7 @@ describe('section: UpNextSection', () => {
       expect(within(subtitle).getByRole('link')).toHaveClass('ellipsis');
     });
 
-    it('should show the show poster, the episode type and the progress bar linking to the progress page', async () => {
+    it('should show the show poster, the episode type and the progress bar linking to the show on the progress page', async () => {
       serveUpNext(() => HttpResponse.json([SILO]));
       const region = await renderSection(SECTION);
       const [card] = await readyCards({
@@ -345,9 +354,12 @@ describe('section: UpNextSection', () => {
           'src',
           '/img/shows/000/180/770/posters/thumb/5312f1d1cf.jpg.webp',
         );
-      expect(card.querySelector('.trakt-episode-type-ribbon'))
+      expect(card.querySelector('.trakt-art-ribbon'))
         .toHaveTextContent('Series Premiere');
-      expect(progress).toHaveAttribute('href', '/users/me/progress');
+      expect(progress).toHaveAttribute(
+        'href',
+        '/users/me/progress?show=180770',
+      );
       expect(within(progress).getByRole('progressbar'))
         .toHaveAttribute('aria-valuenow', '0');
     });
@@ -407,7 +419,7 @@ describe('section: UpNextSection', () => {
         return found;
       });
 
-      expect(icons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
+      expect(ariaLabelsOf(icons)).toEqual([
         'Mark "Episode 2" as watched',
         'Add or remove "Episode 2" from lists',
       ]);
@@ -570,44 +582,77 @@ describe('section: UpNextSection', () => {
   });
 
   describe('drop', () => {
-    it('should remove the card before the drop lands', async () => {
-      holdDrop();
-      const { region, silo } = await openSiloDropMenu();
-
-      await userEvent.click(
-        screen.getByRole('menuitem', { name: 'Right now' }),
-      );
-
-      await waitFor(() => expect(silo.isConnected).toBe(false));
-      expect(
+    it('should remove the card before the drop lands, and keep it out after a failed refetch of the dropped list', async () => {
+      const drop = holdPost(DROP_URL);
+      const { region, silo } = await openSiloDropField();
+      const titles = () =>
         cards(region, CARD_SELECTOR).map((card) =>
           card.querySelector('h3')?.textContent
-        ),
-      ).toEqual(['1x02 Episode 2']);
+        );
+
+      await applyDateField();
+
+      await waitFor(() => expect(silo.isConnected).toBe(false));
+      const whilePosting = titles();
+      const refetch = holdRequest({
+        method: 'get',
+        url: DROPPED_URL,
+        answer: notFound,
+      });
+      drop.release();
+      await refetch.requested;
+      refetch.release();
+      await waitNegativeClaim();
+
+      expect(whilePosting).toEqual(['1x02 Episode 2']);
+      expect(titles()).toEqual(['1x02 Episode 2']);
     });
 
-    it('should post the drop for the show on the card', async () => {
-      const bodies = recordBodies(DROP_URL, { status: 201 });
-      await openSiloDropMenu();
+    it('should keep the card out after a failed Up Next refetch, though the dropped list reads', async () => {
+      const { region, silo } = await openSiloDropField();
+      const titles = () =>
+        cards(region, CARD_SELECTOR).map((card) =>
+          card.querySelector('h3')?.textContent
+        );
+      const dropped = holdRequest({ method: 'get', url: DROPPED_URL });
+      const upNext = holdRequest({
+        method: 'get',
+        url: UP_NEXT_URL,
+        answer: notFound,
+      });
 
-      await userEvent.click(
-        screen.getByRole('menuitem', { name: 'Right now' }),
-      );
+      await applyDateField();
+      await waitFor(() => expect(silo.isConnected).toBe(false));
+      await Promise.all([dropped.requested, upNext.requested]);
+      dropped.release();
+      upNext.release();
+      await waitNegativeClaim();
+
+      expect(titles()).toEqual(['1x02 Episode 2']);
+    });
+
+    it('should post the drop for the show on the card, at the minute applied', async () => {
+      fixNow(new Date('2026-03-15T09:41:27.000Z'));
+      const bodies = recordBodies(DROP_URL, { status: 201 });
+      await openSiloDropField();
+
+      await applyDateField();
 
       await waitFor(() =>
         expect(bodies).toEqual([{
-          shows: [{ ids: { trakt: SILO.show.ids.trakt } }],
+          shows: [{
+            ids: { trakt: SILO.show.ids.trakt },
+            hidden_at: '2026-03-15T09:41:00.000Z',
+          }],
         }])
       );
     });
 
     it('should bring the card back and show the error toast when the drop fails', async () => {
-      const drop = holdDrop(500);
-      const { region, silo } = await openSiloDropMenu();
+      const drop = holdPost(DROP_URL, 500);
+      const { region, silo } = await openSiloDropField();
 
-      await userEvent.click(
-        screen.getByRole('menuitem', { name: 'Right now' }),
-      );
+      await applyDateField();
       await waitFor(() => expect(silo.isConnected).toBe(false));
       drop.release();
 
@@ -624,12 +669,10 @@ describe('section: UpNextSection', () => {
     });
 
     it('should show the empty box when the last card is dropped', async () => {
-      holdDrop();
-      const { region } = await openSiloDropMenu([SILO]);
+      holdPost(DROP_URL);
+      const { region } = await openSiloDropField([SILO]);
 
-      await userEvent.click(
-        screen.getByRole('menuitem', { name: 'Right now' }),
-      );
+      await applyDateField();
 
       expect(
         await within(region).findByText(
@@ -640,56 +683,13 @@ describe('section: UpNextSection', () => {
     });
 
     it.each(REMOVALS)(
-      'should hand the focus to the section when Right now is chosen by keyboard, where removal $removal',
+      'should hand the focus to the section when the drop is applied, where removal $removal',
       async ({ emulate }) => {
-        holdDrop();
-        stubClientRects();
-        serveUpNext(() => HttpResponse.json([devsAt(2), SILO]));
-        const region = await renderSection(SECTION);
-        const [, silo] = await readyCards({
-          region,
-          selector: CARD_SELECTOR,
-          count: 2,
-        });
-        if (!silo) throw new Error('no Silo card');
+        holdPost(DROP_URL);
+        const { region, silo, dialog } = await openSiloDropField();
         emulate();
 
-        await openMenuFromKeyboard(
-          within(silo).getByRole('button', {
-            name: 'Flag show "Silo" as dropped',
-          }),
-          'Right now',
-        );
-        await userEvent.keyboard('{Enter}');
-
-        await waitFor(() => expect(silo.isConnected).toBe(false));
-        await waitFor(() =>
-          expect(
-            screen.queryByRole('menu', { name: 'When did you drop this?' }),
-          ).not.toBeInTheDocument()
-        );
-        expect(document.activeElement).toBe(region);
-      },
-    );
-
-    it.each(REMOVALS)(
-      'should hand the focus to the section when Other date is applied, where removal $removal',
-      async ({ emulate }) => {
-        holdDrop();
-        const { region, silo } = await openSiloDropMenu();
-        emulate();
-
-        await userEvent.click(
-          screen.getByRole('menuitem', { name: 'Other date' }),
-        );
-        const dialog = await screen.findByRole('dialog', {
-          name: 'When did you drop this?',
-        });
-        const apply = within(dialog).getByRole('button', { name: 'Apply' });
-        await waitFor(() =>
-          expect(dialog.contains(document.activeElement)).toBe(true)
-        );
-        await userEvent.click(apply);
+        await applyDateField();
 
         await waitFor(() => expect(silo.isConnected).toBe(false));
         await waitFor(() => expect(dialog).not.toBeInTheDocument());
@@ -697,57 +697,102 @@ describe('section: UpNextSection', () => {
       },
     );
 
-    it('should hand the focus to the section when a card leaves after an outside click closed its menu', async () => {
-      const { region, silo, trigger } = await openSiloDropMenu();
-      const watch = await readyDevsWatchButton(region, silo);
-      const menu = screen.getByRole('menu', {
-        name: 'When did you drop this?',
-      });
-      await waitFor(() =>
-        expect(menu.contains(document.activeElement)).toBe(true)
-      );
+    it.each(DATE_FIELD_CLOSES)(
+      'should hand the focus to the section when a card leaves after $name closed its field',
+      async ({ close }) => {
+        const { region, silo, trigger, dialog } = await openSiloDropField();
+        const watch = await readyDevsWatchButton(region, silo);
 
-      await userEvent.pointer({
-        keys: '[MouseLeft]',
-        target: document.documentElement,
-        coords: { clientX: 100, clientY: 100 },
-      });
-      await waitFor(() => expect(menu).not.toBeInTheDocument());
-      expect(trigger).toHaveFocus();
-      serveUpNext(() => HttpResponse.json([devsAt(3)]));
-      watch.click();
+        await close();
+        await waitFor(() => expect(dialog).not.toBeInTheDocument());
+        await waitFor(() => expect(trigger).toHaveFocus());
+        serveUpNext(() => HttpResponse.json([devsAt(3)]));
+        watch.click();
 
-      await waitFor(() => expect(silo.isConnected).toBe(false));
-      expect(document.activeElement).toBe(region);
+        await waitFor(() => expect(silo.isConnected).toBe(false));
+        expect(document.activeElement).toBe(region);
+      },
+    );
+  });
+
+  describe('hidden seasons', () => {
+    // Silo with episodes watched, its next episode still 1x01.
+    const siloWatched = {
+      ...SILO,
+      progress: { ...SILO.progress, completed: 3 },
+    };
+
+    async function readyRegion(count: number) {
+      const region = await renderSection(SECTION);
+      await readyCards({ region, selector: CARD_SELECTOR, count });
+
+      return region;
+    }
+
+    const showLink = (region: HTMLElement, name: string) =>
+      within(region).queryByRole('link', { name });
+
+    it('should leave out a show with nothing watched whose next episode is in a hidden season', async () => {
+      servePaged({
+        url: HIDE_PROGRESS_URL,
+        body: HiddenSeasonsAllSiloResponseMock,
+      });
+      serveUpNext(() => HttpResponse.json([devsAt(2), SILO]));
+
+      const region = await readyRegion(1);
+
+      expect(showLink(region, 'Devs')).not.toBeNull();
+      expect(showLink(region, 'Silo')).toBeNull();
     });
 
-    it('should hand the focus to the section when a card leaves after Escape closed its menu', async () => {
-      stubClientRects();
+    it('should keep a show with nothing watched whose next episode is in a season not hidden', async () => {
+      servePaged({ url: HIDE_PROGRESS_URL, body: HiddenSeasonsResponseMock });
+      serveUpNext(() => HttpResponse.json([SILO]));
+
+      expect(showLink(await readyRegion(1), 'Silo')).not.toBeNull();
+    });
+
+    it('should keep a show with episodes watched whose next episode is in a hidden season', async () => {
+      servePaged({
+        url: HIDE_PROGRESS_URL,
+        body: HiddenSeasonsAllSiloResponseMock,
+      });
+      serveUpNext(() => HttpResponse.json([siloWatched]));
+
+      expect(showLink(await readyRegion(1), 'Silo')).not.toBeNull();
+    });
+
+    it('should keep every show, with no error box, when the hidden seasons fail', async () => {
+      server.use(http.get(HIDE_PROGRESS_URL, notFound));
       serveUpNext(() => HttpResponse.json([devsAt(2), SILO]));
+
+      const region = await readyRegion(2);
+
+      expect(showLink(region, 'Devs')).not.toBeNull();
+      expect(showLink(region, 'Silo')).not.toBeNull();
+      expect(within(region).queryByRole('button', { name: 'Retry' }))
+        .toBeNull();
+    });
+
+    it('should show no card until the hidden seasons are known', async () => {
+      const hidden = holdResponse(() =>
+        pagedResponse({ body: HiddenSeasonsAllSiloResponseMock })
+      );
+      server.use(http.get(HIDE_PROGRESS_URL, hidden.answer));
+      const upNext = holdResponse(() => HttpResponse.json([devsAt(2), SILO]));
+      serveUpNext(upNext.answer);
       const region = await renderSection(SECTION);
-      const [, silo] = await readyCards({
-        region,
-        selector: CARD_SELECTOR,
-        count: 2,
-      });
-      if (!silo) throw new Error('no Silo card');
-      const watch = await readyDevsWatchButton(region, silo);
-      const trigger = within(silo).getByRole('button', {
-        name: 'Flag show "Silo" as dropped',
-      });
+      await hidden.requested;
+      await upNext.requested;
+      upNext.release();
 
-      await openMenuFromKeyboard(trigger, 'Right now');
-      const menu = screen.getByRole('menu', {
-        name: 'When did you drop this?',
-      });
-      await userEvent.keyboard('{Escape}');
-      await waitFor(() => expect(menu).not.toBeInTheDocument());
-      await waitFor(() => expect(trigger).toHaveFocus());
-      serveUpNext(() => HttpResponse.json([devsAt(3)]));
-      watch.click();
+      await waitNegativeClaim();
+      expect(region).toHaveAttribute('aria-busy', 'true');
+      expect(cards(region, CARD_SELECTOR)).toEqual([]);
 
-      await waitFor(() => expect(silo.isConnected).toBe(false));
-      expect(document.activeElement).toBe(region);
+      hidden.release();
+      await readyCards({ region, selector: CARD_SELECTOR, count: 1 });
+      expect(showLink(region, 'Silo')).toBeNull();
     });
   });
 });

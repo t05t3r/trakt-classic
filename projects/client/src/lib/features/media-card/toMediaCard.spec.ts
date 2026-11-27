@@ -96,11 +96,11 @@ describe('toMediaCard', () => {
     });
   });
 
-  it('should map a show to its page, its Target and its rating', () => {
+  it('should map a show to its title and year, its page, its Target and its rating', () => {
     const card = toMediaCard({ type: 'show', show: itemOfType('show').entry });
 
     expect(card).toEqual({
-      media: { type: 'show', title: 'Slow Horses' },
+      media: { type: 'show', title: 'Slow Horses', year: 2022 },
       href: '/shows/slow-horses',
       target: {
         type: 'show',
@@ -131,7 +131,7 @@ describe('toMediaCard', () => {
         number: 3,
         episodes: { count: 10, aired: 10 },
         airDate: new Date('2026-07-03T01:00:00.000Z'),
-        show: { id: 180770, title: 'Silo' },
+        show: { id: 180770, title: 'Silo', slug: 'silo' },
       },
       rating: {
         value: 0.823,

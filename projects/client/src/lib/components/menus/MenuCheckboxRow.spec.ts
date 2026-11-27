@@ -1,5 +1,6 @@
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
 import { menuLabel } from '$test/beds/menus/menuLabel.ts';
+import { isMenuRowChecked } from '$test/beds/subnav/isMenuRowChecked.ts';
 import { render, screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -74,6 +75,23 @@ describe('component: MenuCheckboxRow', () => {
       expect(glyphClasses(container)).toEqual(
         glyph.map((name) => expect.stringContaining(name)),
       );
+    },
+  );
+
+  it.each(
+    [
+      { checked: true, isMarked: true },
+      { checked: 'unknown', isMarked: false },
+      { checked: false, isMarked: false },
+    ] as const,
+  )(
+    'should mark its row selected only when checked is true: $checked',
+    ({ checked, isMarked }) => {
+      const { container } = render(MenuCheckboxRow, {
+        props: { checked, onToggle: vi.fn(), children: menuLabel },
+      });
+
+      expect(isMenuRowChecked(container)).toBe(isMarked);
     },
   );
 

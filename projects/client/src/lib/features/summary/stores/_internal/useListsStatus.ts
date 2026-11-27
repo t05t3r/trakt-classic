@@ -1,5 +1,6 @@
 import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
 import type { CreateQueryOptions } from '$lib/features/query/QueryOptions.ts';
+import { toFailedStatus } from '$lib/features/query/toFailedStatus.ts';
 import { toSectionStatus } from '$lib/features/query/toSectionStatus.ts';
 import { useQuery } from '$lib/features/query/useQuery.ts';
 import type { ListsType } from '$lib/requests/models/ListsType.ts';
@@ -25,12 +26,8 @@ function toListsStatus(
 
   if (reads.some(({ kind }) => kind === 'loading')) return { kind: 'loading' };
 
-  const retries = reads.flatMap((read) =>
-    read.kind === 'error' ? [read.retry] : []
-  );
-  if (retries.length > 0) {
-    return { kind: 'error', retry: () => retries.forEach((retry) => retry()) };
-  }
+  const failed = toFailedStatus(reads);
+  if (failed) return failed;
 
   const lists = reads.flatMap(listsOf);
 

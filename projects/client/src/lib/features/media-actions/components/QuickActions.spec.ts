@@ -2,6 +2,7 @@ import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.t
 import { settledButton } from '$test/beds/buttons/settledButton.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { dialogButtonLabels } from '$test/beds/dialogs/dialogButtonLabels.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { AIRED } from '$mocks/data/media-actions/AIRED.ts';
 import { DEVS } from '$mocks/data/media-actions/DEVS.ts';
@@ -13,9 +14,11 @@ import { SILO } from '$mocks/data/media-actions/SILO.ts';
 import { SILO_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_ACTIONS_TARGET.ts';
 import { SILO_EPISODE_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_EPISODE_ACTIONS_TARGET.ts';
 import { SILO_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_SEASON_ACTIONS_TARGET.ts';
+import { UNPLAYED_SILO_SEASON } from '$mocks/data/media-actions/UNPLAYED_SILO_SEASON.ts';
 import { UNPLAYED_SHOW } from '$mocks/data/media-actions/UNPLAYED_SHOW.ts';
 import { SYNC_FAVORITES_REMOVE_URL } from '$mocks/data/sync/SYNC_FAVORITES_REMOVE_URL.ts';
 import { SYNC_FAVORITES_URL } from '$mocks/data/sync/SYNC_FAVORITES_URL.ts';
+import { SILO_WATCH_REMAINING_BODY } from '$mocks/data/sync/SILO_WATCH_REMAINING_BODY.ts';
 import { SYNC_HISTORY_REMOVE_URL } from '$mocks/data/sync/SYNC_HISTORY_REMOVE_URL.ts';
 import { SYNC_HISTORY_URL } from '$mocks/data/sync/SYNC_HISTORY_URL.ts';
 import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
@@ -25,6 +28,7 @@ import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
@@ -57,13 +61,18 @@ const button = (name: string) => screen.getByRole('button', { name });
 
 const REMOVE_SILO = 'Remove "Silo" from your History';
 
-// Silo's history holds no play of its second season.
-const UNPLAYED_SILO_SEASON = { ...SILO_SEASON_ACTIONS_TARGET, number: 2 };
+const WATCH_REMAINING_PROMPT = 'What would you like to do?';
+const REMOVE_ALL = { dialog: WATCH_REMAINING_PROMPT, button: 'Remove all' };
 
+// An episode count of 0 never reads watched, so a Play reads partly watched.
 const SHOWS = [
-  { show: 'complete', count: 1 },
-  { show: 'partly watched', count: 17 },
-  { show: 'not yet aired', count: 0 },
+  {
+    show: 'complete',
+    count: 1,
+    answer: { dialog: 'Remove from history?', button: 'Remove from History' },
+  },
+  { show: 'partly watched', count: 17, answer: REMOVE_ALL },
+  { show: 'not yet aired', count: 0, answer: REMOVE_ALL },
 ];
 
 describe('component: QuickActions', () => {
@@ -136,20 +145,18 @@ describe('component: QuickActions', () => {
 
   describe.each([
     {
-      kind: 'show',
+      kind: 'show on the dropped shows',
       target: { ...DEVS_ACTIONS_TARGET, episode: { count: 30 } },
       remove: 'Remove "Devs" from your History',
-      prompt: /Remove all 11 plays of "Devs"/,
       body: { shows: [{ ids: { trakt: DEVS.id } }] },
     },
     {
       kind: 'season',
       target: DEVS_SEASON_ACTIONS_TARGET,
       remove: 'Remove "Season 1 of Devs" from your History',
-      prompt: /Remove all 10 plays of "Season 1 of Devs"/,
       body: { seasons: [{ ids: { trakt: DEVS_SEASON_ACTIONS_TARGET.id } }] },
     },
-  ])('for a partly watched $kind', ({ target, remove, prompt, body }) => {
+  ])('for a partly watched $kind', ({ target, remove, body }) => {
     const partly = (): QuickActionsTarget =>
       target.type === 'show'
         ? { ...target, episode: { count: 30 } }
@@ -161,23 +168,28 @@ describe('component: QuickActions', () => {
       expect(await settledButton(remove)).toHaveClass('is-selected');
     });
 
-    it('should remove every Play on a click, with the count dialog', async () => {
+    it('should ask Watch remaining, Remove all or Nothing on a click, and remove every Play on Remove all', async () => {
       const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
       renderComponent(QuickActions, { props: { target: partly() } });
 
       await userEvent.click(await settledButton(remove));
 
-      expect(await screen.findByText(prompt)).toBeVisible();
-      await answerDialog('Remove from history?', 'Remove from History');
+      const dialog = await screen.findByRole('dialog', {
+        name: WATCH_REMAINING_PROMPT,
+      });
+      expect(dialogButtonLabels(dialog)).toEqual(
+        expect.arrayContaining(['Watch remaining', 'Remove all', 'Nothing']),
+      );
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
       await waitFor(() => expect(bodies).toEqual([body]));
     });
 
-    it('should never add a Play on a click', async () => {
+    it('should write nothing on Nothing', async () => {
       const writes = recordWrites();
       renderComponent(QuickActions, { props: { target: partly() } });
 
       await userEvent.click(await settledButton(remove));
-      await answerDialog('Remove from history?', 'Cancel');
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Nothing');
 
       await waitNegativeClaim();
       expect(writes).toEqual([]);
@@ -193,7 +205,7 @@ describe('component: QuickActions', () => {
     {
       kind: 'season',
       target: UNPLAYED_SILO_SEASON,
-      name: 'Mark "Season 1 of Silo" as watched',
+      name: 'Mark "Season 2 of Silo" as watched',
     },
   ])('should leave a $kind with no Play unfilled', async ({ target, name }) => {
     renderComponent(QuickActions, { props: { target } });
@@ -221,7 +233,7 @@ describe('component: QuickActions', () => {
     const show = await settledButton(REMOVE_SILO);
 
     await userEvent.click(
-      await settledButton('Mark "Season 1 of Silo" as watched'),
+      await settledButton('Mark "Season 2 of Silo" as watched'),
     );
     await answerDialog('Mark as watched?', 'Mark as Watched');
     await refetch.requested;
@@ -351,14 +363,7 @@ describe('component: QuickActions', () => {
     });
 
     it("should post the Play's id on Only this play, spinning with its label kept while it is held", async () => {
-      const bodies: unknown[] = [];
-      const write = holdResponse(() => new HttpResponse(null, { status: 200 }));
-      server.use(
-        http.post(SYNC_HISTORY_REMOVE_URL, async ({ request }) => {
-          bodies.push(await request.json());
-          return write.answer();
-        }),
-      );
+      const { bodies, ...write } = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
       renderPlay();
 
       await userEvent.click(await settledButton(REMOVE_MATRIX));
@@ -420,36 +425,43 @@ describe('component: QuickActions', () => {
     );
 
     it.each(SHOWS)(
-      'should ask with the count, then remove all of a $show show',
-      async ({ count }) => {
+      'should ask $answer.dialog, then remove all of a $show show on $answer.button',
+      async ({ count, answer }) => {
         const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
         renderShow(count);
 
         await userEvent.click(await settledButton(REMOVE_SILO));
 
-        expect(
-          await screen.findByText(
-            'Remove the play of "Silo" from your history?',
-          ),
-        ).toBeVisible();
+        expect(await screen.findByRole('dialog', { name: answer.dialog }))
+          .toBeVisible();
         expect(screen.queryByRole('button', { name: 'Only this play' }))
           .toBeNull();
-        await answerDialog('Remove from history?', 'Remove from History');
+        await answerDialog(answer.dialog, answer.button);
         await waitFor(() =>
           expect(bodies).toEqual([{ shows: [{ ids: { trakt: SILO.id } }] }])
         );
       },
     );
 
-    it('should never add a Play on a press of a partly watched show', async () => {
+    it('should never add a Play on a press of a partly watched show answered Nothing', async () => {
       const writes = recordWrites();
       renderShow(17);
 
       await userEvent.click(await settledButton(REMOVE_SILO));
-      await answerDialog('Remove from history?', 'Cancel');
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Nothing');
 
       await waitNegativeClaim();
       expect(writes).toEqual([]);
+    });
+
+    it('should post only the unwatched aired episodes of a partly watched show on Watch remaining', async () => {
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      renderShow(17);
+
+      await userEvent.click(await settledButton(REMOVE_SILO));
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+
+      await waitFor(() => expect(bodies).toEqual([SILO_WATCH_REMAINING_BODY]));
     });
 
     it('should stay selected and inert, and open nothing, while the watched state is not known', async () => {
@@ -522,7 +534,7 @@ describe('component: QuickActions', () => {
             target: { ...DEVS_ACTIONS_TARGET, episode: { count: 30 } },
           },
           name: REMOVE_DEVS,
-          text: '26% watched 8/30 eps — 11 plays',
+          text: '26% watched 8 / 30 eps — 11 plays',
         },
         {
           row: 'a season with Plays',
@@ -533,7 +545,7 @@ describe('component: QuickActions', () => {
             },
           },
           name: REMOVE_DEVS_SEASON,
-          text: '26% watched 8/30 eps — 10 plays',
+          text: '26% watched 8 / 30 eps — 10 plays',
         },
         {
           row: 'a show with no aired count',
@@ -598,7 +610,7 @@ describe('component: QuickActions', () => {
       await userEvent.hover(watch);
       await waitFor(() =>
         expect(watch).toHaveAccessibleDescription(
-          '100% watched 8/8 eps — 11 plays',
+          '100% watched 8 / 8 eps — 11 plays',
         )
       );
     });
@@ -694,11 +706,7 @@ describe('component: QuickActions', () => {
   });
 
   it('should show the spinner on a pending watch and send nothing on a click', async () => {
-    const write = holdRequest({
-      method: 'post',
-      url: SYNC_HISTORY_URL,
-      answer: () => new HttpResponse(null, { status: 201 }),
-    });
+    const write = holdPost(SYNC_HISTORY_URL);
     const writes = recordWrites();
     renderComponent(QuickActions, { props: { target: MATRIX_ACTIONS_TARGET } });
     await userEvent.click(await settledButton('Mark "The Matrix" as watched'));
@@ -710,6 +718,7 @@ describe('component: QuickActions', () => {
     await userEvent.click(icon);
 
     expect(icon).toHaveAttribute('aria-busy', 'true');
+    expect(icon).not.toHaveClass('is-inert');
     // The queue posts one write at a time, so a second waits for the release.
     write.release();
     // The refetched history mock holds no play of the Matrix.
@@ -719,7 +728,7 @@ describe('component: QuickActions', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('should keep a watched icon selected but inert, and start nothing on a click, while the history refetches', async () => {
+  it('should keep a watched icon selected but inert, shown inert, and start nothing on a click, while the history refetches', async () => {
     const hasWritten = { value: false };
     // Returning nothing hands the request on to the default handler.
     const refetch = holdResponse(() => undefined);
@@ -750,15 +759,12 @@ describe('component: QuickActions', () => {
     expect(writes).toEqual(['POST /sync/history']);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(watched).toHaveClass('is-selected');
+    expect(watched).toHaveClass('is-inert');
     expect(watched).toHaveAttribute('aria-busy', 'false');
   });
 
   it('should show a pending favourite selected, with no spinner', async () => {
-    holdRequest({
-      method: 'post',
-      url: SYNC_FAVORITES_URL,
-      answer: () => new HttpResponse(null, { status: 201 }),
-    });
+    holdPost(SYNC_FAVORITES_URL);
     serveMoviePlays([MATRIX_ACTIONS_TARGET.id]);
     renderComponent(QuickActions, {
       props: { target: MATRIX_ACTIONS_TARGET, favorite: true },
@@ -879,7 +885,7 @@ describe('component: QuickActions', () => {
         const icon = await settledButton(name);
 
         await userEvent.click(
-          await settledButton('Mark "Season 1 of Silo" as watched'),
+          await settledButton('Mark "Season 2 of Silo" as watched'),
         );
         await answerDialog('Mark as watched?', 'Mark as Watched');
         await refetch.requested;
@@ -924,19 +930,28 @@ describe('component: QuickActions', () => {
   });
 
   describe('for a season', () => {
-    it('should name its icons after the season and its show, with its watched and watchlisted states', async () => {
+    it('should name its icons after the season and its show, with its watched state', async () => {
       renderComponent(QuickActions, {
         props: { target: UNPLAYED_SILO_SEASON },
       });
 
-      const watch = await settledButton('Mark "Season 1 of Silo" as watched');
-      const list = button('Add or remove "Season 1 of Silo" from lists');
+      const watch = await settledButton('Mark "Season 2 of Silo" as watched');
 
-      await waitFor(() => expect(list).toHaveClass('is-selected'));
+      button('Add or remove "Season 2 of Silo" from lists');
       expect(watch).not.toHaveClass('is-selected');
       expect(
         screen.getAllByRole('button').map((icon) => icon.dataset.action),
       ).toEqual(['watch', 'list']);
+    });
+
+    it('should read a watchlisted season as listed', async () => {
+      renderComponent(QuickActions, {
+        props: { target: SILO_SEASON_ACTIONS_TARGET },
+      });
+
+      const list = button('Add or remove "Season 1 of Silo" from lists');
+
+      await waitFor(() => expect(list).toHaveClass('is-selected'));
     });
 
     it('should read a season whose aired episodes are all watched as watched', async () => {
@@ -961,13 +976,18 @@ describe('component: QuickActions', () => {
       });
 
       await userEvent.click(
-        await settledButton('Mark "Season 1 of Silo" as watched'),
+        await settledButton('Mark "Season 2 of Silo" as watched'),
       );
       await answerDialog('Mark as watched?', 'Mark as Watched');
 
       await waitFor(() =>
         expect(bodies).toEqual([
-          { seasons: [{ ids: { trakt: 257490 }, watched_at: 'now' }] },
+          {
+            seasons: [{
+              ids: { trakt: UNPLAYED_SILO_SEASON.id },
+              watched_at: 'now',
+            }],
+          },
         ])
       );
     });

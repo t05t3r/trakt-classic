@@ -10,5 +10,5 @@ export const SILO_SEASON_ACTIONS_TARGET = {
   number: 1,
   episodes: { count: 10, aired: 10 },
   airDate: AIRED,
-  show: { id: SILO.id, title: 'Silo' },
+  show: { id: SILO.id, title: 'Silo', slug: 'silo' },
 } satisfies QuickActionsTarget;

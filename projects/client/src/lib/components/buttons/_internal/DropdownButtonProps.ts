@@ -12,6 +12,8 @@ export type DropdownButtonProps =
     variant?: 'default' | 'icon';
     // `heading` takes the family of the heading the button sits in.
     font?: 'body' | 'heading';
+    // Drawn in the glyph column its menu's rows draw theirs in.
+    glyph?: Snippet;
     children: Snippet;
   }
   & Omit<HTMLButtonAttributes, 'class' | 'aria-label' | 'type' | 'children'>;

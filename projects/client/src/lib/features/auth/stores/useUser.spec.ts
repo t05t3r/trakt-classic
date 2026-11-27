@@ -9,9 +9,14 @@ import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
 import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/ExtendedUserSettingsMappedMock.ts';
 import { server } from '$mocks/server.ts';
 import { listedAtOf } from '$test/beds/media-actions/listedAtOf.ts';
+import { kindsOf } from '$test/beds/query/kindsOf.ts';
+import { nextOf } from '$test/beds/query/nextOf.ts';
+import { failOnce } from '$test/beds/request/failOnce.ts';
+import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { movieListItem } from '$test/beds/request/movieListItem.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
+import { servePaged } from '$test/beds/request/servePaged.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { http } from 'msw';
@@ -97,6 +102,50 @@ describe('store: useUser', () => {
       expect(searches.map((search) => search.get('limit'))).toEqual([
         String(MAX_PAGE_LIMIT),
       ]);
+    });
+  });
+
+  describe('droppedStatus', () => {
+    it('should read loading while the dropped shows load', async () => {
+      const read = holdRequest({ method: 'get', url: DROPPED_URL });
+      const { droppedStatus } = await renderStore(useUser);
+      const kinds = kindsOf(droppedStatus);
+
+      await read.requested;
+
+      expect(kinds).toEqual(['loading']);
+    });
+
+    it('should read the dropped show ids, with their dropped dates, as ready', async () => {
+      const { droppedStatus } = await renderStore(useUser);
+
+      const ready = await nextOf(droppedStatus, 'ready');
+
+      expect([...ready.data.shows]).toEqual([[DEVS.id, DROPPED_AT]]);
+    });
+
+    it('should read no dropped shows as ready, never as empty', async () => {
+      servePaged({ url: DROPPED_URL, body: [] });
+      const { droppedStatus } = await renderStore(useUser);
+      const kinds = kindsOf(droppedStatus);
+
+      const ready = await nextOf(droppedStatus, 'ready');
+
+      expect(kinds).toEqual(['loading', 'ready']);
+      expect(ready.data.shows.size).toBe(0);
+    });
+
+    it('should read a failed read as error, and read again on retry', async () => {
+      failOnce(DROPPED_URL);
+      const { droppedStatus } = await renderStore(useUser);
+      const kinds = kindsOf(droppedStatus);
+
+      const failed = await nextOf(droppedStatus, 'error');
+      failed.retry();
+      const ready = await nextOf(droppedStatus, 'ready');
+
+      expect(kinds).toEqual(['loading', 'error', 'loading', 'ready']);
+      expect([...ready.data.shows]).toEqual([[DEVS.id, DROPPED_AT]]);
     });
   });
 });

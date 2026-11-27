@@ -1,8 +1,10 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import { whenInViewport } from '$lib/utils/actions/whenInViewport.ts';
-  import { episodeSxeLabel } from '$lib/utils/intl/episodeSxeLabel.ts';
+  import { toCardHeading } from './_internal/toCardHeading.ts';
   import { toCardTooltip } from './_internal/toCardTooltip.ts';
+  import EpisodeTitle from './EpisodeTitle.svelte';
   import type { FanartCardProps } from './FanartCardProps.ts';
 
   const {
@@ -13,24 +15,26 @@
     caption,
     badges,
     actions,
-    omitShowLine = false,
+    showLine = 'always',
     titles = 'always',
   }: FanartCardProps = $props();
 
   let isInView = $state(false);
 
   const tooltip = $derived(toCardTooltip(media));
+  const heading = $derived(toCardHeading(media));
 </script>
 
 <div
   class="trakt-fanart-card"
   data-type={media.type}
   data-titles={titles}
+  data-show-line={showLine}
   use:whenInViewport={() => (isInView = true)}
 >
-  <div class="fanart" title={tooltip}>
+  <div class="fanart" {@attach hint(() => tooltip)}>
     {@render badges?.()}
-    <a class="fanart-link" href={resolve(href)} title={tooltip}>
+    <a class="fanart-link" href={resolve(href)} aria-label={heading}>
       {@render image()}
       <div class="shadow"></div>
     </a>
@@ -38,7 +42,7 @@
       {#if caption}
         <div class="caption">{@render caption()}</div>
       {/if}
-      {#if media.type === 'episode' && !omitShowLine}
+      {#if media.type === 'episode' && showLine !== 'never'}
         <h5 class="show-title">
           {#if showHref}
             <a class="title-link" href={resolve(showHref)}>{media.show}</a>
@@ -50,7 +54,11 @@
       <h3 class="card-title">
         <a class="title-link" href={resolve(href)}>
           {#if media.type === 'episode'}
-            <b class="title-sxe">{episodeSxeLabel(media)}</b> {media.title}
+            <EpisodeTitle
+              season={media.season}
+              number={media.number}
+              title={media.title}
+            />
           {:else}
             {media.title}
             {#if media.year != null}
@@ -102,7 +110,8 @@
       inset-inline-start: var(--ni-12);
     }
 
-    &[data-titles='phone'] .titles {
+    &[data-titles='phone'] .titles,
+    &[data-show-line='phone'] .show-title {
       display: none;
 
       @include for-mobile {
@@ -135,10 +144,6 @@
 
     .title-link {
       @include inherited-link-style;
-    }
-
-    .title-sxe {
-      font-weight: var(--font-weight-heading-heavy);
     }
 
     .year {

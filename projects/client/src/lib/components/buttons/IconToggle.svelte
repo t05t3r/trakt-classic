@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import type { IconToggleProps } from './_internal/IconToggleProps.ts';
 
   const {
@@ -14,12 +15,12 @@
 <button
   type="button"
   class="trakt-icon-toggle"
-  title={label}
   aria-label={label}
   aria-pressed={pressed}
   data-size={size}
   data-pressed-tint={pressedTint}
   onclick={onToggle}
+  {@attach hint(() => ({ content: label }))}
 >
   {@render children()}
 </button>

@@ -1,6 +1,6 @@
-import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
+import { countStat } from '$test/beds/stats/countStat.ts';
+import { queryCountStat } from '$test/beds/stats/queryCountStat.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
-import { LIST_PAGE_SIZE } from '$lib/utils/LIST_PAGE_SIZE.ts';
 import { WatchlistPreviewResponseMock } from '$mocks/data/sync/response/WatchlistPreviewResponseMock.ts';
 import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/ExtendedUserSettingsMappedMock.ts';
 import { FAVORITES_PATH } from '$mocks/data/users/FAVORITES_PATH.ts';
@@ -17,7 +17,6 @@ import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
-import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { recordSearches } from '$test/beds/request/recordSearches.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import {
@@ -25,13 +24,12 @@ import {
   type PagedResponseParams,
 } from '$test/beds/request/pagedResponse.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
-import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { followReplaces } from '$test/beds/url/followReplaces.svelte.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { http, type PathParams } from 'msw';
+import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import BuiltInListPage from './BuiltInListPage.svelte';
 
@@ -71,31 +69,6 @@ function serveWatchlist(params: PagedResponseParams) {
   servePaged({ url: USER_WATCHLIST_URL, ...params });
 }
 
-// A two-page watchlist whose page 2, for the reads `isHeld` picks by path, waits for release.
-function serveHeldSecondPage(
-  isHeld: (params: PathParams) => boolean,
-  itemCount = LIST_PAGE_SIZE + WatchedWatchlistResponseMock.length,
-) {
-  const secondPage = () =>
-    pagedResponse({
-      body: WatchedWatchlistResponseMock,
-      page: 2,
-      pageCount: 2,
-    });
-  const held = holdResponse(secondPage);
-  serveTwoPages({
-    url: USER_WATCHLIST_URL,
-    first: WatchlistPreviewResponseMock,
-    itemCount,
-    second: ({ params }) => isHeld(params) ? held.answer() : secondPage(),
-  });
-
-  return held;
-}
-
-// Two watched items over the two pages' count.
-const SHARE = /^1% Watched 2 \/ 122 items$/;
-
 type PickFromParams = { trigger: string; menu: string; row: string };
 
 async function pickFrom({ trigger, menu, row }: PickFromParams) {
@@ -105,8 +78,6 @@ async function pickFrom({ trigger, menu, row }: PickFromParams) {
 
 const cells = (container: HTMLElement) =>
   container.querySelectorAll('.trakt-poster-grid > li');
-
-const stat = (label: string) => screen.getByTitle(label);
 
 describe('section: BuiltInListPage', () => {
   beforeEach(() => {
@@ -196,9 +167,77 @@ describe('section: BuiltInListPage', () => {
       expect(screen.queryAllByRole('navigation', { name: /^Pagination/ }))
         .toEqual([]);
     });
+    it("should hand the toolbar the favourites' watched share", async () => {
+      serveFavorites({
+        body: [
+          ...WatchedWatchlistResponseMock,
+          assertDefined(WatchlistPreviewResponseMock.at(1)),
+        ],
+      });
+      await renderPage({ list: 'favorites' });
+
+      await waitFor(() =>
+        expect(countStat('Watched')).toHaveTextContent(
+          /^66% Watched 2 \/ 3 items$/,
+        )
+      );
+    });
   });
 
   describe('watchlist', () => {
+    describe('episode cards', () => {
+      const cardArt = (container: HTMLElement) =>
+        [...container.querySelectorAll('.trakt-poster-card .trakt-lazy-image')]
+          .map((image) => image.getAttribute('data-kind'));
+
+      const onlyGrid = (container: HTMLElement) =>
+        assertDefined(
+          container.querySelector<HTMLElement>('.trakt-poster-grid'),
+        );
+
+      const columnsOf = (grid: HTMLElement) =>
+        [
+          '--poster-grid-columns-desktop',
+          '--poster-grid-columns-tablet-lg',
+          '--poster-grid-columns-tablet-sm',
+          '--poster-grid-columns-mobile',
+        ].map((column) => grid.style.getPropertyValue(column));
+
+      it('should draw wide cards in 4, 3, 2 and 1 columns on Episodes, with no phone divider', async () => {
+        const container = await renderPage({ search: '?display=episode' });
+
+        await screen.findByRole('img', {
+          name: 'House of the Dragon 1x01 screenshot',
+        });
+
+        const grid = onlyGrid(container);
+        expect(cardArt(container)).toEqual(['fanart']);
+        expect(screen.getByRole('link', { name: 'House of the Dragon' }))
+          .toHaveAttribute('href', '/shows/house-of-the-dragon');
+        expect(grid).toHaveAttribute('data-phone-divider', 'none');
+        expect(columnsOf(grid)).toEqual(['4', '3', '2', '1']);
+      });
+
+      it.each([
+        ['All Types', ''],
+        ['Shows', '?display=show'],
+      ])(
+        'should keep posters on %s, in the default columns with the phone divider',
+        async (_, search) => {
+          const container = await renderPage({ search });
+
+          await waitFor(() =>
+            expect(cardArt(container).length).toBeGreaterThan(0)
+          );
+
+          const grid = onlyGrid(container);
+          expect(new Set(cardArt(container))).toEqual(new Set(['poster']));
+          expect(grid).toHaveAttribute('data-phone-divider', 'default');
+          expect(columnsOf(grid)).toEqual(['', '', '', '']);
+        },
+      );
+    });
+
     it('should badge no card with a rank and add no favourite icon', async () => {
       const container = await renderPage();
 
@@ -303,106 +342,26 @@ describe('section: BuiltInListPage', () => {
       );
     });
 
-    it("should build no watched read from the previous view's count after a genre pick", async () => {
+    it('should show no watched share and read no later page for one', async () => {
       const searches: URLSearchParams[] = [];
-      const genreCount = holdResponse(() =>
-        pagedResponse({ body: WatchlistPreviewResponseMock.slice(0, 2) })
-      );
       server.use(
         http.get(USER_WATCHLIST_URL, ({ request }) => {
-          const search = new URL(request.url).searchParams;
-          searches.push(search);
-          if (!search.has('genres')) {
-            return pagedResponse({
-              body: WatchlistPreviewResponseMock,
-              pageCount: 3,
-              itemCount: 250,
-            });
-          }
-          if (search.get('limit') === String(MAX_PAGE_LIMIT)) {
-            return search.get('page') === '1'
-              ? genreCount.answer()
-              : pagedResponse({ body: [] });
-          }
+          searches.push(new URL(request.url).searchParams);
           return pagedResponse({
-            body: WatchlistPreviewResponseMock.slice(0, 2),
-            pageCount: 9,
-            itemCount: 999,
+            body: WatchlistPreviewResponseMock,
+            pageCount: 3,
+            itemCount: 250,
           });
         }),
       );
-      await renderPage({ follows: true });
+      await renderPage();
       await waitFor(() =>
-        expect(stat('Items')).toHaveTextContent(/^250 Items$/)
+        expect(countStat('Items')).toHaveTextContent(/^250 Items$/)
       );
-
-      await pickFrom({
-        trigger: 'Genre: All Genres',
-        menu: 'Genre',
-        row: 'Drama',
-      });
-      await genreCount.requested;
       await waitNegativeClaim();
 
-      const genrePages = searches
-        .filter((search) => search.has('genres'))
-        .map((search) => search.get('page'));
-      expect(genrePages).not.toContain('2');
-    });
-
-    it("should keep the watched share after a sort pick while the new sort's later pages load", async () => {
-      const secondPage = serveHeldSecondPage(({ sort_by }) =>
-        sort_by === 'title'
-      );
-      await renderPage({ follows: true });
-      await waitFor(() => expect(stat('Watched')).toHaveTextContent(SHARE));
-
-      await pickFrom({
-        trigger: 'Sort by: Rank',
-        menu: 'Sort by',
-        row: 'Title',
-      });
-      await secondPage.requested;
-      await waitNegativeClaim();
-
-      expect(stat('Watched')).toHaveTextContent(SHARE);
-    });
-
-    it('should show no watched share after the item count changes while the new count is read', async () => {
-      serveHeldSecondPage(() => false);
-      await renderPage({ follows: true });
-      await waitFor(() => expect(stat('Watched')).toHaveTextContent(SHARE));
-
-      const secondPage = serveHeldSecondPage(
-        ({ sort_by }) => sort_by === 'title',
-        LIST_PAGE_SIZE + 1,
-      );
-      await pickFrom({
-        trigger: 'Sort by: Rank',
-        menu: 'Sort by',
-        row: 'Title',
-      });
-      await secondPage.requested;
-      await waitNegativeClaim();
-
-      expect(stat('Items')).toHaveTextContent(/^121 Items$/);
-      expect(stat('Watched')).not.toHaveTextContent(/%/);
-    });
-
-    it("should show no watched share after a type pick while the new type's later pages load", async () => {
-      const secondPage = serveHeldSecondPage(({ type }) => type === 'movies');
-      await renderPage({ follows: true });
-      await waitFor(() => expect(stat('Watched')).toHaveTextContent(SHARE));
-
-      await pickFrom({
-        trigger: 'Type: All Types',
-        menu: 'Type',
-        row: 'Movies',
-      });
-      await secondPage.requested;
-      await waitNegativeClaim();
-
-      expect(stat('Watched')).not.toHaveTextContent(/%/);
+      expect(queryCountStat('Watched')).toBeNull();
+      expect(searches.map((search) => search.get('page'))).not.toContain('2');
     });
 
     it("should open the toolbar's options panel on the gear", async () => {
@@ -413,8 +372,22 @@ describe('section: BuiltInListPage', () => {
 
       const panel = assertDefined(controlledBy(gear));
       expect(panel).toHaveClass('is-open');
-      expect(within(panel).getByRole('button', { name: 'Filters' }))
+      expect(within(panel).getByRole('button', { name: 'Sort by: Rank' }))
         .toBeInTheDocument();
+      expect(panel)
+        .not.toContainElement(screen.getByRole('button', { name: 'Filters' }));
+    });
+
+    it('should hold the gear in the toolbar row, leaving the title bar only its title', async () => {
+      const container = await renderPage();
+
+      const gear = screen.getByRole('button', { name: 'Options' });
+      expect(container.querySelector('.trakt-subnav-toolbar .toolbar-row'))
+        .toContainElement(gear);
+      expect(
+        assertDefined(container.querySelector('.trakt-list-title-bar'))
+          .querySelectorAll('button'),
+      ).toHaveLength(0);
     });
 
     it('should close the options panel on a pick and return the focus to the gear', async () => {
@@ -443,13 +416,12 @@ describe('section: BuiltInListPage', () => {
       });
       await renderPage();
 
-      await waitFor(() => expect(stat('Items')).toHaveTextContent(/^3 Items$/));
+      await waitFor(() =>
+        expect(countStat('Items')).toHaveTextContent(/^3 Items$/)
+      );
       // 111 for Heretic, 52 by 8 episodes for Devs and 127 for Se7en.
       await waitFor(() =>
-        expect(stat('Runtime')).toHaveTextContent(/^10h 54m Runtime$/)
-      );
-      await waitFor(() =>
-        expect(stat('Watched')).toHaveTextContent(/^66% Watched 2 \/ 3 items$/)
+        expect(countStat('Runtime')).toHaveTextContent(/^10h 54m Runtime$/)
       );
     });
   });

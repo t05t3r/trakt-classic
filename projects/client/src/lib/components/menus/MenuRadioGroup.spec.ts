@@ -1,7 +1,10 @@
 import RadioMenuHost from '$test/beds/menus/RadioMenuHost.svelte';
+import { isMenuRowChecked } from '$test/beds/subnav/isMenuRowChecked.ts';
 import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
+import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
+import { readCheckedMenuRow } from '$test/beds/menus/readCheckedMenuRow.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
@@ -22,20 +25,20 @@ describe('component: MenuRadioGroup', () => {
     });
     await openMenu();
 
-    expect(row('Title')).toHaveAttribute('aria-checked', 'true');
-    expect(row('Added Date')).toHaveAttribute('aria-checked', 'false');
+    expect(readCheckedMenuRow()).toBe('Title');
     expect(glyphClasses(row('Title'))).toEqual([
       expect.stringContaining('tabler-icon-check'),
     ]);
     expect(glyphClasses(row('Added Date'))).toEqual([]);
+    expect(isMenuRowChecked(row('Title'))).toBe(true);
+    expect(isMenuRowChecked(row('Added Date'))).toBe(false);
   });
 
   it('should check no row while its value is null', async () => {
     render(RadioMenuHost, { props: { value: null, onValueChange: vi.fn() } });
     await openMenu();
 
-    expect(row('Title')).toHaveAttribute('aria-checked', 'false');
-    expect(row('Added Date')).toHaveAttribute('aria-checked', 'false');
+    expect(readCheckedMenuRow()).toBeUndefined();
   });
 
   it('should emit the value of another row it selects', async () => {
@@ -43,7 +46,7 @@ describe('component: MenuRadioGroup', () => {
     render(RadioMenuHost, { props: { value: 'title', onValueChange } });
     await openMenu();
 
-    await userEvent.click(row('Added Date'));
+    await pickMenuRadio('Added Date');
 
     expect(onValueChange).toHaveBeenCalledExactlyOnceWith('added');
   });
@@ -53,7 +56,7 @@ describe('component: MenuRadioGroup', () => {
     render(RadioMenuHost, { props: { value: 'title', onValueChange } });
     await openMenu();
 
-    await userEvent.click(row('Title'));
+    await pickMenuRadio('Title');
 
     expect(onValueChange).toHaveBeenCalledExactlyOnceWith(null);
   });
@@ -63,12 +66,12 @@ describe('component: MenuRadioGroup', () => {
       props: { value: 'title', onValueChange: vi.fn() },
     });
     await openMenu();
-    await userEvent.click(row('Added Date'));
+    await pickMenuRadio('Added Date');
     await waitFor(() => expect(trigger()).toHaveFocus());
     await userEvent.keyboard('{Enter}');
     await screen.findByRole('menu', { name: 'Sort by' });
 
-    expect(row('Title')).toHaveAttribute('aria-checked', 'true');
+    expect(readCheckedMenuRow()).toBe('Title');
   });
 
   it('should select a row from the keyboard and focus the trigger', async () => {

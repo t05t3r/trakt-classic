@@ -4,4 +4,6 @@ export type OptionsGearProps = {
   open: boolean;
   panelId: string;
   ontoggle: () => void;
+  // A control in its panel is off its default, so the gear shows a dot.
+  changed?: boolean;
 };

@@ -1,13 +1,13 @@
 <script lang="ts">
+  import ClearButton from '$lib/components/buttons/ClearButton.svelte';
   import type { HistoryItem } from '$lib/features/history/HISTORY_ITEM_TYPES.ts';
   import type { HistoryEntry } from '$lib/features/history/stores/useHistoryItems.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import LazyImage from '$lib/features/image/components/LazyImage.svelte';
   import { toEpisodeScreenshot } from '$lib/features/media-card/toEpisodeScreenshot.ts';
-  import { episodeSxeLabel } from '$lib/utils/intl/episodeSxeLabel.ts';
+  import { episodeLabel } from '$lib/utils/intl/episodeLabel.ts';
   import { seasonLabel } from '$lib/utils/intl/seasonLabel.ts';
   import { fromRune } from '$lib/utils/store/fromRune.svelte.ts';
-  import IconX from '@tabler/icons-svelte/icons/x';
   import { filter } from 'rxjs';
   import type { HistoryItemBannerProps } from './_internal/HistoryItemBannerProps.ts';
 
@@ -37,7 +37,7 @@
 
     return {
       parent: m.text_history_item_parent({ show: show.title, season }),
-      name: `${episodeSxeLabel(episode)} ${episode.title}`,
+      name: episodeLabel(episode),
       year: episode.year,
     };
   }
@@ -78,15 +78,7 @@
       </span>
     {/if}
   </div>
-  <button
-    type="button"
-    class="banner-clear"
-    title={m.link_label_history_all()}
-    aria-label={m.link_label_history_all()}
-    onclick={onClear}
-  >
-    <IconX class="banner-clear-glyph" aria-hidden="true" />
-  </button>
+  <ClearButton label={m.link_label_history_all()} onclick={onClear} />
 </div>
 
 <style lang="scss">
@@ -136,33 +128,6 @@
     .banner-year {
       color: var(--color-text-help);
       font-size: var(--font-size-small);
-    }
-
-    .banner-clear {
-      display: grid;
-      flex-shrink: 0;
-      place-items: center;
-      width: var(--ni-40);
-      height: var(--ni-40);
-      padding: var(--ni-0);
-      border: var(--border-thickness-xxs) solid var(--color-border);
-      border-radius: var(--border-radius-round);
-      background: none;
-      color: var(--color-text-help);
-      cursor: pointer;
-      transition: color var(--transition-default);
-
-      @include for-mouse {
-        &:hover {
-          color: var(--color-text-primary);
-        }
-      }
-    }
-
-    :global(.banner-clear-glyph) {
-      width: var(--ni-16);
-      height: var(--ni-16);
-      stroke-width: var(--icon-stroke-chrome);
     }
   }
 </style>

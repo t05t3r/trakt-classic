@@ -12,7 +12,9 @@ type EpisodeList = ReadonlyArray<EpisodeEntry>;
 type RecentEpisodesParams = {
   last: EpisodeEntry | Nil;
   lastSeason: EpisodeList | Nil;
-  progress: Pick<ShowProgressDetail, 'completed' | 'nextEpisode'> | Nil;
+  progress:
+    | Pick<ShowProgressDetail, 'completed' | 'nextEpisode'>
+    | Nil;
   firstSeasonNumber: number | Nil;
   firstSeason: EpisodeList | Nil;
   previousSeasonNumber: number | Nil;

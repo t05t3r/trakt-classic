@@ -11,6 +11,8 @@ type BuiltInList = Readonly<{
   hasRank: boolean;
   // Whether each card carries the favourite quick-icon.
   hasFavorite: boolean;
+  // Whether the toolbar shows the watched share: a played item leaves the watchlist, so its share stays 0.
+  hasWatchedShare: boolean;
 }>;
 
 export const BUILT_IN_LISTS = {
@@ -21,6 +23,7 @@ export const BUILT_IN_LISTS = {
     href: UrlBuilder.lists.watchlist,
     hasRank: false,
     hasFavorite: false,
+    hasWatchedShare: false,
   },
   favorites: {
     title: m.list_title_favorites,
@@ -29,5 +32,6 @@ export const BUILT_IN_LISTS = {
     href: UrlBuilder.lists.favorites,
     hasRank: true,
     hasFavorite: true,
+    hasWatchedShare: true,
   },
 } as const satisfies Record<string, BuiltInList>;

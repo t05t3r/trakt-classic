@@ -32,11 +32,11 @@ export function useRatingsParams(filters: Observable<string>): RatingsParams {
   const watched = useWatchedFilter();
   const slots = filters.pipe(map(toRatingsFilters));
 
-  const pushSlot = async (
+  const pushSlot = (
     slot: { type: RatingsTypeFilter } | { rating: RatingFilter },
   ) =>
-    pushKeepingSearch(
-      UrlBuilder.ratings({ ...await firstValueFrom(slots), ...slot }),
+    pushKeepingSearch(async () =>
+      UrlBuilder.ratings({ ...await firstValueFrom(slots), ...slot })
     );
 
   return {

@@ -86,8 +86,6 @@
 
     .read-more-button {
       @include link-button;
-
-      font: inherit;
     }
   }
 </style>

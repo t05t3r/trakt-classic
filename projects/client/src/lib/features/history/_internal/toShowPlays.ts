@@ -2,17 +2,21 @@ import type { ShowPlays } from '$lib/features/history/_internal/groupPlaysByShow
 import type { WatchedShowProgress } from '$lib/requests/queries/sync/watchedShowsProgressQuery.ts';
 import { dedupe } from '$lib/utils/array/dedupe.ts';
 
+// A show with no date has no Play the route counts: it lists watchlisted shows, and it ignores specials.
+function toShowPlay(
+  { show, lastWatchedAt }: WatchedShowProgress,
+): ReadonlyArray<ShowPlays> {
+  if (!lastWatchedAt) return [];
+
+  return [{ type: 'show', key: show.key, watchedAt: lastWatchedAt, show }];
+}
+
 // Sorted here: the route's default order isn't by date, and its activity sort sends a rewatched show to the end.
 export function toShowPlays(
   rows: ReadonlyArray<WatchedShowProgress>,
 ): ShowPlays[] {
   const plays = rows
-    .map(({ show, watchedAt }) => ({
-      type: 'show' as const,
-      key: show.key,
-      watchedAt,
-      show,
-    }))
+    .flatMap(toShowPlay)
     .toSorted((a, b) => b.watchedAt.getTime() - a.watchedAt.getTime());
 
   // A show that moves between two page reads comes twice, and has one card.

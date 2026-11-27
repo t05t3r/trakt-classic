@@ -1,13 +1,19 @@
 import { sessionExpired } from '$lib/features/auth/sessionExpired.ts';
+import { useInvalidator } from '$lib/features/query/useInvalidator.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import { WATCHLIST_URL } from '$mocks/data/sync/WATCHLIST_URL.ts';
+import { RATED_MOVIES_URL } from '$mocks/data/users/RATED_MOVIES_URL.ts';
 import { lookupPendingOverride } from '$test/beds/media-actions/lookupPendingOverride.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
+import { failOnce } from '$test/beds/request/failOnce.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { useUser } from '$lib/features/auth/stores/useUser.ts';
 import { currentUserRatingsQuery } from '$lib/features/auth/queries/currentUserRatingsQuery.ts';
 import { server } from '$mocks/server.ts';
 import { setNetwork } from '$test/beds/network/setNetwork.ts';
+import { useHasCacheListeners } from '$test/beds/query/useHasCacheListeners.ts';
+import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
 import { useWaitForQueryPaused } from '$test/beds/query/useWaitForQueryPaused.ts';
 import { NEGATIVE_CLAIM_WINDOW } from '$test/beds/promise/NEGATIVE_CLAIM_WINDOW.ts';
 import { settleWithin } from '$test/beds/promise/settleWithin.ts';
@@ -15,11 +21,15 @@ import { screen } from '@testing-library/svelte';
 import { http } from 'msw';
 import { filter, firstValueFrom } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type {
-  PendingOverride,
-  PendingOverrideKey,
+import {
+  type PendingOverride,
+  type PendingOverrideKey,
+  pendingOverrides,
 } from './pendingOverrides.ts';
-import { useOptimisticWrite } from './useOptimisticWrite.ts';
+import {
+  type OptimisticWrite,
+  useOptimisticWrite,
+} from './useOptimisticWrite.ts';
 
 const MOVIE_KEY: PendingOverrideKey = {
   action: 'rating',
@@ -30,7 +40,8 @@ const SHOW_KEY: PendingOverrideKey = {
   targetKey: 'show:180770',
 };
 const INVALIDATION = InvalidateAction.Rated('movie');
-const RATINGS_QUERY_ID = currentUserRatingsQuery().queryKey.at(0);
+const RATINGS_KEY = currentUserRatingsQuery().queryKey;
+const RATINGS_QUERY_ID = RATINGS_KEY.at(0);
 
 describe('useOptimisticWrite', () => {
   afterEach(() => {
@@ -350,7 +361,7 @@ describe('useOptimisticWrite', () => {
     await firstValueFrom(ratings.pipe(filter(Boolean)));
     const { requested, release } = holdRequest({
       method: 'get',
-      url: 'http://localhost/users/me/ratings/movies',
+      url: RATED_MOVIES_URL,
     });
 
     const write = run({
@@ -381,7 +392,7 @@ describe('useOptimisticWrite', () => {
     const refetchPaused = waitForQueryPaused({ queryKey: [RATINGS_QUERY_ID] });
     const events: string[] = [];
     server.use(
-      http.get('http://localhost/users/me/ratings/movies', () => {
+      http.get(RATED_MOVIES_URL, () => {
         events.push('refetch');
       }),
     );
@@ -453,5 +464,234 @@ describe('useOptimisticWrite', () => {
 
     expect(await lookupPendingOverride(MOVIE_KEY)).toBeUndefined();
     expect(screen.getByRole('status').textContent).toBe('');
+  });
+
+  describe('with a reader to keep its override until', () => {
+    async function renderKeptWrite() {
+      const store = await renderStore(() => ({
+        ...useOptimisticWrite(),
+        ...useInvalidator(),
+        waitForQueriesIdle: useWaitForQueriesIdle(),
+        hasCacheListeners: useHasCacheListeners(),
+        ratings: useUser().ratings,
+        watchlist: useUser().watchlist,
+      }));
+      await firstValueFrom(store.ratings.pipe(filter(Boolean)));
+      await firstValueFrom(store.watchlist.pipe(filter(Boolean)));
+      const write = (
+        value: number,
+        { task = () => Promise.resolve(), invalidation = INVALIDATION }: {
+          task?: () => Promise<void>;
+          invalidation?: OptimisticWrite['invalidation'];
+        } = {},
+      ) =>
+        store.run({
+          keys: [MOVIE_KEY],
+          value,
+          task,
+          invalidation,
+          keepUntil: [RATINGS_KEY],
+        });
+      return { ...store, write };
+    }
+
+    async function renderKeptA() {
+      const store = await renderKeptWrite();
+      failOnce(RATED_MOVIES_URL);
+      const kept = await store.write(7);
+      return { ...store, kept };
+    }
+
+    it('should keep its override out of flight after the reader fails its refetch', async () => {
+      const { kept } = await renderKeptA();
+
+      expect(kept).toBe(true);
+      expect(await lookupPendingOverride(MOVIE_KEY)).toMatchObject({
+        value: 7,
+      });
+      expect(await firstValueFrom(pendingOverrides.isInFlight$([MOVIE_KEY])))
+        .toBe(false);
+    });
+
+    it('should clear its override once the reader reads in its refetch', async () => {
+      const { write } = await renderKeptWrite();
+
+      expect(await write(7)).toBe(true);
+      expect(await lookupPendingOverride(MOVIE_KEY)).toBeUndefined();
+    });
+
+    it('should drop the kept override once the reader reads again', async () => {
+      const { invalidate } = await renderKeptA();
+
+      await invalidate(INVALIDATION);
+
+      await vi.waitFor(async () =>
+        expect(await lookupPendingOverride(MOVIE_KEY)).toBeUndefined()
+      );
+    });
+
+    it('should show the kept override again when a later write fails', async () => {
+      const { write } = await renderKeptA();
+      const posting = Promise.withResolvers<void>();
+
+      const later = write(3, { task: () => posting.promise });
+      const whilePosting = await lookupPendingOverride(MOVIE_KEY);
+      posting.reject(new TypeError('network'));
+
+      expect(await later).toBe(false);
+      expect(whilePosting).toMatchObject({ value: 3 });
+      expect(await lookupPendingOverride(MOVIE_KEY)).toMatchObject({
+        value: 7,
+      });
+    });
+
+    it('should drop the kept override when a later write lands and the reader reads', async () => {
+      const { write } = await renderKeptA();
+
+      expect(await write(3)).toBe(true);
+      expect(await lookupPendingOverride(MOVIE_KEY)).toBeUndefined();
+    });
+
+    it('should keep a later write in place of the kept one when the reader fails again', async () => {
+      const { write, invalidate } = await renderKeptA();
+      failOnce(RATED_MOVIES_URL);
+
+      expect(await write(3)).toBe(true);
+      const kept = await lookupPendingOverride(MOVIE_KEY);
+      await invalidate(INVALIDATION);
+
+      expect(kept).toMatchObject({ value: 3 });
+      await vi.waitFor(async () =>
+        expect(await lookupPendingOverride(MOVIE_KEY)).toBeUndefined()
+      );
+    });
+
+    it('should not fall back to the kept override after the reader reads while a later write posts', async () => {
+      const { write, invalidate } = await renderKeptA();
+      const posting = Promise.withResolvers<void>();
+      const started = Promise.withResolvers<void>();
+
+      const later = write(3, {
+        task: () => {
+          started.resolve();
+          return posting.promise;
+        },
+      });
+      await started.promise;
+      await invalidate(INVALIDATION);
+      const whilePosting = await lookupPendingOverride(MOVIE_KEY);
+      posting.reject(new TypeError('network'));
+
+      expect(await later).toBe(false);
+      expect(whilePosting).toMatchObject({ value: 3 });
+      expect(await lookupPendingOverride(MOVIE_KEY)).toBeUndefined();
+    });
+
+    it('should neither keep nor drop for a write superseded after it posted', async () => {
+      const { write, waitForQueriesIdle } = await renderKeptWrite();
+      const slowRefetch = holdRequest({ method: 'get', url: WATCHLIST_URL });
+
+      const superseded = write(7, {
+        invalidation: [INVALIDATION, InvalidateAction.Watchlisted('movie')],
+      });
+      await slowRefetch.requested;
+      await waitForQueriesIdle({ queryKey: RATINGS_KEY });
+      failOnce(RATED_MOVIES_URL);
+      const last = await write(3);
+      slowRefetch.release();
+
+      expect([await superseded, last]).toEqual([true, true]);
+      expect(await lookupPendingOverride(MOVIE_KEY)).toMatchObject({
+        value: 3,
+      });
+    });
+
+    it('should leave no wait on the cache for a write with no keys whose reader fails its refetch', async () => {
+      const { run, hasCacheListeners } = await renderKeptWrite();
+      failOnce(RATED_MOVIES_URL);
+
+      const result = await run({
+        keys: [],
+        value: 7,
+        task: () => Promise.resolve(),
+        invalidation: INVALIDATION,
+        keepUntil: [RATINGS_KEY],
+      });
+
+      expect(result).toBe(true);
+      expect(hasCacheListeners()).toBe(false);
+    });
+
+    it('should leave no wait on the cache for a write superseded after it posted', async () => {
+      const { run, write, hasCacheListeners, waitForQueriesIdle } =
+        await renderKeptWrite();
+      const slowRefetch = holdRequest({ method: 'get', url: WATCHLIST_URL });
+      failOnce(RATED_MOVIES_URL);
+
+      const superseded = write(7, {
+        invalidation: [INVALIDATION, InvalidateAction.Watchlisted('movie')],
+      });
+      await slowRefetch.requested;
+      await waitForQueriesIdle({ queryKey: RATINGS_KEY });
+      const last = await run({
+        keys: [MOVIE_KEY],
+        value: 3,
+        task: () => Promise.resolve(),
+        invalidation: InvalidateAction.Favorited('movie'),
+      });
+      slowRefetch.release();
+
+      expect([last, await superseded]).toEqual([true, true]);
+      expect(hasCacheListeners()).toBe(false);
+    });
+
+    it('should post the kept value again', async () => {
+      const { write } = await renderKeptA();
+      const tasks: string[] = [];
+
+      const again = await write(7, {
+        task: () => {
+          tasks.push('posted');
+          return Promise.resolve();
+        },
+      });
+
+      expect(again).toBe(true);
+      expect(tasks).toEqual(['posted']);
+    });
+  });
+
+  describe('when it keeps its override until a reload', () => {
+    async function writeUntilReload() {
+      const { run } = await renderStore(() => ({
+        ...useOptimisticWrite(),
+        ratings: useUser().ratings,
+      }));
+      return run({
+        keys: [MOVIE_KEY],
+        value: true,
+        task: () => Promise.resolve(),
+        invalidation: INVALIDATION,
+        keepUntil: 'session',
+      });
+    }
+
+    it('should keep its override after a refetch that reads', async () => {
+      expect(await writeUntilReload()).toBe(true);
+      expect(await lookupPendingOverride(MOVIE_KEY)).toMatchObject({
+        value: true,
+      });
+      expect(await firstValueFrom(pendingOverrides.isInFlight$([MOVIE_KEY])))
+        .toBe(false);
+    });
+
+    it('should keep its override after a refetch that fails', async () => {
+      failOnce(RATED_MOVIES_URL);
+
+      expect(await writeUntilReload()).toBe(true);
+      expect(await lookupPendingOverride(MOVIE_KEY)).toMatchObject({
+        value: true,
+      });
+    });
   });
 });

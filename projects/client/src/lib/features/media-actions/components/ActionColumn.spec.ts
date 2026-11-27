@@ -16,6 +16,7 @@ import { SILO_EPISODE_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_EPIS
 import { SILO_SEASON_ACTIONS_TARGET } from '$mocks/data/media-actions/SILO_SEASON_ACTIONS_TARGET.ts';
 import { SILO_PROGRESS_URL } from '$mocks/data/shows/SILO_PROGRESS_URL.ts';
 import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressResponseMock.ts';
+import { SILO_WATCH_REMAINING_BODY } from '$mocks/data/sync/SILO_WATCH_REMAINING_BODY.ts';
 import { SYNC_FAVORITES_REMOVE_URL } from '$mocks/data/sync/SYNC_FAVORITES_REMOVE_URL.ts';
 import { SYNC_HISTORY_REMOVE_URL } from '$mocks/data/sync/SYNC_HISTORY_REMOVE_URL.ts';
 import { SYNC_HISTORY_URL } from '$mocks/data/sync/SYNC_HISTORY_URL.ts';
@@ -28,6 +29,7 @@ import { server } from '$mocks/server.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { REMOVALS } from '$test/beds/focus/REMOVALS.ts';
 import { applyDateField } from '$test/beds/forms/applyDateField.ts';
 import { dateField } from '$test/beds/forms/dateField.ts';
@@ -36,6 +38,7 @@ import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import ActionColumnHost from '$test/beds/media-actions/ActionColumnHost.svelte';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
@@ -65,6 +68,7 @@ const SILO_PLAYED = '27 Dec 2024 16:13';
 const DEVS_PLAYED = '27 Dec 2024 16:28';
 
 const REMOVE_PROMPT = 'Remove from history?';
+const WATCH_REMAINING_PROMPT = 'What would you like to do?';
 const DROP_PROMPT = 'When did you drop this?';
 const WATCH_PROMPT = 'When did you watch this?';
 
@@ -90,7 +94,7 @@ const DEVS_SPECIALS_TARGET: QuickActionsTarget = {
   number: 0,
   episodes: { count: 1, aired: 1 },
   airDate: AIRED,
-  show: { id: DEVS.id, title: 'Devs' },
+  show: { id: DEVS.id, title: 'Devs', slug: 'devs' },
 };
 
 const serveNoShowPlays = () =>
@@ -297,9 +301,7 @@ describe('component: ActionColumn', () => {
         ?.querySelectorAll('.trakt-action-side-icon');
 
     const iconLabels = (container: HTMLElement) =>
-      [...(sideIcons(container) ?? [])].map((icon) =>
-        icon.getAttribute('aria-label')
-      );
+      ariaLabelsOf(sideIcons(container) ?? []);
 
     const PLAYED_MOVIE = { target: HERETIC_ACTIONS_TARGET };
     const PLAYED_SHOW = {
@@ -474,11 +476,7 @@ describe('component: ActionColumn', () => {
       'should fill $name at once and read Watched with no under line',
       async ({ target, progress, confirm }) => {
         serveNoShowPlays();
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_URL,
-          answer: () => new HttpResponse(null, { status: 201 }),
-        });
+        const write = holdPost(SYNC_HISTORY_URL);
         const { container } = renderComponent(ActionColumn, {
           props: { target, progress },
         });
@@ -536,29 +534,31 @@ describe('component: ActionColumn', () => {
         progress: undefined,
       },
       {
-        name: 'a show',
+        name: 'a partly watched show',
         target: SILO_ACTIONS_TARGET,
         progress: progressOf(11, 17),
+        answer: { dialog: WATCH_REMAINING_PROMPT, button: 'Remove all' },
       },
       {
-        name: 'a season',
+        name: 'a partly watched season',
         target: SILO_SEASON_ACTIONS_TARGET,
         progress: progressOf(4, 10),
+        answer: { dialog: WATCH_REMAINING_PROMPT, button: 'Remove all' },
       },
     ])(
       'should outline $name at once and read Add to history',
-      async ({ target, progress }) => {
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_REMOVE_URL,
-          answer: () => new HttpResponse(null, { status: 200 }),
-        });
+      async ({
+        target,
+        progress,
+        answer = { dialog: REMOVE_PROMPT, button: 'Remove from History' },
+      }) => {
+        const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
         const { container } = renderComponent(ActionColumn, {
           props: { target, progress },
         });
 
         await userEvent.click(await settledMain(container, 0));
-        await answerDialog('Remove from history?', 'Remove from History');
+        await answerDialog(answer.dialog, answer.button);
         await write.requested;
 
         expect(historyButton(container)).toEqual(NOT_WATCHED);
@@ -714,7 +714,7 @@ describe('component: ActionColumn', () => {
         progress: progressOf(25, 30),
         button: {
           label: '83% watched',
-          underInfo: '25/30 eps — 1 play',
+          underInfo: '25 / 30 eps — 1 play',
           selected: true,
           bar: '83',
         },
@@ -724,7 +724,7 @@ describe('component: ActionColumn', () => {
         progress: progressOf(30, 30),
         button: {
           label: '100% watched',
-          underInfo: '30/30 eps — 1 play',
+          underInfo: '30 / 30 eps — 1 play',
           selected: true,
           bar: '100',
         },
@@ -790,7 +790,7 @@ describe('component: ActionColumn', () => {
         progress: progressOf(6, 8),
         button: {
           label: '75% watched',
-          underInfo: '6/8 eps — 11 plays · Dropped',
+          underInfo: '6 / 8 eps — 11 plays · Dropped',
           selected: true,
           bar: '75',
         },
@@ -800,7 +800,7 @@ describe('component: ActionColumn', () => {
         progress: progressOf(8, 8),
         button: {
           label: '100% watched',
-          underInfo: '8/8 eps — 11 plays · Dropped',
+          underInfo: '8 / 8 eps — 11 plays · Dropped',
           selected: true,
           bar: '100',
         },
@@ -844,7 +844,7 @@ describe('component: ActionColumn', () => {
       { progress: FAILED, row: 'with a failed progress' },
       { progress: undefined, row: 'with no progress given' },
     ])(
-      'should remove all Plays, with the count dialog, from a show $row',
+      'should ask Watch remaining on a show its history holds partly watched, $row, and remove all Plays on Remove all',
       async ({ progress }) => {
         const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
         const { container } = renderComponent(ActionColumn, {
@@ -852,13 +852,25 @@ describe('component: ActionColumn', () => {
         });
 
         await userEvent.click(await settledMain(container, 0));
-        await answerDialog('Remove from history?', 'Remove from History');
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
 
         await waitFor(() =>
           expect(bodies).toEqual([{ shows: [{ ids: { trakt: SILO.id } }] }])
         );
       },
     );
+
+    it('should post only the unwatched aired episodes of a partly watched show on Watch remaining', async () => {
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      const { container } = renderComponent(ActionColumn, {
+        props: { target: SILO_ACTIONS_TARGET, progress: progressOf(11, 17) },
+      });
+
+      await userEvent.click(await settledMain(container, 0));
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+
+      await waitFor(() => expect(bodies).toEqual([SILO_WATCH_REMAINING_BODY]));
+    });
 
     it('should read the counts with no plays part, and stay inert, while the Plays are not known', async () => {
       holdRequest({ method: 'get', url: WATCHED_SHOWS_URL });
@@ -873,7 +885,7 @@ describe('component: ActionColumn', () => {
 
       expect(historyButton(container)).toEqual({
         label: '83% watched',
-        underInfo: '25/30 eps',
+        underInfo: '25 / 30 eps',
         selected: true,
         bar: '83',
       });
@@ -891,7 +903,7 @@ describe('component: ActionColumn', () => {
 
       expect(historyButton(container)).toEqual({
         label: '83% watched',
-        underInfo: '25/30 eps',
+        underInfo: '25 / 30 eps',
         selected: true,
         bar: '83',
       });
@@ -950,7 +962,7 @@ describe('component: ActionColumn', () => {
       expect(await settledMain(container, 0)).toBeEnabled();
       expect(historyButton(container)).toEqual({
         label: '64% watched',
-        underInfo: '11/17 eps — 1 play',
+        underInfo: '11 / 17 eps — 1 play',
         selected: true,
         bar: '64',
       });
@@ -963,11 +975,7 @@ describe('component: ActionColumn', () => {
         url: SILO_PROGRESS_URL,
         answer: () => HttpResponse.json(ShowSiloProgressResponseMock),
       });
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_URL,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const write = holdPost(SYNC_HISTORY_URL);
       const { container } = renderComponent(ActionColumn, {
         props: {
           target: SILO_ACTIONS_TARGET,
@@ -1044,7 +1052,7 @@ describe('component: ActionColumn', () => {
 
       expect(await readMoreRows()).toEqual(['View history', 'Restore show']);
       expect(historyButton(container)?.underInfo)
-        .toBe('3/8 eps — 11 plays · Dropped');
+        .toBe('3 / 8 eps — 11 plays · Dropped');
     });
 
     it('should read View history, then Restore show, on a dropped show with no episode watched', async () => {
@@ -1161,11 +1169,7 @@ describe('component: ActionColumn', () => {
     });
 
     it('should offer View history alone while a drop is saved', async () => {
-      const saving = holdRequest({
-        method: 'post',
-        url: DROP_URL,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const saving = holdPost(DROP_URL);
       renderComponent(ActionColumn, { props: PARTLY_WATCHED });
       await openMore();
       await userEvent.click(
@@ -1179,11 +1183,7 @@ describe('component: ActionColumn', () => {
     });
 
     it('should offer View history alone while a restore is saved', async () => {
-      const saving = holdRequest({
-        method: 'post',
-        url: RESTORE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const saving = holdPost(RESTORE_URL, 200);
       renderComponent(ActionColumn, { props: DROPPED_WITH_PLAYS });
       await openRestoreDialog();
       await answerDialog('Restore this show?', 'Yes, restore it!');
@@ -1194,11 +1194,7 @@ describe('component: ActionColumn', () => {
     });
 
     it('should leave, with no Drop show to offer, while a removal of every Play is saved', async () => {
-      const saving = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const saving = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
       const { container } = renderComponent(ActionColumn, {
         props: PARTLY_WATCHED,
       });
@@ -1330,7 +1326,7 @@ describe('component: ActionColumn', () => {
         progress: progressOf(4, 10),
         button: {
           label: '40% watched',
-          underInfo: '4/10 eps — 1 play',
+          underInfo: '4 / 10 eps — 1 play',
           selected: true,
           bar: '40',
         },
@@ -1340,7 +1336,7 @@ describe('component: ActionColumn', () => {
         progress: progressOf(10, 10),
         button: {
           label: '100% watched',
-          underInfo: '10/10 eps — 1 play',
+          underInfo: '10 / 10 eps — 1 play',
           selected: true,
           bar: '100',
         },
@@ -1364,7 +1360,7 @@ describe('component: ActionColumn', () => {
         },
       },
     ])(
-      'should fill and read a season $row, and remove with the count dialog',
+      'should fill and read a season its history holds partly watched, $row, and ask Watch remaining',
       async ({ progress, button }) => {
         const { container } = renderComponent(ActionColumn, {
           props: { target: SILO_SEASON_ACTIONS_TARGET, progress },
@@ -1376,7 +1372,7 @@ describe('component: ActionColumn', () => {
         await userEvent.click(main);
 
         expect(
-          await screen.findByRole('dialog', { name: 'Remove from history?' }),
+          await screen.findByRole('dialog', { name: WATCH_REMAINING_PROMPT }),
         ).toBeVisible();
       },
     );
@@ -1393,7 +1389,7 @@ describe('component: ActionColumn', () => {
 
       expect(historyButton(container)).toEqual({
         label: '100% watched',
-        underInfo: '8/8 eps — 10 plays',
+        underInfo: '8 / 8 eps — 10 plays',
         selected: true,
         bar: '100',
       });
@@ -1412,7 +1408,7 @@ describe('component: ActionColumn', () => {
 
       expect(historyButton(container)).toEqual({
         label: '40% watched',
-        underInfo: '4/10 eps',
+        underInfo: '4 / 10 eps',
         selected: true,
         bar: '40',
       });
@@ -1607,13 +1603,13 @@ describe('component: ActionColumn', () => {
         name: 'a show',
         target: DEVS_ACTIONS_TARGET,
         label: '37% watched',
-        underInfo: '3/8 eps — 11 plays · Dropped',
+        underInfo: '3 / 8 eps — 11 plays · Dropped',
       },
       {
         name: 'a season',
         target: DEVS_SEASON_ACTIONS_TARGET,
         label: '37% watched',
-        underInfo: '3/8 eps — 10 plays',
+        underInfo: '3 / 8 eps — 10 plays',
       },
     ])(
       'should keep the fill, main line and bar of $name',
@@ -1656,11 +1652,7 @@ describe('component: ActionColumn', () => {
   });
 
   it('should flip a favourite to Add to Favorites while its removal saves', async () => {
-    const write = holdRequest({
-      method: 'post',
-      url: SYNC_FAVORITES_REMOVE_URL,
-      answer: () => new HttpResponse(null, { status: 200 }),
-    });
+    const write = holdPost(SYNC_FAVORITES_REMOVE_URL, 200);
     const { container } = renderComponent(ActionColumn, {
       props: { target: HERETIC_ACTIONS_TARGET, favorite: true },
     });

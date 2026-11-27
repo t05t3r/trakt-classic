@@ -1,9 +1,12 @@
+import { page } from '$app/state';
 import { PLACEHOLDERS } from '$lib/features/image/placeholders.ts';
 import { ExtendedUserSettingsMappedMock } from '$mocks/data/users/mapped/ExtendedUserSettingsMappedMock.ts';
 import { ExtendedUserSettingsResponseMock } from '$mocks/data/users/response/ExtendedUserSettingsResponseMock.ts';
 import { USER_SETTINGS_URL } from '$mocks/data/users/USER_SETTINGS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { USER_NAV_LINKS } from '$mocks/data/navigation/USER_NAV_LINKS.ts';
+import { glyphClasses } from '$test/beds/menus/glyphClasses.ts';
+import { isMenuRowChecked } from '$test/beds/subnav/isMenuRowChecked.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { fireEvent, screen, within } from '@testing-library/svelte';
@@ -43,6 +46,49 @@ describe('component: ProfileMenu', () => {
       ...USER_NAV_LINKS,
       ['Watchlist', '/users/me/watchlist'],
       ['Sign Out', null],
+    ]);
+  });
+
+  it("should mark the current page's row in the accent, with no check", async () => {
+    window.history.replaceState(null, '', '/users/tequila_sunset/history');
+    page.error = null;
+    await renderProfileMenu();
+
+    await fireEvent.click(trigger());
+
+    const menu = screen.getByRole('menu', { name: MENU_NAME });
+    // Every page's row; Sign Out, a button, holds no menu row.
+    const rows = within(menu).getAllByRole('menuitem')
+      .filter((row) => row.hasAttribute('href'))
+      .map((row) => [
+        row.textContent?.trim(),
+        isMenuRowChecked(row),
+        glyphClasses(row),
+      ]);
+    expect(rows).toEqual([
+      ['History', true, []],
+      ['Progress', false, []],
+      ['Ratings', false, []],
+      ['Lists', false, []],
+      ['Watchlist', false, []],
+    ]);
+  });
+
+  it('should turn its chevron up while its menu is open', async () => {
+    await renderProfileMenu();
+    const chevron = trigger().querySelector('.tabler-icon-chevron-down');
+    const expanded = () => [
+      trigger().getAttribute('aria-expanded'),
+      chevron?.closest('[aria-expanded]') === trigger(),
+      chevron?.classList.contains('trakt-icon-expander'),
+    ];
+    const closed = expanded();
+
+    await fireEvent.click(trigger());
+
+    expect([closed, expanded()]).toEqual([
+      ['false', true, true],
+      ['true', true, true],
     ]);
   });
 

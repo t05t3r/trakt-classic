@@ -110,8 +110,7 @@
     }
 
     .episode-sxe {
-      font-family: var(--font-family-heading);
-      font-weight: var(--font-weight-heading-heavy);
+      @include heavy-heading-font;
     }
 
     .schedule-meta {

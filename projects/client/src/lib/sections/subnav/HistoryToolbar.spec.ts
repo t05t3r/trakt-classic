@@ -1,11 +1,23 @@
+import { isGearDotted } from '$test/beds/subnav/isGearDotted.ts';
+import { isTriggerChanged } from '$test/beds/subnav/isTriggerChanged.ts';
+import { countStat } from '$test/beds/stats/countStat.ts';
+import { queryCountStat } from '$test/beds/stats/queryCountStat.ts';
 import { goto } from '$app/navigation';
 import { useHistoryParams } from '$lib/features/history/stores/useHistoryParams.ts';
+import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { useDividers } from '$lib/stores/useDividers.ts';
 import { HISTORY_PATH } from '$mocks/data/users/HISTORY_PATH.ts';
+import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
+import { controlledBy } from '$test/beds/dom/controlledBy.ts';
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { toolbarControls } from '$test/beds/lists/toolbarControls.ts';
 import { openDialogByClick } from '$test/beds/menus/openDialogByClick.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
+import { readCheckedMenuRow } from '$test/beds/menus/readCheckedMenuRow.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
@@ -14,17 +26,20 @@ import { valueObservable } from '$test/beds/store/valueObservable.ts';
 import { lastPush } from '$test/beds/url/lastPush.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
-import { render, screen, waitFor, within } from '@testing-library/svelte';
+import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HistoryToolbar from './HistoryToolbar.svelte';
 import type { HistoryToolbarProps } from './_internal/HistoryToolbarProps.ts';
+
+const setLayout = fakeLayouts({
+  desktop: WELL_KNOWN_MEDIA_QUERY.desktop,
+  mobile: WELL_KNOWN_MEDIA_QUERY.mobile,
+});
 
 type ToolbarScreen =
   & Partial<Omit<HistoryToolbarProps, 'params'>>
   & { filters?: string; search?: string };
-
-const { panelId: PANEL_ID } = toolbarControls();
 
 async function renderToolbar(
   { filters = '', search = '', ...props }: ToolbarScreen = {},
@@ -35,7 +50,7 @@ async function renderToolbar(
     useHistoryParams(valueObservable(filters))
   );
 
-  return render(HistoryToolbar, {
+  const rendered = renderComponent(HistoryToolbar, {
     props: {
       params,
       dividers: useDividers(),
@@ -43,19 +58,16 @@ async function renderToolbar(
       ...props,
     },
   });
+  await rendered.userLoaded;
+
+  return rendered;
 }
 
 const button = (name: string) => screen.getByRole('button', { name });
-const stat = (label: string) => screen.getByTitle(label);
-
-const rowsOf = (menu: HTMLElement) =>
-  within(menu).getAllByRole('menuitemradio');
-
-const labelsOf = (rows: ReadonlyArray<HTMLElement>) =>
-  rows.map((row) => row.textContent?.trim());
 
 beforeEach(() => {
   stubClientRects();
+  setLayout('desktop');
 });
 
 describe('section: HistoryToolbar', () => {
@@ -63,11 +75,11 @@ describe('section: HistoryToolbar', () => {
     it('should list All Types, Movies, Shows and Episodes, All checked', async () => {
       await renderToolbar();
 
-      const rows = rowsOf(await openMenuByClick('Type: All Types', 'Type'));
+      await openMenuByClick('Type: All Types', 'Type');
 
-      expect(labelsOf(rows))
+      expect(readMenuRows('menuitemradio'))
         .toEqual(['All Types', 'Movies', 'Shows', 'Episodes']);
-      expect(rows.at(0)).toHaveAttribute('aria-checked', 'true');
+      expect(readCheckedMenuRow()).toBe('All Types');
     });
 
     it('should show the type the path holds', async () => {
@@ -85,6 +97,46 @@ describe('section: HistoryToolbar', () => {
       await waitFor(() =>
         expect(lastPush()).toBe(`${HISTORY_PATH}/movies?genres=drama`)
       );
+    });
+
+    it('should close the panel on a pick that changes the type', async () => {
+      const close = vi.fn();
+      await renderToolbar({ controls: toolbarControls({ close }) });
+      await openMenuByClick('Type: All Types', 'Type');
+
+      await pickMenuRadio('Movies');
+
+      expect(close).toHaveBeenCalledOnce();
+    });
+
+    it('should clear the item and close the panel on a pick of the checked row', async () => {
+      const close = vi.fn();
+      await renderToolbar({
+        filters: 'episodes',
+        search: '?show=12',
+        controls: toolbarControls({ close }),
+      });
+      await openMenuByClick('Type: Episodes', 'Type');
+
+      await pickMenuRadio('Episodes');
+
+      await waitFor(() => expect(lastPush()).toBe(`${HISTORY_PATH}/episodes`));
+      expect(close).toHaveBeenCalledOnce();
+    });
+
+    it('should write nothing and close the panel on a pick of the checked row with no item', async () => {
+      const close = vi.fn();
+      await renderToolbar({
+        filters: 'episodes',
+        controls: toolbarControls({ close }),
+      });
+      await openMenuByClick('Type: Episodes', 'Type');
+
+      await pickMenuRadio('Episodes');
+      await waitNegativeClaim();
+
+      expect(goto).not.toHaveBeenCalled();
+      expect(close).toHaveBeenCalledOnce();
     });
 
     it('should push the bare path on a pick of the All row', async () => {
@@ -124,11 +176,26 @@ describe('section: HistoryToolbar', () => {
     it('should follow the type menu in the start block', async () => {
       const { container } = await renderToolbar();
 
-      expect(
-        container.querySelector(
-          '.toolbar-start > .trakt-dropdown-button + .trakt-date-range-button',
-        ),
-      ).toContainElement(button('Date Range'));
+      const start = assertDefined(
+        container.querySelector<HTMLElement>('.toolbar-start'),
+      );
+      expect(ariaLabelsOf(within(start).getAllByRole('button')))
+        .toEqual(['Type: All Types', 'Date Range']);
+    });
+
+    it('should sit between the gear and the dividers toggle on phones, out of the panel', async () => {
+      setLayout('mobile');
+      await renderToolbar();
+
+      const panel = assertDefined(controlledBy(button('Options')));
+      expect(ariaLabelsOf(within(panel).getAllByRole('button')))
+        .toEqual(['Type: All Types']);
+      expect(ariaLabelsOf(screen.getAllByRole('button'))).toEqual([
+        'Options',
+        'Type: All Types',
+        'Date Range',
+        'Toggle Dividers',
+      ]);
     });
 
     it('should turn accent while the URL holds a range', async () => {
@@ -137,7 +204,10 @@ describe('section: HistoryToolbar', () => {
       const trigger = button('Date Range: Since 7 Jun 2026');
 
       expect(trigger).toHaveClass('is-selected');
-      expect(trigger).toHaveAttribute('title', 'Since 7 Jun 2026');
+      await userEvent.hover(trigger);
+      await waitFor(() =>
+        expect(trigger).toHaveAccessibleDescription('Since 7 Jun 2026')
+      );
     });
 
     it('should write through the params the screen hands it', async () => {
@@ -156,37 +226,37 @@ describe('section: HistoryToolbar', () => {
     it('should leave the item count blank while it loads', async () => {
       await renderToolbar();
 
-      expect(stat('Items')).toHaveTextContent(/^Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^Items$/);
     });
 
     it('should show the item count', async () => {
       await renderToolbar({ itemCount: 729 });
 
-      expect(stat('Items')).toHaveTextContent(/^729 Items$/);
+      expect(countStat('Items')).toHaveTextContent(/^729 Items$/);
     });
 
     it('should show the plays, grouped', async () => {
       await renderToolbar({ plays: 1234 });
 
-      expect(stat('Plays')).toHaveTextContent(/^1,234 Plays$/);
+      expect(countStat('Plays')).toHaveTextContent(/^1,234 Plays$/);
     });
 
     it('should use the singular for one play', async () => {
       await renderToolbar({ plays: 1 });
 
-      expect(stat('Play')).toHaveTextContent(/^1 Play$/);
+      expect(countStat('Play')).toHaveTextContent(/^1 Play$/);
     });
 
     it('should leave the plays out while they are undefined', async () => {
       await renderToolbar({ itemCount: 729 });
 
-      expect(screen.queryByTitle('Plays')).toBeNull();
+      expect(queryCountStat('Plays')).toBeNull();
     });
 
     it('should show zero plays', async () => {
       await renderToolbar({ plays: 0 });
 
-      expect(stat('Plays')).toHaveTextContent(/^0 Plays$/);
+      expect(countStat('Plays')).toHaveTextContent(/^0 Plays$/);
     });
 
     it.each(['Items', 'Plays'])(
@@ -194,54 +264,12 @@ describe('section: HistoryToolbar', () => {
       async (label) => {
         await renderToolbar({ itemCount: 729, plays: 730 });
 
-        expect(stat(label)).toHaveAttribute('data-label', 'wide');
+        expect(countStat(label)).toHaveAttribute('data-label', 'wide');
       },
     );
   });
 
-  describe('sort', () => {
-    it('should list Watched Date alone, checked', async () => {
-      await renderToolbar();
-
-      const rows = rowsOf(
-        await openMenuByClick('Sort by: Watched Date', 'Sort by'),
-      );
-
-      expect(labelsOf(rows)).toEqual(['Watched Date']);
-      expect(rows.at(0)).toHaveAttribute('aria-checked', 'true');
-    });
-
-    it('should write nothing on a pick of its one row', async () => {
-      await renderToolbar();
-      await openMenuByClick('Sort by: Watched Date', 'Sort by');
-
-      await pickMenuRadio('Watched Date');
-      await waitNegativeClaim();
-
-      expect(goto).not.toHaveBeenCalled();
-    });
-
-    it('should sit in the options', async () => {
-      const { container } = await renderToolbar();
-
-      expect(container.querySelector(`#${PANEL_ID}`))
-        .toContainElement(button('Sort by: Watched Date'));
-    });
-  });
-
   describe('dividers toggle', () => {
-    // The options hide on phones; the toggle stays.
-    it('should follow the options, outside them', async () => {
-      const { container } = await renderToolbar();
-
-      expect(
-        container.querySelector('.toolbar-options + .trakt-dividers-toggle'),
-      )
-        .toContainElement(button('Toggle Dividers'));
-      expect(container.querySelector(`#${PANEL_ID}`))
-        .not.toContainElement(button('Toggle Dividers'));
-    });
-
     it('should flip the instance the screen hands it', async () => {
       const dividers = useDividers();
       await renderToolbar({ dividers });
@@ -253,36 +281,53 @@ describe('section: HistoryToolbar', () => {
   });
 
   describe('the frame', () => {
-    it('should keep the controls on phones', async () => {
-      const { container } = await renderToolbar();
+    it('should hold the gear, the type menu, the date range and the dividers toggle, in that order', async () => {
+      await renderToolbar();
 
-      expect(container.querySelector('.trakt-subnav-toolbar'))
-        .toHaveAttribute('data-phone', 'controls');
-    });
-
-    it('should hold only the two menus, the date range and the dividers toggle, with no gear', async () => {
-      await renderToolbar({
-        controls: toolbarControls({ untitled: {}, open: true }),
-      });
-
-      expect(
-        screen.getAllByRole('button')
-          .map((found) => found.getAttribute('aria-label')),
-      ).toEqual([
+      expect(ariaLabelsOf(screen.getAllByRole('button'))).toEqual([
+        'Options',
         'Type: All Types',
         'Date Range',
-        'Sort by: Watched Date',
         'Toggle Dividers',
       ]);
     });
 
-    it('should never open the options on phones', async () => {
-      const { container } = await renderToolbar({
-        controls: toolbarControls({ untitled: {}, open: true }),
-      });
+    it('should open the panel that holds the type menu from the phone gear', async () => {
+      setLayout('mobile');
+      const toggle = vi.fn();
+      await renderToolbar({ controls: toolbarControls({ toggle }) });
 
-      expect(container.querySelector(`#${PANEL_ID}`))
-        .not.toHaveClass('is-open');
+      const panel = assertDefined(controlledBy(button('Options')));
+      await userEvent.click(button('Options'));
+
+      expect(ariaLabelsOf(within(panel).getAllByRole('button')))
+        .toEqual(['Type: All Types']);
+      expect(panel).not.toContainElement(button('Toggle Dividers'));
+      expect(toggle).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('off the default', () => {
+    it('should draw no trigger in the accent and dot no gear at the defaults', async () => {
+      await renderToolbar();
+
+      expect([isTriggerChanged('Type: All Types'), isGearDotted()])
+        .toEqual([false, false]);
+    });
+
+    it('should accent the type and dot the gear', async () => {
+      await renderToolbar({ filters: 'episodes' });
+
+      expect([isTriggerChanged('Type: Episodes'), isGearDotted()])
+        .toEqual([true, true]);
+    });
+
+    it('should dot no gear for a range, whose button stays in the row', async () => {
+      setLayout('mobile');
+      await renderToolbar({ search: '?start_at=2026-06-07' });
+
+      expect([isTriggerChanged('Date Range: Since 7 Jun 2026'), isGearDotted()])
+        .toEqual([true, false]);
     });
   });
 });

@@ -22,8 +22,10 @@ import { ShowSiloProgressMappedMock } from '$mocks/data/summary/shows/silo/mappe
 import { ShowSiloSeasonEpisodesMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonEpisodesMappedMock.ts';
 import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressResponseMock.ts';
 import { ShowSiloSeasonsResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloSeasonsResponseMock.ts';
+import { ShowSiloSeasonsWithSpecialsResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloSeasonsWithSpecialsResponseMock.ts';
 import { ShowSiloSeasonsEmptySeasonTwoResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloSeasonsEmptySeasonTwoResponseMock.ts';
 import { server } from '$mocks/server.ts';
+import { serveSiloProgress } from '$test/beds/progress/serveSiloProgress.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { kindsOf } from '$test/beds/query/kindsOf.ts';
 import { nextOf } from '$test/beds/query/nextOf.ts';
@@ -68,12 +70,6 @@ function serveLastInSeasonTwo(number = SEASON_TWO_EPISODE.number) {
   server.use(
     http.get(SILO_LAST_EPISODE_URL, () => HttpResponse.json(last)),
     http.get(SILO_SEASON_TWO_EPISODES_URL, () => HttpResponse.json([last])),
-  );
-}
-
-function serveNothingWatched() {
-  server.use(
-    http.get(SILO_PROGRESS_URL, () => HttpResponse.json(NOTHING_WATCHED)),
   );
 }
 
@@ -255,7 +251,7 @@ describe('store: useRecentEpisodes', () => {
 
   describe('while nothing is watched', () => {
     it("should take the first season's episode 1 for Up Next", async () => {
-      serveNothingWatched();
+      serveSiloProgress(NOTHING_WATCHED);
       const status = await renderRecentEpisodes();
 
       const ready = await nextOf(status, 'ready');
@@ -267,7 +263,7 @@ describe('store: useRecentEpisodes', () => {
     });
 
     it("should read the first season's list once when the last episode aired in it", async () => {
-      serveNothingWatched();
+      serveSiloProgress(NOTHING_WATCHED);
 
       expect(await readSeasonLists()).toEqual([
         'GET /shows/silo/seasons/1',
@@ -275,7 +271,7 @@ describe('store: useRecentEpisodes', () => {
     });
 
     it("should read the first season's list once, as the previous season's too, when the last episode aired in another", async () => {
-      serveNothingWatched();
+      serveSiloProgress(NOTHING_WATCHED);
       serveLastInSeasonTwo();
 
       expect((await readSeasonLists()).toSorted()).toEqual([
@@ -284,8 +280,66 @@ describe('store: useRecentEpisodes', () => {
       ]);
     });
 
+    it('should take Up Next from the first season the progress does not hide', async () => {
+      const [seasonOne, seasonTwo] = ShowSiloSeasonsResponseMock;
+      serveSiloProgress({
+        ...NOTHING_WATCHED,
+        seasons: ShowSiloProgressResponseMock.seasons.filter(({ number }) =>
+          number === 2
+        ),
+        hidden_seasons: [assertDefined(seasonOne)],
+      });
+      const status = await renderRecentEpisodes();
+
+      const ready = await nextOf(status, 'ready');
+
+      expect(ready.data.upNext).toMatchObject({
+        season: assertDefined(seasonTwo).number,
+        number: 1,
+      });
+    });
+
+    it("should read no specials' list when the progress hides every regular season", async () => {
+      serveSiloProgress({
+        ...NOTHING_WATCHED,
+        aired: 0,
+        seasons: [],
+        hidden_seasons: ShowSiloSeasonsResponseMock,
+      });
+      server.use(
+        http.get(
+          SILO_SEASONS_URL,
+          () => HttpResponse.json(ShowSiloSeasonsWithSpecialsResponseMock),
+        ),
+      );
+
+      expect(await readSeasonLists()).toEqual([
+        'GET /shows/silo/seasons/1',
+      ]);
+    });
+
+    it('should hold no Up next card while the progress hides every regular season', async () => {
+      serveSiloProgress({
+        ...NOTHING_WATCHED,
+        aired: 0,
+        seasons: [],
+        hidden_seasons: ShowSiloSeasonsResponseMock,
+      });
+      server.use(
+        http.get(
+          SILO_SEASONS_URL,
+          () => HttpResponse.json(ShowSiloSeasonsWithSpecialsResponseMock),
+        ),
+      );
+      const status = await renderRecentEpisodes();
+
+      const ready = await nextOf(status, 'ready');
+
+      expect(ready.data.upNext).toBeNull();
+    });
+
     it("should take Up Next from the first season's list when the last episode aired in another", async () => {
-      serveNothingWatched();
+      serveSiloProgress(NOTHING_WATCHED);
       serveLastInSeasonTwo();
       const status = await renderRecentEpisodes();
 
@@ -309,7 +363,7 @@ describe('store: useRecentEpisodes', () => {
         query: showSeasonEpisodesQuery({ slug: SLUG, season: 1 }),
       },
     ])('should read loading until $read settles', async (held) => {
-      serveNothingWatched();
+      serveSiloProgress(NOTHING_WATCHED);
       serveLastInSeasonTwo();
 
       const { whileHeld, landed } = await kindsAroundHold(held);
@@ -324,7 +378,7 @@ describe('store: useRecentEpisodes', () => {
     ])(
       "should leave out Up Next and the previous season's episodes when $read fails",
       async ({ url }) => {
-        serveNothingWatched();
+        serveSiloProgress(NOTHING_WATCHED);
         serveLastInSeasonTwo();
         server.use(http.get(url, notFound));
         const status = await renderRecentEpisodes();
@@ -339,7 +393,7 @@ describe('store: useRecentEpisodes', () => {
     );
 
     it('should read ready in the same call when the slug returns to it', async () => {
-      serveNothingWatched();
+      serveSiloProgress(NOTHING_WATCHED);
       serveWatchedDevs({ ...ShowDevsProgressResponseMock, completed: 0 });
       const slug$ = new BehaviorSubject(SLUG);
       const { status, waitForLateRequests } = await renderStore(() => ({
@@ -560,7 +614,7 @@ describe('store: useRecentEpisodes', () => {
   it('should read no season list when the slug returns to a watched show it has read', async () => {
     serveWatchedDevs();
     serveDevsLastInSeasonTwo();
-    serveNothingWatched();
+    serveSiloProgress(NOTHING_WATCHED);
     const slug$ = new BehaviorSubject(DEVS_SLUG);
     const { status, waitForLateRequests } = await renderStore(() => ({
       status: useRecentEpisodes(slug$),

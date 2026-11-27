@@ -1,3 +1,4 @@
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
 import { WELL_KNOWN_MEDIA_QUERY } from '$lib/stores/css/WELL_KNOWN_MEDIA_QUERY.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
@@ -6,7 +7,9 @@ import { ShowSiloSeasonsMappedMock } from '$mocks/data/summary/shows/silo/mapped
 import { ShowSiloSeasonsWithSpecialsMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonsWithSpecialsMappedMock.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, within } from '@testing-library/svelte';
@@ -19,6 +22,8 @@ import SeasonsBlock from './SeasonsBlock.svelte';
 const setLayout = fakeLayouts({ desktop: WELL_KNOWN_MEDIA_QUERY.desktop });
 
 const SHOW_PATH = '/shows/silo';
+// A season's counts come from each test; its stats play no part.
+const SEASON_PROGRESS = assertDefined(ShowSiloProgressMappedMock.seasons.at(0));
 
 async function renderBlock(props: Partial<SeasonsBlockProps> = {}) {
   const rendered = renderComponent(SeasonsBlock, {
@@ -94,13 +99,10 @@ describe('component: SeasonsBlock', () => {
     openAt(SHOW_PATH);
     await renderBlock();
 
-    const menu = await openMenuByClick('Sort by: Number', 'Sort by');
+    await openMenuByClick('Sort by: Number', 'Sort by');
 
-    expect(
-      within(menu).getAllByRole('menuitemradio').map((row) =>
-        row.textContent?.trim()
-      ),
-    ).toEqual(['Number', 'Rating', 'Air date']);
+    expect(readMenuRows('menuitemradio'))
+      .toEqual(['Number', 'Rating', 'Air date']);
   });
 
   it.each(['number,desc', 'rating,desc', 'aired,desc'])(
@@ -135,8 +137,10 @@ describe('component: SeasonsBlock', () => {
     const { container } = await renderBlock();
 
     const card = cardOf(container, 'Season 3');
-    expect(within(card).getByRole('link', { name: 'Season 3' }))
-      .toHaveAttribute('href', '/shows/silo/seasons/3');
+    expect(
+      within(card).getAllByRole('link', { name: /Season 3$/ })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/shows/silo/seasons/3', '/shows/silo/seasons/3']);
     expect(within(card).getByRole('heading', { level: 4 }))
       .toHaveTextContent(/^1 episode$/);
     expect(cardOf(container, 'Season 1').querySelector('h4'))
@@ -180,14 +184,11 @@ describe('component: SeasonsBlock', () => {
       name: 'Add or remove "Specials of Silo" from lists',
     });
 
-    expect(
-      [...specialsCard.querySelectorAll('.trakt-quick-icon')].map((icon) =>
-        icon.getAttribute('aria-label')
-      ),
-    ).toEqual([
-      'Mark "Specials of Silo" as watched',
-      'Add or remove "Specials of Silo" from lists',
-    ]);
+    expect(ariaLabelsOf(specialsCard.querySelectorAll('.trakt-quick-icon')))
+      .toEqual([
+        'Mark "Specials of Silo" as watched',
+        'Add or remove "Specials of Silo" from lists',
+      ]);
     expect(
       within(cardOf(container, 'Season 1')).getByRole('button', {
         name: 'Mark "Season 1 of Silo" as watched',
@@ -212,10 +213,12 @@ describe('component: SeasonsBlock', () => {
         data: {
           ...ShowSiloProgressMappedMock,
           seasons: [{
+            ...SEASON_PROGRESS,
             number: 1,
             total: 10,
             completed: 0,
             lastWatchedAt: null,
+            episodes: [],
           }],
         },
       },
@@ -256,7 +259,14 @@ describe('component: SeasonsBlock', () => {
         kind: 'ready',
         data: {
           ...ShowSiloProgressMappedMock,
-          seasons: [{ number: 3, total: 0, completed: 0, lastWatchedAt: null }],
+          seasons: [{
+            ...SEASON_PROGRESS,
+            number: 3,
+            total: 0,
+            completed: 0,
+            lastWatchedAt: null,
+            episodes: [],
+          }],
         },
       },
     });
@@ -284,16 +294,20 @@ describe('component: SeasonsBlock', () => {
           ...ShowSiloProgressMappedMock,
           seasons: [
             {
+              ...SEASON_PROGRESS,
               number: SPECIALS,
               total: 10,
               completed: 10,
               lastWatchedAt: ShowSiloProgressMappedMock.lastWatchedAt,
+              episodes: [],
             },
             {
+              ...SEASON_PROGRESS,
               number: 1,
               total: 10,
               completed: 10,
               lastWatchedAt: ShowSiloProgressMappedMock.lastWatchedAt,
+              episodes: [],
             },
           ],
         },

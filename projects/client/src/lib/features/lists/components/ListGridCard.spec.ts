@@ -17,6 +17,7 @@ type CardParams = {
   hasRank?: boolean;
   isFaded?: boolean;
   droppedAt?: Date;
+  art?: 'fanart';
 };
 
 async function renderCard({ entry, sortBy = 'rank', ...flags }: CardParams) {
@@ -166,6 +167,33 @@ describe('component: ListGridCard', () => {
 
       expect(container.querySelector('.trakt-poster-card'))
         .toHaveClass('is-dropped');
+    });
+  });
+
+  describe('fanart', () => {
+    const artKind = (container: HTMLElement) =>
+      container.querySelector('.trakt-lazy-image')?.getAttribute('data-kind');
+
+    it("should draw an episode's screenshot, then its show linked and the sort value", async () => {
+      const container = await renderCard({
+        entry: itemOfType('episode'),
+        sortBy: 'votes',
+        art: 'fanart',
+      });
+
+      expect(
+        screen.getByRole('img', {
+          name: 'House of the Dragon 1x01 screenshot',
+        }),
+      ).toBeInTheDocument();
+      expect(artKind(container)).toBe('fanart');
+      expect(cardLines(container)).toEqual(['House of the Dragon', '7,477']);
+    });
+
+    it('should keep the poster of an episode card without the art', async () => {
+      const container = await renderCard({ entry: itemOfType('episode') });
+
+      expect(artKind(container)).toBe('poster');
     });
   });
 

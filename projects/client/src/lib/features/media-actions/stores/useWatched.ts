@@ -12,9 +12,15 @@ import type {
   SeasonMedia,
 } from '$lib/models/MediaStoreProps.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
-import type { ShowProgressDetail } from '$lib/requests/models/ShowProgressDetail.ts';
+import type {
+  SeasonProgress,
+  ShowProgressDetail,
+} from '$lib/requests/models/ShowProgressDetail.ts';
 import { showProgressQuery } from '$lib/requests/queries/shows/showProgressQuery.ts';
-import { markAsWatchedRequest } from '$lib/requests/sync/markAsWatchedRequest.ts';
+import {
+  type MarkAsWatchedParams,
+  markAsWatchedRequest,
+} from '$lib/requests/sync/markAsWatchedRequest.ts';
 import {
   type RemoveWatchedParams,
   removeWatchedRequest,
@@ -39,6 +45,7 @@ import {
 } from 'rxjs';
 import { pendingOverrides } from '../_internal/pendingOverrides.ts';
 import { findWatchedEpisode } from '../findWatchedEpisode.ts';
+import { overlapsTarget } from '../_internal/overlapsTarget.ts';
 import { toTargetKey } from '../_internal/toTargetKey.ts';
 import { toWriteErrorMessage } from '../_internal/toWriteErrorMessage.ts';
 import {
@@ -51,7 +58,7 @@ type ArrayOrSingle<T> = T | T[];
 type WatchedMedia = { id: number; title: string };
 type WatchedShow = WatchedMedia & { slug: string; episode: { count: number } };
 type WatchedSeasons = Extract<ExtendedMediaStoreProps, { type: 'season' }> & {
-  show: { id: number; title: string };
+  show: { id: number; title: string; slug: string };
 };
 
 export type WatchedStoreProps =
@@ -68,10 +75,13 @@ type ReadHistoryParams = {
   props: WatchedStoreProps;
   ids: ReadonlyArray<number>;
   seasons: ReadonlyArray<SeasonMedia>;
+  hasSpecials: boolean;
   $history: UserHistory;
 };
 
 type PlayHistory = Pick<WatchedMovie, 'plays' | 'watchedAt'>;
+
+type ShowProgress = { id: number; progress: ShowProgressDetail };
 
 function toSeasonHistory(
   episodes: ReadonlyArray<PlayHistory>,
@@ -122,7 +132,7 @@ function historyPerItem(
 
 // Specials stay out, as the aired counts these meet leave them out; season 0 has no such count.
 function watchedEpisodesIn(
-  { props, ids, seasons, $history }: ReadHistoryParams,
+  { props, ids, seasons, hasSpecials, $history }: ReadHistoryParams,
 ): number | undefined {
   if (props.type === 'show') {
     return sum(ids.map((id) =>
@@ -133,10 +143,28 @@ function watchedEpisodesIn(
     ));
   }
   if (props.type !== 'season') return undefined;
-  if (seasons.some(({ number }) => number === SPECIALS)) return undefined;
+  if (hasSpecials) return undefined;
 
   const watched = $history.shows.get(props.show.id)?.playsPerSeason;
   return sum(seasons.map(({ number }) => watched?.get(number) ?? 0));
+}
+
+// Episode numbers only, so each takes the add's watched_at.
+function toRemainingSeasons(
+  { seasons, numbers }: {
+    seasons: ReadonlyArray<SeasonProgress>;
+    numbers: ReadonlyArray<number> | undefined;
+  },
+) {
+  return seasons
+    .filter(({ number }) => numbers?.includes(number) ?? true)
+    .map(({ number, episodes }) => ({
+      number,
+      episodes: episodes
+        .filter(({ completed }) => !completed)
+        .map((episode) => ({ number: episode.number })),
+    }))
+    .filter(({ episodes }) => episodes.length > 0);
 }
 
 // A refetch reads not known; holding the last known state keeps the icon from blinking.
@@ -178,12 +206,17 @@ export function useWatched(props: WatchedStoreProps) {
   const media: ReadonlyArray<WatchedMedia | WatchedShow | SeasonMedia> =
     Array.isArray(props.media) ? props.media : [props.media];
   const ids = media.map(({ id }) => id);
-  const slugs = media.flatMap((item) => 'slug' in item ? [item.slug] : []);
+  // A season's progress is its show's.
+  const progressShows = props.type === 'season'
+    ? [props.show]
+    : media.flatMap((item) => 'slug' in item ? [item] : []);
   const keys = media.map((item) => ({
     action: 'watched' as const,
     targetKey: toTargetKey(type, item.id),
   }));
+  const targetKeys = keys.map(({ targetKey }) => targetKey);
   const seasons = props.type === 'season' ? [props.media].flat() : [];
+  const hasSpecials = seasons.some(({ number }) => number === SPECIALS);
   const title = props.type === 'season'
     ? seasons.map(({ number }) => seasonLabel(number, props.show.title))
       .join(', ')
@@ -196,12 +229,12 @@ export function useWatched(props: WatchedStoreProps) {
   const { run } = useOptimisticWrite();
   const { notify } = useToasts();
   const watchedState = useIsWatched(props);
-  const isAddingShow = new BehaviorSubject(false);
+  const isReadingProgress = new BehaviorSubject(false);
   // Apart from the Target's overrides: a Play's write flips no Target, and only this card goes pending.
   const isRemovingPlay = new BehaviorSubject(false);
   const isUpdating = combineLatest([
     watchedState.isUpdating,
-    isAddingShow,
+    isReadingProgress,
     isRemovingPlay,
   ]).pipe(
     map(($updating) => $updating.some(Boolean)),
@@ -209,7 +242,7 @@ export function useWatched(props: WatchedStoreProps) {
   );
 
   const isWatched = holdKnown(watchedState.isWatched);
-  // Reads false while the history refetches or after a failed refetch; a pending write's override reads known, and add and remove refuse both.
+  // Reads false while the history refetches or after a failed refetch; a pending write's override reads known; add refuses both, and a confirmed remove waits out another Target's re-read.
   const isWatchedKnown = watchedState.isWatched.pipe(
     map((state) => state !== undefined),
     distinctUntilChanged(),
@@ -219,20 +252,20 @@ export function useWatched(props: WatchedStoreProps) {
   const { pendingWatched } = watchedState;
 
   const readHistory = ($history: UserHistory) =>
-    historyPerItem({ props, ids, seasons, $history });
+    historyPerItem({ props, ids, seasons, hasSpecials, $history });
   const countPlays = ($history: UserHistory) =>
     sum(readHistory($history).map((entry) => entry?.plays ?? 0));
   const readLastWatchedAt = ($history: UserHistory) =>
-    getLatestDate(
-      readHistory($history).flatMap((entry) => entry ? [entry.watchedAt] : []),
-    );
+    getLatestDate(readHistory($history).map((entry) => entry?.watchedAt));
   const knownHistory = history.pipe(
     filter(($history) => $history !== null),
   );
   const plays = knownHistory.pipe(map(countPlays));
   const lastWatchedAt = knownHistory.pipe(map(readLastWatchedAt));
   const watchedEpisodes = knownHistory.pipe(
-    map(($history) => watchedEpisodesIn({ props, ids, seasons, $history })),
+    map(($history) =>
+      watchedEpisodesIn({ props, ids, seasons, hasSpecials, $history })
+    ),
   );
   // A refetch reads not known, so a no-Play read before the Target's own write never blocks it after.
   const readKnownPlay = (count: ($history: UserHistory) => number) =>
@@ -266,20 +299,33 @@ export function useWatched(props: WatchedStoreProps) {
     })
     : hasPlay;
 
-  const countEpisodesToMark = async (): Promise<number | null> => {
+  const fetchProgress = async (): Promise<
+    ReadonlyArray<ShowProgress> | null
+  > => {
     try {
-      const progress: ReadonlyArray<ShowProgressDetail | Nil> = await Promise
-        .all(
-          slugs.map((slug) => fetch(showProgressQuery({ slug }))),
-        );
-      const entries = progress.filter((entry) => entry != null);
-      if (entries.length !== progress.length) return null;
+      const entries = await Promise.all(
+        progressShows.map(async ({ id, slug }) => ({
+          id,
+          // The history counts a hidden season's episodes, so the progress lists them too.
+          progress: await fetch(showProgressQuery({ slug, hidden: true })),
+        })),
+      );
+      const known = entries.flatMap(({ id, progress }) =>
+        progress ? [{ id, progress }] : []
+      );
 
-      // Trakt's show-level add plays every aired episode, already-watched ones included.
-      return sum(entries.map(({ total }) => total));
+      return known.length === entries.length ? known : null;
     } catch {
       return null;
     }
+  };
+
+  const countEpisodesToMark = async (): Promise<number | null> => {
+    const entries = await fetchProgress();
+    if (!entries) return null;
+
+    // Trakt's show-level add plays every aired episode, already-watched ones included.
+    return sum(entries.map(({ progress }) => progress.total));
   };
 
   const notifyFailed = () => {
@@ -296,15 +342,11 @@ export function useWatched(props: WatchedStoreProps) {
   // Without a known history a Target may read unwatched while watched; an add posts another play.
   const isHistoryKnown = async () => await firstValueFrom(history) !== null;
 
-  const markAsWatched = (watchedAt: MarkAsWatchedAt) =>
+  const markAsWatched = (body: MarkAsWatchedParams['body']) =>
     run({
       keys,
       value: true,
-      task: (params) =>
-        markAsWatchedRequest({
-          body: toMarkAsWatchedPayload(props, watchedAt),
-          ...params,
-        }),
+      task: (params) => markAsWatchedRequest({ body, ...params }),
       invalidation,
       supersede: false,
     });
@@ -313,7 +355,7 @@ export function useWatched(props: WatchedStoreProps) {
     if (await isPending()) return;
     if (!await isHistoryKnown()) return;
 
-    await markAsWatched(watchedAt);
+    await markAsWatched(toMarkAsWatchedPayload(props, watchedAt));
   };
 
   const readShowCount = async (): Promise<number | null> => {
@@ -328,9 +370,9 @@ export function useWatched(props: WatchedStoreProps) {
   // Spans the count read only; while the confirmation is open, a second add's dialog is refused.
   const readShowCountOnce = async (): Promise<number | null> => {
     // Set before the first await, so a second click during the count read starts nothing.
-    if (isAddingShow.value) return null;
+    if (isReadingProgress.value) return null;
 
-    return await whileFlagged(isAddingShow, readShowCount);
+    return await whileFlagged(isReadingProgress, readShowCount);
   };
 
   const confirmMarkAsWatched = async (
@@ -343,7 +385,7 @@ export function useWatched(props: WatchedStoreProps) {
     });
     if (!isConfirmed) return;
 
-    await markAsWatched(watchedAt);
+    await markAsWatched(toMarkAsWatchedPayload(props, watchedAt));
   };
 
   const addShow = async (watchedAt: MarkAsWatchedAt) => {
@@ -389,14 +431,31 @@ export function useWatched(props: WatchedStoreProps) {
       supersede: false,
     });
 
+  // A pending write may add plays the count does not show yet, an episode's to its show.
+  const isOverlappingWritePending = () =>
+    pendingOverrides.inFlightOf('watched').some(({ targetKey }) =>
+      overlapsTarget({ targetKeys, pendingKey: targetKey })
+    );
+
+  // Another Target's re-read reads not known until it lands; a failed one leaves it so once its write clears.
+  const readSettledHistory = () =>
+    firstValueFrom(
+      combineLatest([history, pendingOverrides.inFlightOf$('watched')]).pipe(
+        filter(([$history, $inFlight]) =>
+          $history !== null || $inFlight.length === 0
+        ),
+        map(([$history]) => $history),
+      ),
+    );
+
   const removeAll = async (count: number) => {
+    if (isOverlappingWritePending()) return notifyHistoryChanged();
     // The confirmed count must still hold, or the remove deletes plays the user never saw.
-    const $confirmedHistory = await firstValueFrom(history);
+    const $confirmedHistory = await readSettledHistory();
     if ($confirmedHistory === null) return notifyHistoryChanged();
     if (countPlays($confirmedHistory) !== count) return notifyHistoryChanged();
-    // A pending write may add plays the count does not show yet, an episode's to its show.
     // Read right before run, with no await between, so no write starts in the gap.
-    if (pendingOverrides.isAnyPending('watched')) return notifyHistoryChanged();
+    if (isOverlappingWritePending()) return notifyHistoryChanged();
 
     await postRemoval({
       overrideKeys: keys,
@@ -404,21 +463,15 @@ export function useWatched(props: WatchedStoreProps) {
     });
   };
 
-  const readRemovableCount = async (): Promise<number | null> => {
+  // Without a known history there is no play count to confirm.
+  const readRemovableHistory = async (): Promise<UserHistory | null> => {
     if (media.length === 0) return null;
     if (await isPending()) return null;
 
-    // Without a known history there is no play count to confirm.
-    const $history = await firstValueFrom(history);
-    return $history === null ? null : countPlays($history);
+    return await firstValueFrom(history);
   };
 
-  const remove = async () => {
-    const count = await readRemovableCount();
-    if (count === null) return;
-    // A filled button with no Play to remove: the history moved since it filled.
-    if (count === 0) return notifyHistoryChanged();
-
+  const confirmRemoveAll = async (count: number) => {
     const isConfirmed = await confirmAsync({
       type: ConfirmationType.RemoveFromHistory,
       title,
@@ -429,20 +482,95 @@ export function useWatched(props: WatchedStoreProps) {
     await removeAll(count);
   };
 
+  // Removes every Play on the alternate answer, so the caller acts on the main one alone.
+  const confirmOrRemoveAll = async (
+    { type, count }: {
+      type:
+        | typeof ConfirmationType.WatchRemaining
+        | typeof ConfirmationType.RemovePlay;
+      count: number;
+    },
+  ) => {
+    const answer = await confirmAsync({ type, title });
+    if (answer !== 'alternate') return answer;
+
+    await removeAll(count);
+    return false;
+  };
+
+  // A replay never fills a season, since its history counts each episode once.
+  const isPartlyWatched = ($history: UserHistory) => {
+    if (props.type !== 'show' && props.type !== 'season') return false;
+    // The progress read leaves specials out, so season 0 has no episodes to add.
+    if (hasSpecials) return false;
+
+    return !watchedState.isWatchedIn($history);
+  };
+
+  const toRemainingShows = (entries: ReadonlyArray<ShowProgress>) => {
+    const numbers = props.type === 'season'
+      ? seasons.map(({ number }) => number)
+      : undefined;
+
+    return entries
+      .map(({ id, progress }) => ({
+        id,
+        seasons: toRemainingSeasons({ seasons: progress.seasons, numbers }),
+      }))
+      .filter((show) => show.seasons.length > 0);
+  };
+
+  const watchRemaining = async () => {
+    if (pendingOverrides.isAnyPending('watched')) return notifyHistoryChanged();
+
+    const entries = await fetchProgress();
+    if (!entries) return notifyFailed();
+
+    // Nothing left to add: the history read it partly watched while the progress reads it complete.
+    const shows = toRemainingShows(entries);
+    if (shows.length === 0) return notifyHistoryChanged();
+    // An add may have started during the read; checked with no await before run.
+    if (pendingOverrides.isAnyPending('watched')) return notifyHistoryChanged();
+
+    await markAsWatched(
+      toMarkAsWatchedPayload({ type: 'show', media: shows }, 'now'),
+    );
+  };
+
+  const removeOrWatchRemaining = async () => {
+    // Up from the progress read until the post settles, so a second click starts nothing.
+    if (isReadingProgress.value) return;
+
+    const $history = await readRemovableHistory();
+    if ($history === null) return;
+    const count = countPlays($history);
+    // A filled button with no Play to remove: the history moved since it filled.
+    if (count === 0) return notifyHistoryChanged();
+    // The count's own read, so a refetch since it cannot turn the prompt into the count dialog.
+    if (!isPartlyWatched($history)) return await confirmRemoveAll(count);
+
+    const isConfirmed = await confirmOrRemoveAll({
+      type: ConfirmationType.WatchRemaining,
+      count,
+    });
+    if (!isConfirmed) return;
+
+    await whileFlagged(isReadingProgress, watchRemaining);
+  };
+
   const removePlay = async (historyId: number) => {
     // A second removal would clear the flag while the first's post is in flight.
     if (isRemovingPlay.value) return;
 
-    // A Play proves itself, so a count of 0 only means the history lags.
-    const count = await readRemovableCount();
-    if (count === null) return;
+    // A Play proves itself, so a history holding no plays only means it lags.
+    const $history = await readRemovableHistory();
+    if ($history === null) return;
 
-    const answer = await confirmAsync({
+    const isConfirmed = await confirmOrRemoveAll({
       type: ConfirmationType.RemovePlay,
-      title,
+      count: countPlays($history),
     });
-    if (answer === 'alternate') return await removeAll(count);
-    if (!answer) return;
+    if (!isConfirmed) return;
 
     await whileFlagged(isRemovingPlay, () =>
       postRemoval({
@@ -463,7 +591,7 @@ export function useWatched(props: WatchedStoreProps) {
     hasShowPlay,
     isUpdating,
     add,
-    remove,
+    removeOrWatchRemaining,
     removePlay,
   };
 }

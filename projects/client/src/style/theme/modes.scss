@@ -97,6 +97,7 @@
   --color-tooltip-background: var(--shade-910);
   --color-tooltip-text: var(--shade-10);
   --color-tooltip-progress-track: var(--shade-840);
+  --color-tooltip-band-sunken: var(--shade-920);
 
   /**
    * Tags
@@ -527,6 +528,8 @@
   --cast-hover-dim-opacity: 0.7;
   --action-side-icon-opacity: 0.75;
   --action-blocked-opacity: 0.5;
+  // A progress bar's ticks outside the season hovered on it.
+  --progress-dim-opacity: 0.5;
   --gradient-hero-fade: linear-gradient(
     to bottom,
     transparent,
@@ -550,7 +553,6 @@
   --color-accent-hover: var(--purple-600);
   --color-accent-secondary: var(--blue-500);
   --color-count: #009edf;
-  --color-under-count: var(--shade-640);
   --color-vip: var(--red-500);
   --color-checkin: var(--red-500);
   --color-progress-track: #441a55;
@@ -656,6 +658,8 @@
   --font-size-rating-question: var(--ni-14);
   --font-size-switcher: var(--ni-14);
   --font-size-h3: var(--ni-20);
+  --font-size-progress-title: var(--ni-22);
+  --font-size-progress-percentage: var(--ni-24);
   --font-size-card-title-lg: var(--ni-18);
   --font-size-card-title: var(--ni-16);
   --font-size-card-subtitle: var(--ni-12);
@@ -676,6 +680,9 @@
   --font-size-stat-sm: var(--ni-14);
   --font-size-stats-strip: var(--ni-14);
   --font-size-subnav-stat: var(--font-size-small);
+  --toolbar-stat-gap: var(--ni-15);
+  // Between two icon buttons side by side, in a toolbar or beside a heading.
+  --icon-button-gap: var(--ni-10);
   --font-size-display: var(--ni-36);
   --font-size-dialog-title: var(--ni-16);
   --font-size-dialog-button: var(--ni-16);
@@ -722,6 +729,10 @@
   --episode-card-column-span-desktop: 4;
   --episode-info-column-span-tablet: 7;
   --episode-info-column-span-desktop: 8;
+  // Classic's col-sm-8 and col-sm-4, doubled for the 24-column grid, and its col-md-6 there.
+  --progress-info-column-span-tablet: 16;
+  --progress-card-column-span-tablet: 8;
+  --progress-card-column-span-desktop: 6;
   --cast-cell-width-desktop-lg: 10.15%;
   --cast-cell-width-tablet-lg: 12.73%;
   --cast-cell-width-tablet-sm: 17%;
@@ -790,7 +801,6 @@
   --neighbour-link-glyph-offset-inline: var(--ni-9);
   --icon-size-count-stat: var(--ni-18);
   --icon-size-count-stat-lg: var(--ni-20);
-  --under-count-offset: var(--ni-neg-15);
   --progress-height-sm: var(--ni-5);
   --progress-height: var(--ni-15);
   --progress-height-lg: var(--progress-height);
@@ -842,8 +852,8 @@
   --icon-size-strip-heart-lg: var(--ni-16);
   --icon-size-rating-heart: var(--font-size-card-subtitle);
   --icon-size-chrome-eye: var(--ni-21);
-  --icon-size-badge-dropped: var(--ni-46);
-  --icon-size-badge-dropped-sm: var(--ni-34);
+  --icon-size-badge-dropped: var(--ni-48);
+  --icon-size-badge-dropped-sm: var(--ni-36);
   --icon-size-navigator: var(--ni-16);
   --icon-size-pagination: var(--ni-20);
   --icon-size-subnav: var(--ni-20);
@@ -852,8 +862,10 @@
   --icon-size-comment-watched: var(--ni-13);
   --icon-size-comment-replies: var(--font-size-small);
   --icon-size-title-row: var(--ni-14);
+  --icon-size-seasons-box: var(--ni-10);
   --icon-size-sort-direction: var(--ni-22);
   --icon-size-dropdown-caret: var(--ni-16);
+  --icon-size-last-watched: var(--ni-16);
   --icon-size-stats: var(--ni-29);
   --stats-icon-width: var(--ni-36);
   --icon-size-trailer: var(--ni-22);
@@ -867,10 +879,11 @@
   --menu-min-width: var(--ni-130);
   --menu-row-height: var(--ni-32);
   --menu-padding-block: var(--ni-10);
+  --menu-padding-inline: var(--ni-16);
   --dropdown-min-width: var(--ni-160);
   --dropdown-row-height: var(--ni-24);
+  --dropdown-padding-inline: var(--ni-12);
   --dropdown-limit-height: var(--ni-267);
-  --subnav-panel-offset: var(--ni-40);
   --modal-width: var(--ni-360);
   --modal-padding-inline: var(--ni-30);
   --modal-padding-block-end: var(--ni-24);
@@ -881,6 +894,10 @@
   --popover-padding-inline: var(--ni-14);
   --popover-arrow-size: var(--ni-11);
   --popover-arrow-fill-size: var(--ni-10);
+  --tooltip-arrow-size: var(--ni-6);
+  --tooltip-radius: var(--border-radius-m);
+  --tooltip-padding: var(--ni-10);
+  --tooltip-neg-padding: var(--ni-neg-10);
   --date-field-height: var(--ni-34);
   --rating-heart-size: var(--ni-20);
   // Classic's 1.22em heart cell at its 20px glyph.
@@ -919,6 +936,10 @@
 
   @include for-tablet-sm {
     --ratings-bar-item-gap: var(--ni-20);
+
+    @media (orientation: portrait) {
+      --font-size-progress-percentage: var(--ni-20);
+    }
   }
 
   @include for-tablet-sm-and-below {
@@ -930,7 +951,10 @@
 
   @include for-mobile {
     --header-height: var(--header-height-mobile);
-    --font-size-subnav-stat: var(--ni-12);
+    --font-size-subnav-stat: var(--ni-14);
+    --icon-size-toolbar-stat: var(--ni-18);
+    --toolbar-stat-glyph-gap: var(--ni-4);
+    --toolbar-stat-gap: var(--ni-12);
     --icon-size-sort-direction: var(--ni-19);
     --menu-min-width: var(--ni-140);
     --header-padding-inline-end: 0;
@@ -951,6 +975,7 @@
     --time-spent-padding-block-start: var(--ni-3);
     --line-height-see-more: 1.6;
     --font-size-pagination: var(--ni-14);
+    --font-size-progress-percentage: var(--ni-15);
 
     @media (orientation: portrait) {
       --modal-width: 90%;

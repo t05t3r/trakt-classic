@@ -1,15 +1,20 @@
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
 import { pickMenuRadio } from '$test/beds/menus/pickMenuRadio.ts';
+import { readCheckedMenuRow } from '$test/beds/menus/readCheckedMenuRow.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
-import { render, screen, within } from '@testing-library/svelte';
+import { isTriggerChanged } from '$test/beds/subnav/isTriggerChanged.ts';
+import { render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChoiceMenu from './ChoiceMenu.svelte';
 import type { ChoiceMenuProps } from './_internal/ChoiceMenuProps.ts';
 
 type Kind = 'movie' | 'show';
 
-const PROPS: ChoiceMenuProps<Kind> = {
+type ChoiceProps = ChoiceMenuProps<Kind>;
+
+const PROPS: Omit<Extract<ChoiceProps, { all?: undefined }>, 'changed'> = {
   label: 'Type',
   triggerLabel: (shown) => `Type: ${shown}`,
   value: 'show',
@@ -20,7 +25,12 @@ const PROPS: ChoiceMenuProps<Kind> = {
   onChange: () => {},
 };
 
-function renderMenu(props: Partial<ChoiceMenuProps<Kind>> = {}) {
+// Taken per shape, so an override keeps `value` paired with its `all`.
+type ChoiceOverrides<P = ChoiceProps> = P extends ChoiceProps
+  ? Partial<Omit<P, 'onChange' | 'all'>> & Pick<P, 'all'>
+  : never;
+
+function renderMenu(props: ChoiceOverrides = {}) {
   const onChange = vi.fn();
   render(ChoiceMenu<Kind>, { props: { ...PROPS, onChange, ...props } });
   return { onChange };
@@ -43,13 +53,10 @@ describe('component: ChoiceMenu', () => {
   it('should list the choices in their order with the current one checked', async () => {
     renderMenu();
 
-    const menu = await openMenu('Type: Shows');
-    const rows = within(menu).getAllByRole('menuitemradio');
+    await openMenu('Type: Shows');
 
-    expect(rows.map((found) => found.textContent?.trim()))
-      .toEqual(['Movies', 'Shows']);
-    expect(rows.map((found) => found.getAttribute('aria-checked')))
-      .toEqual(['false', 'true']);
+    expect(readMenuRows('menuitemradio')).toEqual(['Movies', 'Shows']);
+    expect(readCheckedMenuRow()).toBe('Shows');
   });
 
   it('should report a choice picked from another row', async () => {
@@ -112,13 +119,11 @@ describe('component: ChoiceMenu', () => {
     it('should list the All row first and check it under no choice', async () => {
       renderMenu({ value: null, all: 'All Types' });
 
-      const menu = await openMenu('Type: All Types');
-      const rows = within(menu).getAllByRole('menuitemradio');
+      await openMenu('Type: All Types');
 
-      expect(rows.map((found) => found.textContent?.trim()))
+      expect(readMenuRows('menuitemradio'))
         .toEqual(['All Types', 'Movies', 'Shows']);
-      expect(rows.map((found) => found.getAttribute('aria-checked')))
-        .toEqual(['true', 'false', 'false']);
+      expect(readCheckedMenuRow()).toBe('All Types');
     });
 
     it('should report no choice when the All row is picked from another', async () => {
@@ -140,4 +145,27 @@ describe('component: ChoiceMenu', () => {
       expect(onChange).not.toHaveBeenCalled();
     });
   });
+
+  it.each([true, false])(
+    'should draw the trigger in the accent while changed is %s',
+    (changed) => {
+      renderMenu({ changed });
+
+      expect(isTriggerChanged('Type: Shows')).toBe(changed);
+      expect(screen.getByRole('button', { name: 'Type: Shows' }))
+        .toHaveAttribute('data-selected-tint', 'accent');
+    },
+  );
+
+  it.each([
+    { value: null, name: 'Type: All Types', accented: false },
+    { value: 'show' as const, name: 'Type: Shows', accented: true },
+  ])(
+    'should draw the trigger in the accent, with an All row, only on another choice: $name',
+    ({ value, name, accented }) => {
+      renderMenu({ value, all: 'All Types' });
+
+      expect(isTriggerChanged(name)).toBe(accented);
+    },
+  );
 });

@@ -1,6 +1,7 @@
 <script lang="ts">
   import DropdownButton from '$lib/components/buttons/DropdownButton.svelte';
   import DateRangePopover from '$lib/components/forms/DateRangePopover.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import { dateRangePresets } from '$lib/features/history/dateRangePresets.ts';
   import type { HistoryParams } from '$lib/features/history/stores/useHistoryParams.ts';
   import * as m from '$lib/features/i18n/messages.ts';
@@ -54,10 +55,12 @@
         label={rangeText
         ? m.button_label_date_range_active({ range: rangeText })
         : m.button_label_date_range()}
-        title={rangeText ?? m.button_label_date_range()}
         variant="icon"
         selected={hasDateRange($range)}
         selectedTint="accent"
+        {@attach hint(() => ({
+          content: rangeText ?? m.button_label_date_range(),
+        }))}
       >
         <IconCalendar class="date-range-glyph" aria-hidden="true" />
       </DropdownButton>

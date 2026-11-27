@@ -13,6 +13,7 @@
     sortBy,
     hasRank = false,
     favorite = false,
+    art,
   }: ListGridCardProps = $props();
 
   // A grid keys its cards by item, so the target never changes.
@@ -30,6 +31,7 @@
 
 <UserGridCard
   {card}
+  {art}
   {isFaded}
   {droppedAt}
   rank={hasRank ? entry.rank : undefined}

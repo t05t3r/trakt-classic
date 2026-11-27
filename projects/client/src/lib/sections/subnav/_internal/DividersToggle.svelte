@@ -27,6 +27,5 @@
   .trakt-dividers-toggle {
     display: inline-flex;
     margin-block-start: var(--ni-2);
-    margin-inline: var(--ni-10) var(--ni-3);
   }
 </style>

@@ -1,5 +1,6 @@
 import { useInvalidator } from '$lib/features/query/useInvalidator.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
+import { userListItemIdsQuery } from '$lib/requests/queries/users/userListItemIdsQuery.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { MATRIX } from '$mocks/data/media-actions/MATRIX.ts';
 import { SILO } from '$mocks/data/media-actions/SILO.ts';
@@ -8,6 +9,7 @@ import { LIST_RESPONSE } from '$mocks/data/users/LIST_RESPONSE.ts';
 import { LISTS_EXACT_URL } from '$mocks/data/users/LISTS_EXACT_URL.ts';
 import { PersonalListsMappedMock } from '$mocks/data/users/mapped/PersonalListsMappedMock.ts';
 import { server } from '$mocks/server.ts';
+import { describeKeptWrite } from '$test/beds/media-actions/describeKeptWrite.ts';
 import { NEGATIVE_CLAIM_WINDOW } from '$test/beds/promise/NEGATIVE_CLAIM_WINDOW.ts';
 import { settleWithin } from '$test/beds/promise/settleWithin.ts';
 import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
@@ -388,5 +390,21 @@ describe('store: useListMembership', () => {
       expect(settled).toBe(true);
       expect(await firstValueFrom(silo.isListed)).toBe(false);
     });
+  });
+
+  describeKeptWrite({
+    name: 'an addition whose refetch fails',
+    store: () => {
+      const { isListed, isUpdating, add, remove } = useListMembership({
+        list: LIST,
+        ...SILO,
+      });
+      return { value: isListed, isUpdating, write: add, rewrite: remove };
+    },
+    reader: userListItemIdsQuery({ userId: 'me', listId: LIST.id }).queryKey,
+    refetchUrl: `${ITEMS_URL}*`,
+    invalidation: InvalidateAction.ListedIn(LIST.id),
+    rewriteUrl: `${ITEMS_URL}/remove`,
+    values: { before: false, written: true, rewritten: false },
   });
 });

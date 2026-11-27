@@ -5,14 +5,18 @@
   import Menu from '$lib/components/menus/Menu.svelte';
   import MenuItem from '$lib/components/menus/MenuItem.svelte';
   import ListItemsSection from '$lib/sections/lists/ListItemsSection.svelte';
-  import type { ToolbarControls } from '$lib/sections/lists/ListItemsSectionProps.ts';
   import SubnavToolbar from '$lib/sections/subnav/SubnavToolbar.svelte';
   import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
   import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
   import { WATCHLIST_PATH } from '$mocks/data/users/WATCHLIST_PATH.ts';
   import MenuHost from '$test/beds/menus/MenuHost.svelte';
 
-  type Entry = Readonly<{ id: number; title: string; at?: Date }>;
+  type Entry = Readonly<{
+    id: number;
+    title: string;
+    at?: Date;
+    revision?: number;
+  }>;
 
   type ListItemsSectionHostProps = {
     status: SectionStatus<ReadonlyArray<Entry>>;
@@ -20,6 +24,7 @@
     isTitled?: boolean;
     isSplit?: boolean;
     isDivided?: boolean;
+    isPlain?: boolean;
   };
 
   const {
@@ -28,6 +33,7 @@
     isTitled = true,
     isSplit = false,
     isDivided = false,
+    isPlain = false,
   }: ListItemsSectionHostProps = $props();
 
   const HEADING = {
@@ -47,21 +53,27 @@
   reading={{ status, pages: { current: 1, total } }}
   heading={isTitled ? HEADING : undefined}
   emptyText="Nothing to watch yet."
+  cellSelector={isPlain ? '.host-list > li' : undefined}
 >
   {#snippet toolbar(controls)}
-    {#if controls.untitled}
-      <SubnavToolbar {controls} panel="options" phone="controls">
-        {#snippet stats()}{/snippet}
-        {#snippet options()}
-          {@render panel(controls, undefined)}
-        {/snippet}
-      </SubnavToolbar>
-    {:else}
-      {@render panel(controls, controls.panelId)}
-    {/if}
+    <SubnavToolbar {controls}>
+      {#snippet start()}
+        <div data-testid="toolbar">
+          <span>{controls.open ? 'Panel open' : 'Panel closed'}</span>
+          <MenuHost onSelect={controls.close} />
+        </div>
+      {/snippet}
+      {#snippet stats()}{/snippet}
+    </SubnavToolbar>
   {/snippet}
   {#snippet grid(entries)}
-    {#if isDivided}
+    {#if isPlain}
+      <ul class="host-list" role="list">
+        {#each entries as entry (entry.id)}
+          <li>{@render item(entry)}</li>
+        {/each}
+      </ul>
+    {:else if isDivided}
       <DividedPosterGrid
         items={entries}
         divided
@@ -77,21 +89,17 @@
   {/snippet}
 </ListItemsSection>
 
-{#snippet panel(controls: ToolbarControls, id: string | undefined)}
-  <div {id} data-testid="toolbar">
-    <span>{controls.open ? 'Panel open' : 'Panel closed'}</span>
-    <MenuHost onSelect={controls.close} />
-  </div>
-{/snippet}
-
 {#snippet item(entry: Entry)}
-  <Menu label="Menu {entry.title}">
-    {#snippet trigger({ props })}
-      <button type="button" class="host-card" {...props}>{entry.title}</button>
-    {/snippet}
+  <!-- A new revision re-makes the card's controls in the cell that stays. -->
+  {#key entry.revision}
+    <Menu label="Menu {entry.title}">
+      {#snippet trigger({ props })}
+        <button type="button" class="host-card" {...props}>{entry.title}</button>
+      {/snippet}
 
-    <MenuItem onSelect={NOOP_FN} closeOnSelect={false}>
-      Untick {entry.title}
-    </MenuItem>
-  </Menu>
+      <MenuItem onSelect={NOOP_FN} closeOnSelect={false}>
+        Untick {entry.title}
+      </MenuItem>
+    </Menu>
+  {/key}
 {/snippet}

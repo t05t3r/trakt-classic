@@ -142,7 +142,7 @@
       >
         <!-- Each bar's link name carries the tooltip's text. -->
         <div
-          class="chart-tooltip"
+          class="chart-tooltip no-wrap"
           class:is-visible={isVisible}
           aria-hidden="true"
         >
@@ -263,7 +263,6 @@
       font-size: var(--font-size-text);
       font-weight: var(--font-weight-heading);
       text-align: center;
-      white-space: nowrap;
       pointer-events: none;
       opacity: 0;
       transition:

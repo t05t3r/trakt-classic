@@ -52,4 +52,20 @@ describe('component: OptionsGear', () => {
 
     expect(ontoggle).toHaveBeenCalledOnce();
   });
+
+  it.each([true, false])(
+    'should show its dot while changed is %s',
+    (changed) => {
+      const { gear } = renderGear({ changed });
+
+      expect(gear.querySelector('.options-gear-dot') !== null).toBe(changed);
+    },
+  );
+
+  it('should hide the dot from assistive technology', () => {
+    const { gear } = renderGear({ changed: true });
+
+    expect(gear.querySelector('.options-gear-dot'))
+      .toHaveAttribute('aria-hidden', 'true');
+  });
 });

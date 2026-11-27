@@ -137,7 +137,7 @@ describe('util: toWatchHover', () => {
           percent: 83,
           completed: 25,
           total: 30,
-          counts: '25/30 eps — 25 plays',
+          counts: '25 / 30 eps — 25 plays',
         },
       });
     });

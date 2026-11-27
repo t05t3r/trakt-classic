@@ -19,6 +19,7 @@ export type InvalidateActionOptions =
   | `${typeof INVALIDATION_ID}:watchlisted:${TargetMediaType}`
   | `${typeof INVALIDATION_ID}:dropped:${MediaType}`
   | `${typeof INVALIDATION_ID}:restored:show`
+  | `${typeof INVALIDATION_ID}:hide_progress`
   | `${typeof INVALIDATION_ID}:comment:reply`
   | `${typeof INVALIDATION_ID}:listed`
   | `${typeof INVALIDATION_ID}:listed:${string}`
@@ -49,6 +50,7 @@ type TypeDataMap = {
   'watchlisted': TargetMediaType;
   'dropped': MediaType;
   'restored': 'show';
+  'hide_progress': null;
   'react': 'comment';
   'comment_reply': CommentableMediaType;
   'listed': string | number | null;
@@ -107,6 +109,8 @@ export const InvalidateAction = {
   Drop: (type: MediaType) => buildInvalidationKey('dropped', type),
 
   Restore: buildInvalidationKey('restored', 'show'),
+
+  HideProgress: buildInvalidationKey('hide_progress'),
 
   React: buildInvalidationKey('react', 'comment'),
 

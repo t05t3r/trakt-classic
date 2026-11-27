@@ -5,9 +5,9 @@
   import PosterGrid from '$lib/components/media/PosterGrid.svelte';
   import type { PosterGridColumns } from '$lib/components/media/PosterGridProps.ts';
   import * as m from '$lib/features/i18n/messages.ts';
+  import EpisodeFanartCard from '$lib/features/media-card/components/EpisodeFanartCard.svelte';
   import type { ShowEntry } from '$lib/requests/models/ShowEntry.ts';
   import type { RecentEpisodes } from '../_internal/recentEpisodes.ts';
-  import EpisodeFanartCard from './_internal/EpisodeFanartCard.svelte';
 
   const COLUMNS = {
     desktop: 3,

@@ -8,6 +8,8 @@ import { ShowSiloProgressMappedMock } from '$mocks/data/summary/shows/silo/mappe
 import { ShowSiloSeasonEpisodesMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonEpisodesMappedMock.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
+import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
+import { captionTags } from '$test/beds/media-card/captionTags.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecentEpisodes } from '../_internal/recentEpisodes.ts';
@@ -191,13 +193,19 @@ describe('component: RecentEpisodesBlock', () => {
         .toHaveAttribute('data-phone-gaps', 'none');
     });
 
-    it("should caption a card with its episode's type before its air time", async () => {
+    it("should caption a card with its episode's type, then its air time once the page has hydrated", async () => {
       const [, last] = await readyCards();
+      const card = assertDefined(last);
+      expect(captionTags(card)).toEqual(['Season Finale']);
 
-      const caption = last?.querySelector('.caption');
-      expect(
-        [...(caption?.children ?? [])].map((tag) => tag.textContent?.trim()),
-      ).toEqual(['Season Finale', '30 Jun 2023 01:00']);
+      emulateHydrated();
+
+      await waitFor(() =>
+        expect(captionTags(card)).toEqual([
+          'Season Finale',
+          '30 Jun 2023 01:00',
+        ])
+      );
     });
   });
 

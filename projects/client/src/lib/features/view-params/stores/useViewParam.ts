@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
-import { navigating, page } from '$app/state';
+import { page } from '$app/state';
+import { queueNavigation } from '$lib/features/view-params/queueNavigation.svelte.ts';
 import { fromRune } from '$lib/utils/store/fromRune.svelte.ts';
 import { isShallowEqual } from '$lib/utils/object/isShallowEqual.ts';
 import {
@@ -22,9 +23,13 @@ type FallbackSpec = Readonly<Record<string, { fallback: string | null }>>;
 
 type ViewParamPatch = Readonly<Record<string, string | null | undefined>>;
 
+// `made` holds the values at the call, so an update can leave a value the URL moved since.
 type ViewParamUpdate<K extends string> =
   | Partial<Record<K, string | null>>
-  | ((values: ViewParamValues<K>) => Partial<Record<K, string | null>>);
+  | ((
+    values: ViewParamValues<K>,
+    made: ViewParamValues<K>,
+  ) => Partial<Record<K, string | null>>);
 
 function accepts(values: ViewParamValuesSpec, value: string): boolean {
   return typeof values === 'function' ? values(value) : values.includes(value);
@@ -53,8 +58,8 @@ type PendingWrite = Readonly<{
 }>;
 
 // page.url changes only once a replace lands, so sets made meanwhile wait.
-let lastReplace: Promise<void> = Promise.resolve();
 let pending: PendingWrite | undefined;
+let pendingReplace: Promise<void> = Promise.resolve();
 
 // Only the keys a set gave, each fallback as null, so a merge needs no spec.
 function toParamWrite(
@@ -77,18 +82,13 @@ function holdsWrite(
   );
 }
 
-function replacePending(): Promise<void> {
+function replacePending(): Promise<void> | undefined {
   const next = pending;
   pending = undefined;
-  if (!next) return Promise.resolve();
-  // A late replace would cancel the user's navigation or land on another page.
-  if (navigating.type !== null || next.pathname !== page.url.pathname) {
-    return Promise.resolve();
-  }
+  // A late replace would land on another page.
+  if (!next || next.pathname !== page.url.pathname) return;
   const write = next.writeAt(page.url);
-  if (holdsWrite({ url: page.url, write })) {
-    return Promise.resolve();
-  }
+  if (holdsWrite({ url: page.url, write })) return;
 
   return goto(withSearchParams({ url: page.url, params: write }), REPLACE);
 }
@@ -114,11 +114,12 @@ export function useViewParam<K extends string>(spec: ViewParamSpec<K>): {
     ),
     set: (update) => {
       const { pathname } = page.url;
+      const made = readValues(spec, page.url);
       const writeAt = (url: URL) =>
         toParamWrite({
           spec,
           patch: typeof update === 'function'
-            ? update(readValues(spec, url))
+            ? update(readValues(spec, url), made)
             : update,
         });
       const waiting = pending;
@@ -129,11 +130,10 @@ export function useViewParam<K extends string>(spec: ViewParamSpec<K>): {
           : writeAt,
       };
       // Merged into the waiting write, so a burst costs one replace.
-      if (waiting) return lastReplace;
+      if (waiting) return pendingReplace;
 
-      // Callers fire and forget, so a failed replace settles quietly.
-      lastReplace = lastReplace.then(replacePending).catch(() => undefined);
-      return lastReplace;
+      pendingReplace = queueNavigation(replacePending);
+      return pendingReplace;
     },
   };
 }

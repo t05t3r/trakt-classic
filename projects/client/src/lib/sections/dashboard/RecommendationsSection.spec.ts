@@ -163,10 +163,12 @@ describe('section: RecommendationsSection', () => {
   it('should render the show and the movie column from their queries', async () => {
     const { shows, movies } = await renderRegions();
 
-    expect(await within(shows).findByRole('link', { name: 'Silo' }))
-      .toBeVisible();
-    expect(await within(movies).findByRole('link', { name: 'Heretic' }))
-      .toBeVisible();
+    expect(
+      await within(shows).findByRole('heading', { level: 3, name: 'Silo' }),
+    ).toBeVisible();
+    expect(
+      await within(movies).findByRole('heading', { level: 3, name: 'Heretic' }),
+    ).toBeVisible();
   });
 
   it('should show the community rating of a movie with no release date to a user who displays early ratings', async () => {

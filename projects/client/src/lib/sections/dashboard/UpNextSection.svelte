@@ -1,19 +1,20 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import type { Pathname } from '$app/types';
   import EpisodeTypeRibbon from '$lib/components/badges/EpisodeTypeRibbon.svelte';
   import SectionState from '$lib/components/feedback/SectionState.svelte';
+  import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
   import SeeMoreLink from '$lib/components/headers/SeeMoreLink.svelte';
   import RowRevealGrid from '$lib/components/pagination/RowRevealGrid.svelte';
-  import TickProgressBar from '$lib/components/progress/TickProgressBar.svelte';
+  import EpisodesWatchedBar from '$lib/components/progress/EpisodesWatchedBar.svelte';
+  import { useUpNext } from '$lib/features/dashboard/stores/useUpNext.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import DropMenu from '$lib/features/media-actions/components/DropMenu.svelte';
   import { usePendingDrops } from '$lib/features/media-actions/stores/usePendingDrops.ts';
   import MediaPosterCard from '$lib/features/media-card/components/MediaPosterCard.svelte';
   import { toListItemCard } from '$lib/features/media-card/toListItemCard.ts';
-  import { toSectionStatus } from '$lib/features/query/toSectionStatus.ts';
-  import { useQuery } from '$lib/features/query/useQuery.ts';
+  import { PROGRESS_SORTS } from '$lib/features/progress/PROGRESS_SORTS.ts';
   import type { UpNextEntry } from '$lib/requests/models/UpNextEntry.ts';
-  import { upNextQuery } from '$lib/requests/queries/sync/upNextQuery.ts';
   import { useRowCount } from '$lib/stores/useRowCount.ts';
   import { isEmpty } from '$lib/utils/array/isEmpty.ts';
   import { UrlBuilder } from '$lib/utils/url/UrlBuilder.ts';
@@ -21,9 +22,14 @@
 
   const ROW_MAX = 3;
   const COLUMNS = { desktop: 6, tablet: 4, mobile: 2 };
+  const [WATCHED_DEFAULT] = PROGRESS_SORTS.watched;
+  const SEE_MORE_HREF = UrlBuilder.progress({
+    sort: WATCHED_DEFAULT,
+    hideCompleted: true,
+  });
 
-  const query = useQuery(upNextQuery());
-  const isPendingDrop = usePendingDrops();
+  const upNext = useUpNext();
+  const pendingDropOf = usePendingDrops();
 
   const { rowCount, setRowCount } = useRowCount({
     key: 'on_deck',
@@ -31,13 +37,24 @@
     defaultCount: ROW_MAX,
   });
 
-  // A 204 leaves the query's data null.
-  const withoutPendingDrops = (entries: ReadonlyArray<UpNextEntry> | Nil) =>
-    (entries ?? []).filter((entry) => !$isPendingDrop(entry.show.id));
+  type UpNextStatus = SectionStatus<ReadonlyArray<UpNextEntry>>;
 
-  const status = $derived(
-    toSectionStatus({ result: $query, select: withoutPendingDrops, isEmpty }),
-  );
+  const withoutPendingDrops = (status: UpNextStatus): UpNextStatus => {
+    if (status.kind !== 'ready') return status;
+    const entries = status.data.filter(
+      (entry) => $pendingDropOf(entry.show.id) !== true,
+    );
+
+    return isEmpty(entries)
+      ? { kind: 'empty' }
+      : { kind: 'ready', data: entries };
+  };
+
+  // resolve() takes one route literal at a time, and a Pathname stands for any of them.
+  const progressHrefOf = (showId: number): Pathname =>
+    UrlBuilder.progress({ show: showId });
+
+  const status = $derived(withoutPendingDrops($upNext));
 </script>
 
 {#snippet helpText()}
@@ -45,7 +62,7 @@
 {/snippet}
 
 {#snippet tools()}
-  <SeeMoreLink href={UrlBuilder.progress()} label={m.text_nav_progress()} />
+  <SeeMoreLink href={SEE_MORE_HREF} label={m.text_nav_progress()} />
 {/snippet}
 
 <div class="trakt-up-next-section">
@@ -92,14 +109,13 @@
               <!-- Inside a link the bar counts as a range, which names the link by its value alone. -->
               <a
                 class="up-next-progress"
-                href={resolve(UrlBuilder.progress())}
+                href={resolve(progressHrefOf(entry.show.id))}
                 aria-label={label}
               >
-                <TickProgressBar
-                  value={entry.completed}
+                <EpisodesWatchedBar
+                  completed={entry.completed}
                   total={entry.total}
                   size="sm"
-                  {label}
                 />
               </a>
             {/snippet}

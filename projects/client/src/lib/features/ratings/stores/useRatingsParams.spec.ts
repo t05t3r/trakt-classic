@@ -1,14 +1,21 @@
+import { goto } from '$app/navigation';
+import { page } from '$app/state';
 import type { RatingFilter } from '$lib/features/media-actions/RATING_VALUES.ts';
 import type { RatingsTypeFilter } from '$lib/features/ratings/RATINGS_TYPES.ts';
+import { RATINGS_ROUTE } from '$mocks/data/navigation/RATINGS_ROUTE.ts';
+import { SHOW_ROUTE } from '$mocks/data/navigation/SHOW_ROUTE.ts';
 import { RATINGS_PATH } from '$mocks/data/users/RATINGS_PATH.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { collectStates } from '$test/beds/store/collectStates.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { valueObservable } from '$test/beds/store/valueObservable.ts';
 import { expectOneReplace } from '$test/beds/url/expectOneReplace.ts';
+import { followPushes } from '$test/beds/url/followPushes.ts';
 import { lastPush } from '$test/beds/url/lastPush.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
+import { startNavigation } from '$test/beds/url/startNavigation.ts';
 import { BehaviorSubject, firstValueFrom, type Observable } from 'rxjs';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { useRatingsParams } from './useRatingsParams.ts';
@@ -138,6 +145,37 @@ describe('store: useRatingsParams', () => {
       await setRating('2');
 
       expect(lastPush()).toBe(`${RATINGS_PATH}/shows/2`);
+    });
+  });
+
+  describe('pushes in a row', () => {
+    it('should keep both slots of two presses made before the first lands', async () => {
+      const { route, pushes } = followPushes(RATINGS_PATH);
+      const { setType, setRating } = await renderStore(() =>
+        useRatingsParams(route)
+      );
+
+      await Promise.all([setType('movies'), setRating('8')]);
+
+      expect(pushes()).toEqual([
+        `${RATINGS_PATH}/movies/all`,
+        `${RATINGS_PATH}/movies/8`,
+      ]);
+    });
+
+    it('should drop a press made during another navigation that lands on another route', async () => {
+      page.route.id = RATINGS_ROUTE;
+      openAt(RATINGS_PATH);
+      const { setType } = await renderParams();
+      const navigation = startNavigation();
+
+      const pushed = setType('movies');
+      page.route.id = SHOW_ROUTE;
+      navigation.land();
+      await pushed;
+      await waitNegativeClaim();
+
+      expect(goto).not.toHaveBeenCalled();
     });
   });
 

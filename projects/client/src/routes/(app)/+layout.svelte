@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HintHost from '$lib/components/tooltip/HintHost.svelte';
   import AuthProvider from '$lib/features/auth/AuthProvider.svelte';
   import Footer from '$lib/sections/footer/Footer.svelte';
   import Navbar from '$lib/sections/navbar/Navbar.svelte';
@@ -16,6 +17,7 @@
     </main>
     <Footer />
   </div>
+  <HintHost />
 </AuthProvider>
 
 <style lang="scss">

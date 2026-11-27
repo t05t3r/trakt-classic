@@ -1,11 +1,12 @@
 import type { EpisodeActivityHistory } from '$lib/requests/queries/users/episodeActivityHistoryQuery.ts';
 import { ShowDevsMappedMock } from '$mocks/data/summary/shows/devs/ShowDevsMappedMock.ts';
+import { LATEST_WATCHED_AT } from '$mocks/data/sync/LATEST_WATCHED_AT.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { EPISODE_PLAY } from '$mocks/data/users/EPISODE_PLAY.ts';
 import { describe, expect, it } from 'vitest';
 import { groupPlaysByShow } from './groupPlaysByShow.ts';
 
-const LATEST = new Date('2025-01-31T23:12:41.000Z');
+const LATEST = new Date(LATEST_WATCHED_AT);
 const LATER = new Date('2025-01-30T20:00:00.000Z');
 const EARLIEST = new Date('2025-01-02T08:30:00.000Z');
 

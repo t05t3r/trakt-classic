@@ -18,4 +18,22 @@ describe('mapToEpisodeEntry', () => {
       full: '/img/episodes/5165667/full/screenshot.webp',
     });
   });
+
+  it.each([0, 12])(
+    'should map an absolute number of %s',
+    (numberAbs) => {
+      const episode = mapToEpisodeEntry({
+        ...EpisodeSiloResponseMock,
+        number_abs: numberAbs,
+      });
+
+      expect(episode.numberAbs).toBe(numberAbs);
+    },
+  );
+
+  it('should leave out an absolute number the response has none of', () => {
+    expect(mapToEpisodeEntry(EpisodeSiloResponseMock)).not.toHaveProperty(
+      'numberAbs',
+    );
+  });
 });

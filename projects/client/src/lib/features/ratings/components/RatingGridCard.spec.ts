@@ -7,6 +7,8 @@ import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
 import { blankCardLines } from '$test/beds/media-card/blankCardLines.ts';
 import { cardLines } from '$test/beds/media-card/cardLines.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { hoverTooltipLines } from '$test/beds/tooltip/hoverTooltipLines.ts';
 import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
@@ -23,9 +25,9 @@ function rowOf(entry: RatingRow['entry'], isFaded = false): RatingRow {
   return { entry, card: toListItemCard(entry), isFaded };
 }
 
-async function renderCard(row: RatingRow) {
+async function renderCard(row: RatingRow, art?: 'fanart') {
   const { container, userLoaded } = renderComponent(RatingGridCard, {
-    props: { row },
+    props: { row, art },
   });
   await userLoaded;
   emulateHydrated();
@@ -113,6 +115,49 @@ describe('component: RatingGridCard', () => {
     });
   });
 
+  describe('fanart', () => {
+    it("should draw an episode's own screenshot in place of the poster", async () => {
+      const container = await renderCard(
+        rowOf(entryOfType('episode')),
+        'fanart',
+      );
+
+      expect(screen.getByRole('img', { name: 'Silo 1x01 screenshot' }))
+        .toBeInTheDocument();
+      expect(
+        container.querySelector('.trakt-lazy-image')?.getAttribute('data-kind'),
+      ).toBe('fanart');
+    });
+
+    it('should set the title, then the show linked, then the rating', async () => {
+      const container = await renderCard(
+        rowOf(entryOfType('episode')),
+        'fanart',
+      );
+
+      expect(screen.getByRole('heading', { level: 3 }))
+        .toHaveTextContent('1x01 Freedom Day');
+      expect(cardLines(container)).toEqual(['Silo', '7 — Good']);
+      expect(screen.getByRole('link', { name: 'Silo' }))
+        .toHaveAttribute('href', '/shows/silo');
+      expect(blankCardLines(container)).toHaveLength(0);
+    });
+
+    it('should move the rated time into the tooltip, under the episode', async () => {
+      stubClientRects();
+      const container = await renderCard(
+        rowOf(entryOfType('episode')),
+        'fanart',
+      );
+
+      expect(
+        await hoverTooltipLines(
+          assertDefined(container.querySelector('a.poster')),
+        ),
+      ).toEqual(['Silo', '1x01 "Freedom Day"', '16 Jan 2025 17:40']);
+    });
+  });
+
   describe('badges', () => {
     it("should ribbon an episode card with its episode's type", async () => {
       await renderCard(rowOf(entryOfType('episode')));
@@ -125,7 +170,7 @@ describe('component: RatingGridCard', () => {
       async (type) => {
         const container = await renderCard(rowOf(entryOfType(type)));
 
-        expect(container.querySelector('.trakt-episode-type-ribbon'))
+        expect(container.querySelector('.trakt-art-ribbon'))
           .not.toBeInTheDocument();
       },
     );

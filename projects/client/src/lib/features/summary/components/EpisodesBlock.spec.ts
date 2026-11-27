@@ -9,6 +9,7 @@ import { MAX_DATE } from '$lib/utils/MAX_DATE.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
 import { openMenuByClick } from '$test/beds/menus/openMenuByClick.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { failOnce } from '$test/beds/request/failOnce.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
@@ -165,13 +166,10 @@ describe('component: EpisodesBlock', () => {
     openAt(SEASON_PATH);
     await renderBlock();
 
-    const menu = await openMenuByClick('Sort by: Number', 'Sort by');
+    await openMenuByClick('Sort by: Number', 'Sort by');
 
-    expect(
-      within(menu).getAllByRole('menuitemradio').map((row) =>
-        row.textContent?.trim()
-      ),
-    ).toEqual(['Number', 'Air date', 'Rating', 'Votes']);
+    expect(readMenuRows('menuitemradio'))
+      .toEqual(['Number', 'Air date', 'Rating', 'Votes']);
   });
 
   it.each(['number,asc', 'aired,asc', 'rating,desc', 'votes,desc'])(

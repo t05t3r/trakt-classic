@@ -8,6 +8,7 @@
     closeOnSelect = true,
     checked,
     radio,
+    glyph,
     children: row,
   }: MenuItemProps = $props();
 </script>
@@ -15,12 +16,12 @@
 {#if radio !== undefined}
   <DropdownMenu.RadioItem class="trakt-menu-item" value={radio} {closeOnSelect}>
     {#snippet children({ checked: isChecked })}
-      <MenuRow checked={isChecked}>{@render row()}</MenuRow>
+      <MenuRow checked={isChecked} {glyph}>{@render row()}</MenuRow>
     {/snippet}
   </DropdownMenu.RadioItem>
 {:else if checked === undefined}
   <DropdownMenu.Item class="trakt-menu-item" {onSelect} {closeOnSelect}>
-    <MenuRow>{@render row()}</MenuRow>
+    <MenuRow {glyph}>{@render row()}</MenuRow>
   </DropdownMenu.Item>
 {:else}
   <!-- The caller owns the state: a select reports it and never flips it here. -->
@@ -30,7 +31,7 @@
     {onSelect}
     {closeOnSelect}
   >
-    <MenuRow {checked}>{@render row()}</MenuRow>
+    <MenuRow {checked} {glyph}>{@render row()}</MenuRow>
   </DropdownMenu.CheckboxItem>
 {/if}
 

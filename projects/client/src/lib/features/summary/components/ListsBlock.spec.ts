@@ -1,3 +1,4 @@
+import { countStat } from '$test/beds/stats/countStat.ts';
 import type { SectionStatus } from '$lib/components/feedback/SectionStatus.ts';
 import type { MediaListSummary } from '$lib/requests/models/MediaListSummary.ts';
 import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
@@ -105,7 +106,7 @@ describe('component: ListsBlock', () => {
   it("should show the list's item count", () => {
     renderLists({ ...PERSONAL, count: 1190 });
 
-    expect(screen.getByTitle('Items')).toHaveTextContent(/^1,190 Items$/);
+    expect(countStat('Items')).toHaveTextContent(/^1,190 Items$/);
   });
 
   it("should show the list's description", () => {

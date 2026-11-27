@@ -4,7 +4,7 @@
   import * as m from '$lib/features/i18n/messages.ts';
   import LazyImage from '$lib/features/image/components/LazyImage.svelte';
   import QuickActions from '$lib/features/media-actions/components/QuickActions.svelte';
-  import { isKnownDate } from '$lib/utils/date/isKnownDate.ts';
+  import { toKnownDate } from '$lib/utils/date/toKnownDate.ts';
   import CardCommunityRating from './CardCommunityRating.svelte';
   import type { MediaPosterCardProps } from './MediaPosterCardProps.ts';
 
@@ -25,9 +25,7 @@
   }: MediaPosterCardProps = $props();
 
   const shownDroppedAt = $derived(
-    card.media.type === 'show' && droppedAt && isKnownDate(droppedAt)
-      ? droppedAt
-      : undefined,
+    card.media.type === 'show' ? toKnownDate(droppedAt) : undefined,
   );
 </script>
 

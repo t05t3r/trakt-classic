@@ -14,7 +14,10 @@ import { UNWATCHED_MOVIE } from '$mocks/data/media-actions/UNWATCHED_MOVIE.ts';
 import { SILO_PROGRESS_URL } from '$mocks/data/shows/SILO_PROGRESS_URL.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { ShowSiloSeasonsMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloSeasonsMappedMock.ts';
+import { ShowSiloProgressFirstSeasonTwoWatchedResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressFirstSeasonTwoWatchedResponseMock.ts';
 import { ShowSiloProgressResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloProgressResponseMock.ts';
+import { SILO_FIRST_SEASON_WATCH_REMAINING_BODY } from '$mocks/data/sync/SILO_FIRST_SEASON_WATCH_REMAINING_BODY.ts';
+import { SILO_WATCH_REMAINING_BODY } from '$mocks/data/sync/SILO_WATCH_REMAINING_BODY.ts';
 import { SYNC_HISTORY_REMOVE_URL } from '$mocks/data/sync/SYNC_HISTORY_REMOVE_URL.ts';
 import { SYNC_HISTORY_URL } from '$mocks/data/sync/SYNC_HISTORY_URL.ts';
 import { HISTORY_ID } from '$mocks/data/users/HISTORY_ID.ts';
@@ -29,16 +32,22 @@ import { WATCHED_SHOWS_URL } from '$mocks/data/users/WATCHED_SHOWS_URL.ts';
 import { server } from '$mocks/server.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
 import { setNetwork } from '$test/beds/network/setNetwork.ts';
+import { serveSiloHidingSeasonTwo } from '$test/beds/progress/serveSiloHidingSeasonTwo.ts';
+import { serveSiloProgress } from '$test/beds/progress/serveSiloProgress.ts';
 import { settleWithin } from '$test/beds/promise/settleWithin.ts';
+import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import { useObserverApart } from '$test/beds/query/useObserverApart.ts';
 import { useWaitForQueriesIdle } from '$test/beds/query/useWaitForQueriesIdle.ts';
 import { useWaitForLateRequests } from '$test/beds/query/useWaitForLateRequests.ts';
 import { useWaitForUnobserved } from '$test/beds/query/useWaitForUnobserved.ts';
 import { captureRequests } from '$test/beds/request/captureRequests.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
+import { notFound } from '$test/beds/request/notFound.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordBodies } from '$test/beds/request/recordBodies.ts';
+import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { collectDistinctStates } from '$test/beds/store/collectDistinctStates.ts';
@@ -47,6 +56,7 @@ import { readKnown } from '$test/beds/store/readKnown.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
 import { screen, within } from '@testing-library/svelte';
+import type { ShowProgressResponse } from '@trakt/api';
 import { userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { filter, firstValueFrom, type Observable } from 'rxjs';
@@ -61,13 +71,13 @@ import {
 import { useWatched, type WatchedStoreProps } from './useWatched.ts';
 
 function seasonTarget(
-  show: Pick<ShowEntry, 'id' | 'title'>,
+  show: Pick<ShowEntry, 'id' | 'title' | 'slug'>,
   { id, number, episodes }: Pick<Season, 'id' | 'number' | 'episodes'>,
 ) {
   return {
     type: 'season',
     media: { id, number, episodes },
-    show: { id: show.id, title: show.title },
+    show: { id: show.id, title: show.title, slug: show.slug },
   } satisfies WatchedStoreProps;
 }
 
@@ -120,10 +130,32 @@ const SILO_FIRST_SEASON_PROMPT =
   'Mark all 10 aired episodes of "Season 1 of Silo" as watched? Episodes already watched get another play.';
 
 const REFUSED_TOAST = 'Your history changed. Try again.';
+const SILO_EPISODE_REMOVE_PROMPT =
+  'Remove the play of "Silo 1x01" from your history?';
+const WATCH_REMAINING_PROMPT = 'What would you like to do?';
+const REMOVE_ANSWER = {
+  dialog: 'Remove from history?',
+  button: 'Remove from History',
+};
+
+// Every aired episode of Silo watched.
+const SILO_ALL_WATCHED: ShowProgressResponse = {
+  ...ShowSiloProgressResponseMock,
+  seasons: ShowSiloProgressResponseMock.seasons.map((season) => ({
+    ...season,
+    episodes: season.episodes.map((episode) => ({
+      ...episode,
+      completed: true,
+    })),
+  })),
+};
+
 const OTHER_HISTORY_ID = 7002;
 
 const postsIn = (requests: ReadonlyArray<string>) =>
   requests.filter((request) => request.startsWith('POST'));
+const progressReadsIn = (requests: ReadonlyArray<string>) =>
+  requests.filter((request) => request.includes('/progress/watched'));
 
 // Answers each removal and records its body and whether the Target read watched.
 function recordRemovals(isWatched: Observable<boolean | undefined>) {
@@ -285,7 +317,7 @@ const WATCHED_WRITES: ReadonlyArray<{
   write: (store: ReturnType<typeof useWatched>) => Promise<void>;
 }> = [
   { action: 'add', write: (store) => store.add() },
-  { action: 'remove', write: (store) => store.remove() },
+  { action: 'remove', write: (store) => store.removeOrWatchRemaining() },
   { action: 'removePlay', write: (store) => store.removePlay(HISTORY_ID) },
 ];
 
@@ -479,14 +511,14 @@ describe('store: useWatched', () => {
       expect(await firstValueFrom(pendingWatched)).toBeUndefined();
     });
 
-    it('should neither confirm nor write on add or either remove', async () => {
-      const { add, remove, removePlay } = await renderStore(() =>
-        useWatched(NO_MOVIES)
+    it('should neither confirm nor write on add, removeOrWatchRemaining or removePlay', async () => {
+      const { add, removeOrWatchRemaining, removePlay } = await renderStore(
+        () => useWatched(NO_MOVIES),
       );
 
       const requests = await captureRequests(async () => {
         await add();
-        await remove();
+        await removeOrWatchRemaining();
         await removePlay(HISTORY_ID);
       });
 
@@ -568,11 +600,7 @@ describe('store: useWatched', () => {
     )(
       'should read a Play for $name while its own add writes, until the history says otherwise',
       async ({ props, read }) => {
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_URL,
-          answer: () => new HttpResponse(null, { status: 201 }),
-        });
+        const write = holdPost(SYNC_HISTORY_URL);
         const store = await renderSettledHistory(() => useWatched(props));
 
         const added = store.add();
@@ -600,9 +628,10 @@ describe('store: useWatched', () => {
           expected: [false, true],
         },
         {
-          name: "a season holding its show's only plays",
+          name: "a partly watched season holding its show's only plays",
           props: SILO_FIRST_SEASON,
           expected: [false, false],
+          answer: { dialog: WATCH_REMAINING_PROMPT, button: 'Remove all' },
         },
         {
           name: 'a season whose show has other plays',
@@ -610,20 +639,21 @@ describe('store: useWatched', () => {
           expected: [false, true],
         },
       ] satisfies Array<
-        { name: string; props: WatchedStoreProps; expected: boolean[] }
+        {
+          name: string;
+          props: WatchedStoreProps;
+          expected: boolean[];
+          answer?: { dialog: string; button: string };
+        }
       >,
     )(
       "should read its own and its show's Play for $name while its own remove writes",
-      async ({ props, expected }) => {
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_REMOVE_URL,
-          answer: () => new HttpResponse(null, { status: 200 }),
-        });
+      async ({ props, expected, answer = REMOVE_ANSWER }) => {
+        const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
         const store = await renderSettledHistory(() => useWatched(props));
 
-        const removed = store.remove();
-        await answerDialog('Remove from history?', 'Remove from History');
+        const removed = store.removeOrWatchRemaining();
+        await answerDialog(answer.dialog, answer.button);
         await write.requested;
         const whileWriting = [
           await firstValueFrom(store.hasPlay),
@@ -656,11 +686,7 @@ describe('store: useWatched', () => {
     )(
       'should read not known for $name once its own remove fails while the history refetches',
       async ({ props, read, url, type }) => {
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_REMOVE_URL,
-          answer: () => new HttpResponse(null, { status: 500 }),
-        });
+        const write = holdPost(SYNC_HISTORY_REMOVE_URL, 500);
         const store = await renderSettledHistory(() => ({
           ...useWatched(props),
           invalidate: useInvalidator().invalidate,
@@ -668,7 +694,7 @@ describe('store: useWatched', () => {
 
         const states = collectDistinctStates(store[read]);
 
-        const removed = store.remove();
+        const removed = store.removeOrWatchRemaining();
         await answerDialog('Remove from history?', 'Remove from History');
         await write.requested;
         const refetch = holdRequest({ method: 'get', url });
@@ -1002,17 +1028,11 @@ describe('store: useWatched', () => {
     });
 
     it('should confirm a partly watched show with all its aired episodes', async () => {
-      server.use(
-        http.get(
-          SILO_PROGRESS_URL,
-          () =>
-            HttpResponse.json({
-              ...ShowSiloProgressResponseMock,
-              aired: 20,
-              completed: 15,
-            }),
-        ),
-      );
+      serveSiloProgress({
+        ...ShowSiloProgressResponseMock,
+        aired: 20,
+        completed: 15,
+      });
       const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
       const { add } = await renderSettledHistory(() => useWatched(SILO));
 
@@ -1029,22 +1049,28 @@ describe('store: useWatched', () => {
     });
 
     it('should confirm a fully watched show with all its aired episodes', async () => {
-      server.use(
-        http.get(
-          SILO_PROGRESS_URL,
-          () =>
-            HttpResponse.json({
-              ...ShowSiloProgressResponseMock,
-              aired: 20,
-              completed: 20,
-            }),
-        ),
-      );
+      serveSiloProgress({
+        ...ShowSiloProgressResponseMock,
+        aired: 20,
+        completed: 20,
+      });
       const { add } = await renderSettledHistory(() => useWatched(SILO));
 
       const added = add();
       await screen.findByText(
         'Mark all 20 aired episodes of "Silo" as watched? Episodes already watched get another play.',
+      );
+      await answerDialog('Mark as watched?', 'Cancel');
+      await added;
+    });
+
+    it("should confirm a show with a hidden season with every aired episode, the hidden season's included", async () => {
+      serveSiloHidingSeasonTwo();
+      const { add } = await renderSettledHistory(() => useWatched(SILO));
+
+      const added = add();
+      await screen.findByText(
+        'Mark all 17 aired episodes of "Silo" as watched? Episodes already watched get another play.',
       );
       await answerDialog('Mark as watched?', 'Cancel');
       await added;
@@ -1086,17 +1112,11 @@ describe('store: useWatched', () => {
     });
 
     it('should neither confirm nor write when the show has no aired episodes', async () => {
-      server.use(
-        http.get(
-          SILO_PROGRESS_URL,
-          () =>
-            HttpResponse.json({
-              ...ShowSiloProgressResponseMock,
-              aired: 0,
-              completed: 0,
-            }),
-        ),
-      );
+      serveSiloProgress({
+        ...ShowSiloProgressResponseMock,
+        aired: 0,
+        completed: 0,
+      });
       const { add } = await renderSettledHistory(() => useWatched(SILO));
 
       const requests = await captureRequests(() => add());
@@ -1133,12 +1153,13 @@ describe('store: useWatched', () => {
     );
   });
 
-  describe('remove', () => {
+  describe('removeOrWatchRemaining with the count dialog', () => {
     it('should confirm with the plays, remove the target from history and refetch the watched history only', async () => {
-      const { remove, isWatched, ratings } = await renderSettledHistory(() => ({
-        ...useWatched(HERETIC),
-        ratings: useUser().ratings,
-      }));
+      const { removeOrWatchRemaining, isWatched, ratings } =
+        await renderSettledHistory(() => ({
+          ...useWatched(HERETIC),
+          ratings: useUser().ratings,
+        }));
       const ratingsSubscription = ratings.subscribe();
       await readKnown(ratings);
       const inFlight: unknown[] = [];
@@ -1156,7 +1177,7 @@ describe('store: useWatched', () => {
       );
 
       const requests = await captureRequests(async () => {
-        const removed = remove();
+        const removed = removeOrWatchRemaining();
         await screen.findByText(
           'Remove the play of "Heretic" from your history?',
         );
@@ -1178,7 +1199,7 @@ describe('store: useWatched', () => {
     });
 
     it('should confirm only the plays the targets have', async () => {
-      const { remove } = await renderSettledHistory(() =>
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
         useWatched({
           type: 'movie',
           media: [
@@ -1188,7 +1209,7 @@ describe('store: useWatched', () => {
         })
       );
 
-      const removed = remove();
+      const removed = removeOrWatchRemaining();
       await screen.findByText(
         'Remove the play of "Heretic, Unwatched" from your history?',
       );
@@ -1197,11 +1218,11 @@ describe('store: useWatched', () => {
     });
 
     it('should neither confirm nor write, and say the history changed, when the targets have no plays', async () => {
-      const { remove } = await renderSettledHistory(() =>
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
         useWatched(UNWATCHED_MOVIE)
       );
 
-      const requests = await captureRequests(() => remove());
+      const requests = await captureRequests(() => removeOrWatchRemaining());
 
       expect(postsIn(requests)).toEqual([]);
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -1211,19 +1232,329 @@ describe('store: useWatched', () => {
     });
 
     it('should send nothing and write no override when the confirmation is cancelled', async () => {
-      const { remove, isUpdating } = await renderSettledHistory(() =>
-        useWatched(HERETIC)
+      const { removeOrWatchRemaining, isUpdating } = await renderSettledHistory(
+        () => useWatched(HERETIC),
       );
       const updates = collectStates(isUpdating);
 
       const requests = await captureRequests(async () => {
-        const removed = remove();
+        const removed = removeOrWatchRemaining();
         await answerDialog('Remove from history?', 'Cancel');
         await removed;
       });
 
       expect(postsIn(requests)).toEqual([]);
       expect(updates).toEqual([false]);
+    });
+  });
+
+  describe('removeOrWatchRemaining on a show or season', () => {
+    it('should ask on a partly watched show, and post only its unwatched aired episodes on Watch remaining', async () => {
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+        useWatched(SILO)
+      );
+
+      const asked = removeOrWatchRemaining();
+      const dialog = await screen.findByRole('dialog', {
+        name: WATCH_REMAINING_PROMPT,
+      });
+      expect(within(dialog).getByText('Silo')).toBeVisible();
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+      await asked;
+
+      expect(bodies).toStrictEqual([SILO_WATCH_REMAINING_BODY]);
+    });
+
+    it("should post only its own season's unwatched aired episodes for a partly watched season", async () => {
+      serveSiloProgress(ShowSiloProgressFirstSeasonTwoWatchedResponseMock);
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+        useWatched(SILO_FIRST_SEASON)
+      );
+
+      const asked = removeOrWatchRemaining();
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+      await asked;
+
+      expect(bodies).toStrictEqual([SILO_FIRST_SEASON_WATCH_REMAINING_BODY]);
+    });
+
+    it("should post a hidden season's unwatched aired episodes on a show's Watch remaining", async () => {
+      serveSiloHidingSeasonTwo();
+      const bodies = recordBodies(SYNC_HISTORY_URL, { status: 201 });
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+        useWatched(SILO)
+      );
+
+      const asked = removeOrWatchRemaining();
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+      await asked;
+
+      expect(bodies).toStrictEqual([SILO_WATCH_REMAINING_BODY]);
+    });
+
+    it('should read the Target watched while Watch remaining posts, then refetch the shows history and the progress', async () => {
+      const write = holdPost(SYNC_HISTORY_URL);
+      const { season, pendingWatched, observe, waitForQueriesIdle } =
+        await renderSettledHistory(() => {
+          const store = useWatched(SILO_FIRST_SEASON);
+          return {
+            season: store,
+            pendingWatched: store.pendingWatched,
+            ...useObserverApart(showProgressQuery({ slug: 'silo' })),
+          };
+        });
+      serveSiloProgress(ShowSiloProgressFirstSeasonTwoWatchedResponseMock);
+      observe();
+      await waitForQueriesIdle();
+
+      const asked = season.removeOrWatchRemaining();
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+      await write.requested;
+      const whileWriting = await firstValueFrom(pendingWatched);
+      const afterWrite = await captureRequests(async () => {
+        write.release();
+        await asked;
+      });
+
+      expect(whileWriting).toBe(true);
+      expect(afterWrite).toContain('GET /users/me/watched/shows');
+      expect(afterWrite).toContain('GET /shows/silo/progress/watched');
+    });
+
+    it('should remove every Play on Remove all, with no second dialog and no progress read', async () => {
+      const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+        useWatched(SILO)
+      );
+
+      const requests = await captureRequests(async () => {
+        const asked = removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
+        expect(screen.queryByRole('dialog')).toBeNull();
+        await asked;
+      });
+
+      expect(bodies).toStrictEqual([{ shows: [{ ids: { trakt: 180770 } }] }]);
+      expect(progressReadsIn(requests)).toEqual([]);
+    });
+
+    it('should send nothing, read no progress and write no override on Nothing', async () => {
+      const { removeOrWatchRemaining, isUpdating } = await renderSettledHistory(
+        () => useWatched(SILO),
+      );
+      const updates = collectStates(isUpdating);
+
+      const requests = await captureRequests(async () => {
+        const asked = removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Nothing');
+        await asked;
+      });
+
+      expect(postsIn(requests)).toEqual([]);
+      expect(progressReadsIn(requests)).toEqual([]);
+      expect(updates).toEqual([false]);
+    });
+
+    it('should ask on a partly watched show on the dropped shows', async () => {
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+        useWatched({
+          ...DEVS_SHOW,
+          media: { ...DEVS_SHOW.media, episode: { count: 9 } },
+        })
+      );
+
+      const asked = removeOrWatchRemaining();
+      expect(
+        await screen.findByRole('dialog', { name: WATCH_REMAINING_PROMPT }),
+      )
+        .toBeVisible();
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Nothing');
+      await asked;
+    });
+
+    it.each(
+      [
+        { name: 'a fully watched show', props: DEVS_SHOW },
+        { name: 'a fully watched season', props: DEVS_FIRST_SEASON },
+        {
+          name: 'a partly watched specials season',
+          props: {
+            ...DEVS_SPECIALS_SEASON,
+            media: {
+              ...DEVS_SPECIALS_SEASON.media,
+              episodes: { count: 2, aired: 2 },
+            },
+          },
+        },
+        { name: 'a movie', props: HERETIC },
+        { name: 'an episode', props: SILO_EPISODE },
+      ] satisfies Array<{ name: string; props: WatchedStoreProps }>,
+    )(
+      'should ask with the count dialog, not Watch remaining, on $name',
+      async ({ props }) => {
+        const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+          useWatched(props)
+        );
+
+        const asked = removeOrWatchRemaining();
+        expect(
+          await screen.findByRole('dialog', { name: 'Remove from history?' }),
+        ).toBeVisible();
+        await answerDialog('Remove from history?', 'Cancel');
+        await asked;
+
+        expect(screen.queryByText(WATCH_REMAINING_PROMPT)).toBeNull();
+      },
+    );
+
+    it.each(
+      [
+        {
+          name: 'a season the progress reads complete',
+          props: SILO_FIRST_SEASON,
+          progress: ShowSiloProgressResponseMock,
+        },
+        {
+          name: 'a show of no known episode count the progress reads complete',
+          props: { ...SILO, media: { ...SILO.media, episode: { count: NaN } } },
+          progress: SILO_ALL_WATCHED,
+        },
+      ] satisfies Array<
+        {
+          name: string;
+          props: WatchedStoreProps;
+          progress: ShowProgressResponse;
+        }
+      >,
+    )(
+      'should post nothing and say the history changed on Watch remaining for $name',
+      async ({ props, progress }) => {
+        serveSiloProgress(progress);
+        const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+          useWatched(props)
+        );
+
+        const requests = await captureRequests(async () => {
+          const asked = removeOrWatchRemaining();
+          await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+          await asked;
+        });
+
+        expect(requests).toContain('GET /shows/silo/progress/watched');
+        expect(postsIn(requests)).toEqual([]);
+        expect(
+          within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+        ).toBeVisible();
+      },
+    );
+
+    it('should show the error toast and post nothing when the progress read fails', async () => {
+      server.use(
+        http.get(
+          SILO_PROGRESS_URL,
+          () => new HttpResponse(null, { status: 500 }),
+        ),
+      );
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
+        useWatched(SILO)
+      );
+
+      const requests = await captureRequests(async () => {
+        const asked = removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+        await asked;
+      });
+
+      expect(postsIn(requests)).toEqual([]);
+      expect(
+        within(screen.getByRole('status')).getByText(
+          "Couldn't save. Try again.",
+        ),
+      ).toBeVisible();
+    });
+
+    it('should read no progress and say the history changed when a watched write is pending at Watch remaining', async () => {
+      const { store, other } = await renderSettledHistory(() => ({
+        store: useWatched(SILO),
+        other: useWatched(UNWATCHED_MOVIE),
+      }));
+      const write = holdPost(SYNC_HISTORY_URL);
+
+      const requests = await captureRequests(async () => {
+        const added = other.add();
+        await write.requested;
+        const asked = store.removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+        await asked;
+        write.release();
+        await added;
+      });
+
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
+      expect(progressReadsIn(requests)).toEqual([]);
+      expect(
+        within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+      ).toBeVisible();
+    });
+
+    it('should post nothing and say the history changed when a watched write starts during the progress read', async () => {
+      const read = holdRequest({
+        method: 'get',
+        url: SILO_PROGRESS_URL,
+        answer: () => HttpResponse.json(ShowSiloProgressResponseMock),
+      });
+      const { store, other } = await renderSettledHistory(() => ({
+        store: useWatched(SILO),
+        other: useWatched(UNWATCHED_MOVIE),
+      }));
+      const write = holdPost(SYNC_HISTORY_URL);
+
+      const requests = await captureRequests(async () => {
+        const asked = store.removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+        await read.requested;
+        const added = other.add();
+        await write.requested;
+        read.release();
+        await asked;
+        write.release();
+        await added;
+      });
+
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
+      expect(
+        within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+      ).toBeVisible();
+    });
+
+    it('should start nothing on a second call during the progress read, and read updating until the post settles', async () => {
+      const read = holdRequest({
+        method: 'get',
+        url: SILO_PROGRESS_URL,
+        answer: () => HttpResponse.json(ShowSiloProgressResponseMock),
+      });
+      const { removeOrWatchRemaining, isUpdating } = await renderSettledHistory(
+        () => useWatched(SILO),
+      );
+
+      const requests = await captureRequests(async () => {
+        const first = removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Watch remaining');
+        await read.requested;
+        await removeOrWatchRemaining();
+        const secondDialog = screen.queryByRole('dialog');
+        const whileReading = await firstValueFrom(isUpdating);
+        read.release();
+        await first;
+
+        expect(secondDialog).toBeNull();
+        expect(whileReading).toBe(true);
+      });
+
+      expect(postsIn(requests)).toEqual(['POST /sync/history']);
+      expect(await firstValueFrom(isUpdating)).toBe(false);
     });
   });
 
@@ -1295,11 +1626,7 @@ describe('store: useWatched', () => {
           store: useWatched(HERETIC),
           other: useWatched(HERETIC),
         }));
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_REMOVE_URL,
-          answer: () => new HttpResponse(null, { status }),
-        });
+        const write = holdPost(SYNC_HISTORY_REMOVE_URL, status);
         const updates = collectStates(store.isUpdating);
         const otherUpdates = collectStates(other.isUpdating);
 
@@ -1319,11 +1646,7 @@ describe('store: useWatched', () => {
       const { removePlay, isUpdating } = await renderSettledHistory(() =>
         useWatched(HERETIC)
       );
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
       const updates = collectStates(isUpdating);
 
       const requests = await captureRequests(async () => {
@@ -1346,11 +1669,7 @@ describe('store: useWatched', () => {
         first: useWatched(HERETIC),
         second: useWatched(HERETIC),
       }));
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
 
       const requests = await captureRequests(async () => {
         const removed = first.removePlay(HISTORY_ID);
@@ -1371,11 +1690,7 @@ describe('store: useWatched', () => {
         first: useWatched(HERETIC),
         second: useWatched(HERETIC),
       }));
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
 
       const requests = await captureRequests(async () => {
         const removed = first.removePlay(HISTORY_ID);
@@ -1398,17 +1713,13 @@ describe('store: useWatched', () => {
         store: useWatched(HERETIC),
         other: useWatched(HERETIC),
       }));
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
 
       const requests = await captureRequests(async () => {
         const removed = store.removePlay(HISTORY_ID);
         await answerDialog('Remove from history?', 'Only this play');
         await write.requested;
-        const refused = other.remove();
+        const refused = other.removeOrWatchRemaining();
         await answerDialog('Remove from history?', 'Remove from History');
         await refused;
         write.release();
@@ -1487,31 +1798,27 @@ describe('store: useWatched', () => {
         ).toBeVisible();
       });
 
-      it('should send nothing and show the refusal toast while another watched write is pending', async () => {
+      it("should post behind another movie's pending write, which cannot change its count", async () => {
         const { store, other } = await renderSettledHistory(() => ({
           store: useWatched(HERETIC),
           other: useWatched(UNWATCHED_MOVIE),
         }));
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_URL,
-          answer: () => new HttpResponse(null, { status: 201 }),
-        });
+        const write = holdPost(SYNC_HISTORY_URL);
 
         const requests = await captureRequests(async () => {
           const added = other.add();
           await write.requested;
           const removed = store.removePlay(HISTORY_ID);
           await answerDialog('Remove from history?', 'All plays');
-          await removed;
           write.release();
-          await added;
+          await Promise.all([added, removed]);
         });
 
-        expect(postsIn(requests)).toEqual(['POST /sync/history']);
-        expect(
-          within(screen.getByRole('status')).getByText(REFUSED_TOAST),
-        ).toBeVisible();
+        expect(postsIn(requests)).toEqual([
+          'POST /sync/history',
+          'POST /sync/history/remove',
+        ]);
+        expect(screen.queryByText(REFUSED_TOAST)).toBeNull();
       });
     });
   });
@@ -1585,11 +1892,7 @@ describe('store: useWatched', () => {
         await firstValueFrom(
           history.pipe(filter(($history) => $history !== null)),
         );
-        const write = holdRequest({
-          method: 'post',
-          url: SYNC_HISTORY_URL,
-          answer: () => new HttpResponse(null, { status: 201 }),
-        });
+        const write = holdPost(SYNC_HISTORY_URL);
 
         const added = writer.add();
         await write.requested;
@@ -1650,6 +1953,39 @@ describe('store: useWatched', () => {
       expect(await firstValueFrom(isUpdating)).toBe(false);
     });
 
+    it('should read the count once and post with no failed toast when another watched write lands during the read', async () => {
+      const read = holdRequest({
+        method: 'get',
+        url: SILO_PROGRESS_URL,
+        answer: () => HttpResponse.json(ShowSiloProgressResponseMock),
+      });
+      const { store, other } = await renderSettledHistory(() => ({
+        store: useWatched(SILO),
+        other: useWatched(DEVS_EPISODE),
+      }));
+      // The other write's invalidation refetches the history once it lands.
+      const landed = holdRequest({ method: 'get', url: WATCHED_SHOWS_URL });
+
+      const requests = await captureRequests(async () => {
+        const added = store.add();
+        await read.requested;
+        const otherAdded = other.add();
+        await landed.requested;
+        read.release();
+        landed.release();
+        await otherAdded;
+        await answerDialog('Mark as watched?', 'Mark as Watched');
+        await added;
+      });
+
+      expect(postsIn(requests)).toEqual([
+        'POST /sync/history',
+        'POST /sync/history',
+      ]);
+      expect(progressReadsIn(requests)).toHaveLength(1);
+      expect(screen.queryByText("Couldn't save. Try again.")).toBeNull();
+    });
+
     it('should confirm once and write once when clicked again while the count loads', async () => {
       const read = holdRequest({
         method: 'get',
@@ -1681,7 +2017,9 @@ describe('store: useWatched', () => {
   });
 
   describe('while the show progress is observed offline', () => {
-    const PROGRESS_KEY = showProgressQuery({ slug: 'silo' }).queryKey;
+    // The params of the count's own read, so the observed read shares its query.
+    const OBSERVED_PROGRESS = showProgressQuery({ slug: 'silo', hidden: true });
+    const PROGRESS_KEY = OBSERVED_PROGRESS.queryKey;
 
     // Before the test bed unmounts, while the client still hears the event.
     afterEach(() => {
@@ -1691,7 +2029,7 @@ describe('store: useWatched', () => {
     const renderObservedSilo = () =>
       renderSettledHistory(() => ({
         silo: useWatched(SILO),
-        ...useObserverApart(showProgressQuery({ slug: 'silo' })),
+        ...useObserverApart(OBSERVED_PROGRESS),
       }));
 
     function expectFailedToast() {
@@ -1768,11 +2106,7 @@ describe('store: useWatched', () => {
         url: SILO_PROGRESS_URL,
         answer: () => HttpResponse.json(ShowSiloProgressResponseMock),
       });
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_URL,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const write = holdPost(SYNC_HISTORY_URL);
       const { add, isUpdating, pendingWatched } = await renderSettledHistory(
         () => useWatched(SILO),
       );
@@ -1796,16 +2130,11 @@ describe('store: useWatched', () => {
     });
 
     it("should read a remove's value while it writes", async () => {
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
-      const { remove, pendingWatched } = await renderSettledHistory(() =>
-        useWatched(HERETIC)
-      );
+      const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
+      const { removeOrWatchRemaining, pendingWatched } =
+        await renderSettledHistory(() => useWatched(HERETIC));
 
-      const removed = remove();
+      const removed = removeOrWatchRemaining();
       await answerDialog('Remove from history?', 'Remove from History');
       await write.requested;
       const whileWriting = await firstValueFrom(pendingWatched);
@@ -1850,21 +2179,16 @@ describe('store: useWatched', () => {
 
   describe('while a write is pending', () => {
     it('should ignore add and either remove until the override clears', async () => {
-      const { add, remove, removePlay } = await renderSettledHistory(() =>
-        useWatched(HERETIC)
-      );
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_URL,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const { add, removeOrWatchRemaining, removePlay } =
+        await renderSettledHistory(() => useWatched(HERETIC));
+      const write = holdPost(SYNC_HISTORY_URL);
 
       const requests = await captureRequests(async () => {
         const added = add();
         await write.requested;
         const ignored = Promise.all([
           add(),
-          remove(),
+          removeOrWatchRemaining(),
           removePlay(HISTORY_ID),
         ]);
         write.release();
@@ -1886,16 +2210,12 @@ describe('store: useWatched', () => {
         url: SILO_PROGRESS_URL,
         answer: () => HttpResponse.json(ShowSiloProgressResponseMock),
       });
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      const write = holdPost(SYNC_HISTORY_REMOVE_URL, 200);
 
       const requests = await captureRequests(async () => {
         const added = first.add();
-        const removed = second.remove();
-        await answerDialog('Remove from history?', 'Remove from History');
+        const removed = second.removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
         await write.requested;
         read.release();
         await answerDialog('Mark as watched?', 'Mark as Watched');
@@ -1911,14 +2231,10 @@ describe('store: useWatched', () => {
         first: useWatched(HERETIC),
         second: useWatched(HERETIC),
       }));
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_URL,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const write = holdPost(SYNC_HISTORY_URL);
 
       const requests = await captureRequests(async () => {
-        const removed = first.remove();
+        const removed = first.removeOrWatchRemaining();
         await screen.findByRole('dialog', { name: 'Remove from history?' });
         const added = second.add();
         await write.requested;
@@ -1941,7 +2257,7 @@ describe('store: useWatched', () => {
 
       const playsBeforeConfirm: number[] = [];
       const requests = await captureRequests(async () => {
-        const removed = first.remove();
+        const removed = first.removeOrWatchRemaining();
         await screen.findByText(
           'Remove the play of "Heretic" from your history?',
         );
@@ -1963,17 +2279,13 @@ describe('store: useWatched', () => {
         show: useWatched(SILO),
         episode: useWatched(SILO_EPISODE),
       }));
-      const write = holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_URL,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const write = holdPost(SYNC_HISTORY_URL);
 
       const requests = await captureRequests(async () => {
         const added = episode.add();
         await write.requested;
-        const removed = show.remove();
-        await answerDialog('Remove from history?', 'Remove from History');
+        const removed = show.removeOrWatchRemaining();
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
         // Holds the episode add until the remove has refused or started its write.
         await Promise.race([
           removed,
@@ -1989,15 +2301,88 @@ describe('store: useWatched', () => {
       ).toBeVisible();
     });
 
+    it("should wait for the history re-read of another episode's add, then post", async () => {
+      const { episode, other } = await renderSettledHistory(() => ({
+        episode: useWatched(SILO_EPISODE),
+        other: useWatched({ ...SILO_EPISODE, media: UNPLAYED_SILO_EPISODE }),
+      }));
+      const reread = holdRequest({ method: 'get', url: WATCHED_SHOWS_URL });
+      const writes = recordWrites();
+
+      const removed = episode.removeOrWatchRemaining();
+      await screen.findByText(SILO_EPISODE_REMOVE_PROMPT);
+      const added = other.add();
+      await reread.requested;
+      await answerDialog('Remove from history?', 'Remove from History');
+      await waitNegativeClaim();
+      const whileUnknown = [...writes];
+      reread.release();
+      await Promise.all([added, removed]);
+
+      expect(whileUnknown).toEqual(['POST /sync/history']);
+      expect(writes).toEqual([
+        'POST /sync/history',
+        'POST /sync/history/remove',
+      ]);
+      expect(screen.queryByText(REFUSED_TOAST)).toBeNull();
+    });
+
+    it("should send nothing and show the refusal toast when the other add's re-read fails", async () => {
+      const { episode, other } = await renderSettledHistory(() => ({
+        episode: useWatched(SILO_EPISODE),
+        other: useWatched({ ...SILO_EPISODE, media: UNPLAYED_SILO_EPISODE }),
+      }));
+      const reread = holdRequest({
+        method: 'get',
+        url: WATCHED_SHOWS_URL,
+        answer: notFound,
+      });
+      const writes = recordWrites();
+
+      const removed = episode.removeOrWatchRemaining();
+      await screen.findByText(SILO_EPISODE_REMOVE_PROMPT);
+      const added = other.add();
+      await reread.requested;
+      await answerDialog('Remove from history?', 'Remove from History');
+      reread.release();
+      await Promise.all([added, removed]);
+
+      expect(writes).toEqual(['POST /sync/history']);
+      expect(
+        within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+      ).toBeVisible();
+    });
+
+    it("should send nothing and show the refusal toast while its show's season add is in flight", async () => {
+      const { episode, season } = await renderSettledHistory(() => ({
+        episode: useWatched(SILO_EPISODE),
+        season: useWatched(SILO_FIRST_SEASON),
+      }));
+      const write = holdPost(SYNC_HISTORY_URL);
+      const writes = recordWrites();
+
+      const added = season.add();
+      await answerDialog('Mark as watched?', 'Mark as Watched');
+      await write.requested;
+      const removed = episode.removeOrWatchRemaining();
+      await answerDialog('Remove from history?', 'Remove from History');
+      await removed;
+      write.release();
+      await added;
+
+      expect(writes).toEqual(['POST /sync/history']);
+      expect(
+        within(screen.getByRole('status')).getByText(REFUSED_TOAST),
+      ).toBeVisible();
+    });
+
     it('should send nothing and show the refusal toast when the history is not known', async () => {
       const { episode, unwatched, waitForQueriesIdle } =
         await renderSettledMovies();
 
       const requests = await captureRequests(async () => {
-        const removed = episode.remove();
-        await screen.findByText(
-          'Remove the play of "Silo 1x01" from your history?',
-        );
+        const removed = episode.removeOrWatchRemaining();
+        await screen.findByText(SILO_EPISODE_REMOVE_PROMPT);
         const failed = failMovies();
         await unwatched.add();
         await settleFailure(waitForQueriesIdle, failed);
@@ -2013,7 +2398,7 @@ describe('store: useWatched', () => {
   });
 
   describe('for a season', () => {
-    it('should take a season with its aired count and its titled show, and no title of its own', () => {
+    it('should take a season with its aired count and its titled show with its slug, and no title of its own', () => {
       expectTypeOf<{
         type: 'season';
         media: {
@@ -2021,12 +2406,12 @@ describe('store: useWatched', () => {
           number: number;
           episodes: { count: number; aired: number };
         };
-        show: { id: number; title: string };
+        show: { id: number; title: string; slug: string };
       }>().toExtend<WatchedStoreProps>();
       expectTypeOf<{
         type: 'season';
         media: { id: number; number: number };
-        show: { id: number; title: string };
+        show: { id: number; title: string; slug: string };
       }>().not.toExtend<WatchedStoreProps>();
       expectTypeOf<{
         type: 'season';
@@ -2035,7 +2420,16 @@ describe('store: useWatched', () => {
           number: number;
           episodes: { count: number; aired: number };
         };
-        show: { id: number };
+        show: { id: number; slug: string };
+      }>().not.toExtend<WatchedStoreProps>();
+      expectTypeOf<{
+        type: 'season';
+        media: {
+          id: number;
+          number: number;
+          episodes: { count: number; aired: number };
+        };
+        show: { id: number; title: string };
       }>().not.toExtend<WatchedStoreProps>();
     });
 
@@ -2160,23 +2554,24 @@ describe('store: useWatched', () => {
       expect(postsIn(requests)).toEqual(['POST /sync/history']);
     });
 
-    it('should confirm with its play and remove it as a top-level season', async () => {
+    it('should ask about its partly watched season by its title and remove it as a top-level season on Remove all', async () => {
       const bodies = recordBodies(SYNC_HISTORY_REMOVE_URL);
-      const { remove } = await renderSettledHistory(() =>
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
         useWatched(SILO_FIRST_SEASON)
       );
 
-      const removed = remove();
-      await screen.findByText(
-        'Remove the play of "Season 1 of Silo" from your history?',
-      );
-      await answerDialog('Remove from history?', 'Remove from History');
+      const removed = removeOrWatchRemaining();
+      const dialog = await screen.findByRole('dialog', {
+        name: WATCH_REMAINING_PROMPT,
+      });
+      expect(within(dialog).getByText('Season 1 of Silo')).toBeVisible();
+      await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
       await removed;
 
       expect(bodies).toStrictEqual([{ seasons: [{ ids: { trakt: 257490 } }] }]);
     });
 
-    it('should refetch the shows history and the progress once its removal is confirmed', async () => {
+    it('should refetch the shows history and the progress once Remove all is chosen', async () => {
       const { season, observe, waitForQueriesIdle } =
         await renderSettledHistory(() => ({
           season: useWatched(SILO_FIRST_SEASON),
@@ -2185,10 +2580,10 @@ describe('store: useWatched', () => {
       observe();
       await waitForQueriesIdle();
 
-      const removed = season.remove();
-      await screen.findByRole('dialog', { name: 'Remove from history?' });
+      const removed = season.removeOrWatchRemaining();
+      await screen.findByRole('dialog', { name: WATCH_REMAINING_PROMPT });
       const afterAnswer = await captureRequests(async () => {
-        await answerDialog('Remove from history?', 'Remove from History');
+        await answerDialog(WATCH_REMAINING_PROMPT, 'Remove all');
         await removed;
       });
 
@@ -2198,11 +2593,11 @@ describe('store: useWatched', () => {
     });
 
     it("should confirm the removal of every play of the season's episodes", async () => {
-      const { remove } = await renderSettledHistory(() =>
+      const { removeOrWatchRemaining } = await renderSettledHistory(() =>
         useWatched(DEVS_FIRST_SEASON)
       );
 
-      const removed = remove();
+      const removed = removeOrWatchRemaining();
       await screen.findByText(
         'Remove all 10 plays of "Season 1 of Devs" from your history?',
       );

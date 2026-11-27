@@ -1,7 +1,10 @@
 import type { CastGroup } from '$lib/features/summary/_internal/CastGroup.ts';
+import { assertDefined } from '$lib/utils/assert/assertDefined.ts';
 import { MovieHereticPeopleMappedMock } from '$mocks/data/summary/movies/heretic/mapped/MovieHereticPeopleMappedMock.ts';
 import { ShowSiloPeopleMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloPeopleMappedMock.ts';
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { hoverTooltipLines } from '$test/beds/tooltip/hoverTooltipLines.ts';
 import { lastReplace } from '$test/beds/url/lastReplace.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { screen, within } from '@testing-library/svelte';
@@ -124,20 +127,27 @@ describe('component: CastBlock', () => {
   });
 
   it("should give a show cell's tooltip the name, character and episodes", async () => {
+    stubClientRects();
     openAt(SHOW_PATH);
     await renderBlock();
+    const cell = assertDefined(cellLinks().at(0));
 
-    expect(cellLinks().at(0)).toHaveAttribute(
-      'title',
-      'Rebecca Ferguson\nJuliette Nichols\n19 episodes',
-    );
+    expect(await hoverTooltipLines(cell)).toEqual([
+      'Rebecca Ferguson',
+      'Juliette Nichols',
+      '19 episodes',
+    ]);
+    expect(cell).not.toHaveAttribute('title');
   });
 
   it("should give a movie cell's tooltip the name and character", async () => {
+    stubClientRects();
     openAt(MOVIE_PATH);
     await renderBlock({ kind: 'ready', data: MOVIE_GROUPS });
+    const cell = assertDefined(cellLinks().at(0));
 
-    expect(cellLinks().at(0)).toHaveAttribute('title', 'Hugh Grant\nMr. Reed');
+    expect(await hoverTooltipLines(cell)).toEqual(['Hugh Grant', 'Mr. Reed']);
+    expect(cell).not.toHaveAttribute('title');
   });
 
   it("should keep an empty group's tab and say so in its pane", async () => {

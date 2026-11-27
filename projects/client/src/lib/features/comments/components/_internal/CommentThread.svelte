@@ -70,12 +70,17 @@
   @use '$style/scss/mixins/index' as *;
 
   .trakt-comment-thread {
+    .thread-replies {
+      --status-frame-pending-offset: var(--ni-20);
+
+      margin-inline-start: var(--ni-20);
+    }
+
     .comment-replies-toggle {
       padding: var(--ni-0);
       border: none;
       background: none;
       color: var(--color-count);
-      font: inherit;
       text-transform: inherit;
       cursor: pointer;
     }

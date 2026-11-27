@@ -14,7 +14,7 @@
   import { GlobalEventBus } from '$lib/utils/events/GlobalEventBus.ts';
   import { FIRST_PAGE } from '$lib/utils/FIRST_PAGE.ts';
   import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
-  import { firstFocusable } from '$lib/utils/focus/firstFocusable.ts';
+  import { firstTabbable } from '$lib/utils/focus/firstTabbable.ts';
   import { tick } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
   import type {
@@ -30,6 +30,7 @@
     emptyText,
     grid,
     toolbar,
+    cellSelector = '.trakt-poster-grid > li',
   }: ListItemsSectionProps<T> = $props();
 
   const id = $props.id();
@@ -49,14 +50,13 @@
   const isLoading = $derived(status.kind === 'loading');
   const isPaged = $derived(pages.total > 1);
 
-  // The panel comes before the gear in the Tab order, so opening it leads the focus in.
   const toggle = async () => {
     open = !open;
     if (!open) return;
 
     await tick();
     const panel = document.getElementById(panelId);
-    if (panel) firstFocusable(panel)?.focus();
+    if (panel) firstTabbable(panel)?.focus();
   };
 
   // After a menu pick, the menu hands the focus back to its trigger first, so the gear
@@ -69,26 +69,38 @@
     document.getElementById(gearId)?.focus();
   };
 
-  // Without a title bar, the toolbar holds the gear and the spinner.
+  // Without a title bar, the toolbar holds the spinner too.
   const controls: ToolbarControls = $derived({
     open,
     panelId,
+    gearId,
+    toggle,
     close,
-    ...(!heading && { untitled: { gearId, toggle, loading: isLoading } }),
+    loading: !heading && isLoading,
   });
-
-  const CELL = '.trakt-poster-grid > li';
 
   // The cells as they stood before the update, so a cell that left keeps its place.
   let cells: ReadonlyArray<HTMLElement> = [];
 
   const cellOf = (control: HTMLElement) =>
-    control.closest<HTMLElement>(CELL) ?? control;
+    control.closest<HTMLElement>(cellSelector) ?? control;
 
   const isConnected = (cell: HTMLElement) => cell.isConnected;
 
-  // A card that left hands the focus to the next card, or the previous one at the end.
-  const focusNeighbour = (
+  const neighbourOf = (index: number) =>
+    cells.slice(index + 1).find(isConnected) ??
+      cells.slice(0, index).filter(isConnected).at(-1);
+
+  // A control that cannot take the focus leaves it to the retention's fallback.
+  const focusOn = (control: HTMLElement | undefined, options?: FocusOptions) => {
+    if (!control) return false;
+    control.focus(options);
+    return document.activeElement === control;
+  };
+
+  // A card that stays keeps the focus, on its first tabbable control; one that left
+  // hands it to the next card, or the previous one at the end.
+  const refocusCell = (
     { region, active }: { region: HTMLElement; active: Element | null },
   ) => {
     const index = cells.indexOf(region);
@@ -96,20 +108,20 @@
     // Focus moved elsewhere was moved on purpose.
     if (active !== document.body && !region.contains(active)) return false;
 
-    const neighbour = cells.slice(index + 1).find(isConnected) ??
-      cells.slice(0, index).filter(isConnected).at(-1);
-    const control = neighbour && firstFocusable(neighbour);
-    if (!control) return false;
+    // The page keeps its scroll, since the user may have scrolled on meanwhile.
+    if (region.isConnected) {
+      return focusOn(firstTabbable(region), { preventScroll: true });
+    }
 
-    control.focus();
-    return true;
+    const neighbour = neighbourOf(index);
+    return focusOn(neighbour && firstTabbable(neighbour));
   };
 
   const retention = createFocusRetention({
     regionOf: cellOf,
     // An open menu holds the focus in its portal for the card.
     keep: (region) => !!openMenuIn(region),
-    claim: focusNeighbour,
+    claim: refocusCell,
   });
 
   // A menu may open or close with no focus event in the card.
@@ -128,7 +140,7 @@
 
   $effect.pre(() => {
     void status;
-    cells = body ? [...body.querySelectorAll<HTMLElement>(CELL)] : [];
+    cells = body ? [...body.querySelectorAll<HTMLElement>(cellSelector)] : [];
   });
 
   $effect(() => {
@@ -177,10 +189,6 @@
       href={heading.href}
       {titleId}
       loading={isLoading}
-      {open}
-      {panelId}
-      {gearId}
-      ontoggle={toggle}
     />
     <ListDescription text={heading.description} />
   {/if}

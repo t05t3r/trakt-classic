@@ -3,6 +3,12 @@ import type { ShowProgressResponse } from '@trakt/api';
 import { ShowDevsSeasonEpisodesResponseMock } from '$mocks/data/summary/shows/devs/response/ShowDevsSeasonEpisodesResponseMock.ts';
 
 const WATCHED = 5;
+const RUNTIME = 52;
+const STATS = {
+  'play_count': WATCHED,
+  'minutes_watched': WATCHED * RUNTIME,
+  'minutes_left': 3 * RUNTIME,
+};
 
 const episodeAt = (number: number) =>
   assertDefined(
@@ -14,12 +20,14 @@ export const ShowDevsProgressResponseMock: ShowProgressResponse = {
   'completed': WATCHED,
   'last_watched_at': '2025-01-20T21:04:00.000Z',
   'reset_at': null,
+  'stats': STATS,
   'seasons': [
     {
       'number': 1,
       'title': null,
       'aired': 8,
       'completed': WATCHED,
+      'stats': STATS,
       'episodes': ShowDevsSeasonEpisodesResponseMock.map(({ number }) => ({
         'number': number,
         'completed': number <= WATCHED,

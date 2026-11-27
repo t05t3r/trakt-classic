@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import { toCertificationText } from './_internal/toCertificationText.ts';
 
   const { certification }: { certification: string } = $props();
@@ -6,7 +7,12 @@
   const description = $derived(toCertificationText(certification));
 </script>
 
-<span class="trakt-certification" title={description}>{certification}</span>
+<span
+  class="trakt-certification"
+  {@attach hint(() =>
+    description == null ? undefined : { content: description }
+  )}
+>{certification}</span>
 
 <style lang="scss">
   @use '$style/scss/mixins/index' as *;

@@ -5,8 +5,4 @@ export type ListTitleBarProps = {
   href: Pathname;
   titleId: string;
   loading: boolean;
-  open: boolean;
-  panelId: string;
-  gearId: string;
-  ontoggle: () => void;
 };

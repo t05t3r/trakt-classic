@@ -3,3 +3,8 @@
 .trakt-icon-mirrored {
   transform: scaleX(-1);
 }
+
+// A chevron that points down while its control is collapsed and up while open.
+[aria-expanded='true'] .trakt-icon-expander {
+  transform: rotate(180deg);
+}

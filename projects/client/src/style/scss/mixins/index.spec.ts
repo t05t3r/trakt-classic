@@ -54,11 +54,11 @@ describe('style: mixins', () => {
     );
   });
 
-  it("should draw a caption tag's box, its colour left to the caller", async () => {
+  it("should draw a caption tag's box, its colour and a bottom margin hook left to the caller", async () => {
     expect(await compileRule('@include caption-tag-box;')).toBe(
       [
         'a{display:inline-block;',
-        'margin-block:var(--ni-0) var(--ni-5);',
+        'margin-block:var(--ni-0) var(--caption-tag-margin-block-end, var(--ni-5));',
         'margin-inline:var(--ni-0) var(--ni-5);',
         'padding-block:var(--ni-3);',
         'padding-inline:var(--ni-5);',
@@ -67,6 +67,12 @@ describe('style: mixins', () => {
         'font-size:var(--font-size-label);',
         'font-weight:var(--font-weight-heading)}',
       ].join(''),
+    );
+  });
+
+  it('should set the heavy heading font', async () => {
+    expect(await compileRule('@include heavy-heading-font;')).toBe(
+      'a{font-family:var(--font-family-heading);font-weight:var(--font-weight-heading-heavy)}',
     );
   });
 
@@ -101,12 +107,22 @@ describe('style: mixins', () => {
     );
   });
 
+  it('should set phone cells gutterless', async () => {
+    expect(await compileRule("@include phone-gutterless-cells('.cell');"))
+      .toBe('@media(max-width: 767px){a .cell{padding-inline:var(--ni-0)}}');
+  });
+
+  it('should take no block of other phone rules', async () => {
+    await expect(
+      compileRule("@include phone-gutterless-cells('.cell') { color: red; }"),
+    ).rejects.toThrow("Mixin doesn't accept a content block.");
+  });
+
   it('should set phone poster cells gutterless, with a divider before each even cell', async () => {
     expect(await compileRule("@include phone-poster-cells('.cell');")).toBe(
       [
-        '@media(max-width: 767px){',
-        'a .cell{padding-inline:var(--ni-0)}',
-        'a .cell:nth-child(even){',
+        '@media(max-width: 767px){a .cell{padding-inline:var(--ni-0)}}',
+        '@media(max-width: 767px){a .cell:nth-child(even){',
         '--poster-card-divider: var(--border-thickness-xxs) solid var(--color-border-subtle);',
         '--poster-card-divider-offset: var(--ni-neg-1)}}',
       ].join(''),

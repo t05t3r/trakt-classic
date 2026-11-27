@@ -1,11 +1,11 @@
 import type { SectionHeaderProps } from '$lib/components/headers/SectionHeaderProps.ts';
 import type { Snippet } from 'svelte';
-import type { SectionStatus } from './SectionStatus.ts';
+import type { NeverEmptyStatus, SectionStatus } from './SectionStatus.ts';
 
 type SectionStateContent<T> =
   | { status: SectionStatus<T>; emptyText: string }
   | {
-    status: Exclude<SectionStatus<T>, { kind: 'empty' }>;
+    status: NeverEmptyStatus<T>;
     emptyText?: never;
   };
 

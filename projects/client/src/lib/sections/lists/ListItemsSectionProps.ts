@@ -9,10 +9,14 @@ import type { Snippet } from 'svelte';
 export type ToolbarControls = {
   open: boolean;
   panelId: string;
+  // Found by id, so the focus can return to it after the panel closes.
+  gearId: string;
+  // Opens the panel, leading the focus in, or shuts it.
+  toggle: () => void;
   // Shuts the panel and hands the focus back to the gear.
   close: () => void;
-  // Only without a title bar, whose gear and spinner then move into the toolbar.
-  untitled?: { gearId: string; toggle: () => void; loading: boolean };
+  // Only without a title bar, whose spinner then moves into the toolbar.
+  loading?: boolean;
 };
 
 // A page's reading, unmapped: `total` is undefined until a read gives a count.
@@ -27,7 +31,8 @@ export type ListItemsSectionProps<T> = {
   // Without one, no title bar or description shows.
   heading?: { title: string; href: Pathname; description: string };
   emptyText: string;
-  // The focus keeper finds the cards as `PosterGrid` cells, in one grid or several.
   grid: Snippet<[ReadonlyArray<T>]>;
   toolbar: Snippet<[ToolbarControls]>;
+  // The grid's cells, which the focus keeper hands on between, in one grid or several; `PosterGrid` cells by default.
+  cellSelector?: string;
 };

@@ -19,8 +19,13 @@ export function usePageParam(): PageParamWrites {
     page: { values: isLaterPage, fallback: null },
   });
 
+  // A page the URL moved to after the call is the user's, so the replace leaves it.
   const replacePage: PageParam['replacePage'] = (page) =>
-    set({ page: page === FIRST_PAGE ? null : String(page) });
+    set((shown, made) =>
+      shown.page === made.page
+        ? { page: page === FIRST_PAGE ? null : String(page) }
+        : {}
+    );
 
   return {
     page: values.pipe(
@@ -28,6 +33,6 @@ export function usePageParam(): PageParamWrites {
     ),
     replacePage,
     withPageDropped: (write) =>
-      Promise.all([write, replacePage(FIRST_PAGE)]).then(() => undefined),
+      Promise.all([write, set({ page: null })]).then(() => undefined),
   };
 }

@@ -43,6 +43,7 @@ export function mapToEpisodeEntry(
     season: episode.season,
     genres: [],
     number: episode.number,
+    ...(episode.number_abs != null ? { numberAbs: episode.number_abs } : {}),
     runtime: episode.runtime ?? NaN,
     cover: {
       url: mapToImage({

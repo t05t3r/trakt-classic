@@ -1,3 +1,4 @@
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
 import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import GenreBars from './GenreBars.svelte';
@@ -109,11 +110,7 @@ describe('component: GenreBars', () => {
   it('should name each count link by its genre and its count', () => {
     renderBars([DRAMA, THRILLER]);
 
-    expect(
-      screen.getAllByRole('link').map((link) =>
-        link.getAttribute('aria-label')
-      ),
-    )
+    expect(ariaLabelsOf(screen.getAllByRole('link')))
       .toEqual([
         'Drama: 66 episodes',
         'Drama: 6 shows',
@@ -135,7 +132,7 @@ describe('component: GenreBars', () => {
 
     const links = screen.getAllByRole('link');
 
-    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
+    expect(ariaLabelsOf(links)).toEqual([
       'Drama: 66 episodes, 70 plays',
       'Drama: 6 shows',
       'Drama: 1 movie, 2 plays',

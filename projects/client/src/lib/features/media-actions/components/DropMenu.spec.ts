@@ -1,9 +1,12 @@
+import { readHint } from '$lib/components/tooltip/hint.svelte.ts';
 import { pendingOverrides } from '$lib/features/media-actions/_internal/pendingOverrides.ts';
 import { toTargetKey } from '$lib/features/media-actions/_internal/toTargetKey.ts';
+import type { DropStoreProps } from '$lib/features/media-actions/stores/useDrop.ts';
 import { NOOP_FN } from '$lib/utils/NOOP_FN.ts';
 import { DEVS_DROP_SHOW } from '$mocks/data/media-actions/DEVS_DROP_SHOW.ts';
 import { SILO_DROP_SHOW } from '$mocks/data/media-actions/SILO_DROP_SHOW.ts';
 import { DROP_URL } from '$mocks/data/users/DROP_URL.ts';
+import { DROPPED_AT } from '$mocks/data/users/DROPPED_AT.ts';
 import { DROPPED_URL } from '$mocks/data/users/DROPPED_URL.ts';
 import { RESTORE_URL } from '$mocks/data/users/RESTORE_URL.ts';
 import { waitForEnabled } from '$test/beds/buttons/waitForEnabled.ts';
@@ -15,9 +18,13 @@ import { applyDateField } from '$test/beds/forms/applyDateField.ts';
 import { DATE_FIELD_CLOSES } from '$test/beds/forms/DATE_FIELD_CLOSES.ts';
 import { dateField } from '$test/beds/forms/dateField.ts';
 import { dateFieldDialog } from '$test/beds/forms/dateFieldDialog.ts';
+import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
 import { openMenuFromKeyboard } from '$test/beds/menus/openMenuFromKeyboard.ts';
+import { isMenuRowChecked } from '$test/beds/subnav/isMenuRowChecked.ts';
+import { readMenuRows } from '$test/beds/menus/readMenuRows.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordBodies } from '$test/beds/request/recordBodies.ts';
@@ -25,7 +32,6 @@ import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { bodyUnlocked } from '$test/beds/scroll-lock/bodyUnlocked.ts';
 import { fireEvent, screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, onTestFinished } from 'vitest';
 import DropMenu from './DropMenu.svelte';
 
@@ -33,8 +39,6 @@ const DROP_NAME = 'Flag show "Silo" as dropped';
 const RESTORE_NAME = 'Restore show "Devs"';
 
 const trigger = () => screen.findByRole('button', { name: DROP_NAME });
-const menu = () =>
-  screen.queryByRole('menu', { name: 'When did you drop this?' });
 const restoreDialog = () =>
   screen.queryByRole('dialog', { name: 'Restore this show?' });
 
@@ -44,12 +48,6 @@ async function settledControl(
   container: HTMLElement = document.body,
 ) {
   return waitForEnabled(await within(container).findByRole('button', { name }));
-}
-
-async function openMenu() {
-  renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
-  await userEvent.click(await settledControl(DROP_NAME));
-  return screen.findByRole('menu', { name: 'When did you drop this?' });
 }
 
 const fieldDialog = () => dateFieldDialog('When did you drop this?');
@@ -65,9 +63,17 @@ const holdDropOverride = (value: boolean) =>
   });
 
 async function openField() {
-  await openMenu();
-  await userEvent.click(screen.getByRole('menuitem', { name: 'Other date' }));
+  renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
+  await userEvent.click(await settledControl(DROP_NAME));
   await waitFor(() => expect(field()).toHaveFocus());
+}
+
+// Drop from the keyboard: the icon opens the field, which applies its default, the current minute.
+async function dropFromKeyboard(control: HTMLElement) {
+  control.focus();
+  await userEvent.keyboard('{Enter}');
+  await waitFor(() => expect(field()).toHaveFocus());
+  await applyDateField();
 }
 
 beforeEach(() => {
@@ -75,40 +81,22 @@ beforeEach(() => {
 });
 
 describe('component: DropMenu', () => {
-  it('should open from its icon, titled with what it does', async () => {
+  it('should open the date field from its icon, its tooltip saying what it does, and write nothing', async () => {
+    const writes = recordWrites();
     renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
     const icon = await settledControl(DROP_NAME);
 
-    expect(icon).toHaveAttribute('title', DROP_NAME);
+    await userEvent.hover(icon);
+    await waitFor(() => expect(icon).toHaveAccessibleDescription(DROP_NAME));
+    expect(icon).not.toHaveAttribute('title');
     expect(icon.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
-    expect(menu()).not.toBeInTheDocument();
+    expect(fieldDialog()).not.toBeInTheDocument();
 
     await userEvent.click(icon);
 
-    expect(await screen.findByRole('menu', { name: 'When did you drop this?' }))
-      .toBeVisible();
-  });
-
-  it('should offer Right now, then Other date', async () => {
-    await openMenu();
-
-    expect(
-      screen.getAllByRole('menuitem').map((item) => item.textContent?.trim()),
-    ).toEqual(['Right now', 'Other date']);
-  });
-
-  it('should drop the show on Right now and close', async () => {
-    const bodies = recordBodies(DROP_URL, { status: 201 });
-    await openMenu();
-
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Right now' }));
-
-    await waitFor(() =>
-      expect(bodies).toEqual([{
-        shows: [{ ids: { trakt: SILO_DROP_SHOW.id } }],
-      }])
-    );
-    await waitFor(() => expect(menu()).not.toBeInTheDocument());
+    await waitFor(() => expect(field()).toHaveFocus());
+    await waitNegativeClaim();
+    expect(writes).toEqual([]);
   });
 
   it('should stay shut while the dropped shows load', async () => {
@@ -124,17 +112,13 @@ describe('component: DropMenu', () => {
     await waitNegativeClaim();
 
     expect(icon).toHaveAttribute('aria-disabled', 'true');
-    expect(menu()).not.toBeInTheDocument();
+    expect(fieldDialog()).not.toBeInTheDocument();
   });
 
   it('should stay shut while the drop is saved', async () => {
-    const saving = holdRequest({
-      method: 'post',
-      url: DROP_URL,
-      answer: () => new HttpResponse(null, { status: 201 }),
-    });
-    await openMenu();
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Right now' }));
+    const saving = holdPost(DROP_URL);
+    await openField();
+    await applyDateField();
     await saving.requested;
 
     const icon = await screen.findByRole('button', {
@@ -148,18 +132,7 @@ describe('component: DropMenu', () => {
     expect(restoreDialog()).not.toBeInTheDocument();
   });
 
-  describe('on Other date', () => {
-    it('should close the menu, open the field and write nothing', async () => {
-      const writes = recordWrites();
-
-      await openField();
-      await waitNegativeClaim();
-
-      expect(menu()).not.toBeInTheDocument();
-      expect(fieldDialog()).toBeVisible();
-      expect(writes).toEqual([]);
-    });
-
+  describe('on Drop', () => {
     it('should send the current minute on Apply at the default', async () => {
       fixNow(new Date('2026-03-15T09:41:27.000Z'));
       const bodies = recordBodies(DROP_URL, { status: 201 });
@@ -208,7 +181,65 @@ describe('component: DropMenu', () => {
       expect(fieldDialog()).toBeVisible();
     });
 
-    it('should keep the menu shut while the field is open', async () => {
+    // bits-ui drops a press made before its outside-press listener is on.
+    const pressIconOpen = async () => {
+      await openField();
+      const icon = await trigger();
+      await waitNegativeClaim();
+      await userEvent.pointer({
+        keys: '[MouseLeft>]',
+        target: icon,
+        coords: { clientX: 1, clientY: 1 },
+      });
+      await waitFor(() => expect(fieldDialog()).not.toBeInTheDocument());
+
+      return icon;
+    };
+
+    it('should close on a press on the icon and stay shut as the press ends, opening on the next', async () => {
+      const icon = await pressIconOpen();
+
+      await userEvent.pointer({ keys: '[/MouseLeft]', target: icon });
+      fireEvent.click(icon, { detail: 1 });
+      await waitNegativeClaim();
+      expect(fieldDialog()).not.toBeInTheDocument();
+
+      await userEvent.click(icon);
+      await waitFor(() => expect(fieldDialog()).toBeInTheDocument());
+    });
+
+    it('should open from the keyboard after a press on the icon closed it', async () => {
+      const icon = await pressIconOpen();
+
+      icon.focus();
+      await userEvent.keyboard('{Enter}');
+
+      await waitFor(() => expect(fieldDialog()).toBeInTheDocument());
+    });
+
+    it('should say its icon opens a dialog, expanded while the field is open', async () => {
+      renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
+      const icon = await settledControl(DROP_NAME);
+      expect(icon).toHaveAttribute('aria-haspopup', 'dialog');
+      expect(icon).toHaveAttribute('aria-expanded', 'false');
+
+      await userEvent.click(icon);
+      await waitFor(() => expect(field()).toHaveFocus());
+      expect(icon).toHaveAttribute('aria-expanded', 'true');
+
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(fieldDialog()).not.toBeInTheDocument());
+      expect(icon).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it("should let the pointer through the icon's tooltip", async () => {
+      renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
+
+      expect(readHint(await settledControl(DROP_NAME))?.isPassThrough)
+        .toBe(true);
+    });
+
+    it('should keep the icon inert while the field is open', async () => {
       await openField();
       const icon = await trigger();
 
@@ -262,14 +293,16 @@ describe('component: DropMenu', () => {
       expect(writes).toEqual([]);
     });
 
-    it('should open no field and write nothing when a write leaves an open menu inert', async () => {
+    it('should open no field and write nothing when a write leaves the icon inert', async () => {
       const writes = recordWrites();
-      await openMenu();
+      renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
+      const icon = await settledControl(DROP_NAME);
 
       holdDropOverride(false);
-      await userEvent.click(
-        screen.getByRole('menuitem', { name: 'Other date' }),
+      await waitFor(() =>
+        expect(icon).toHaveAttribute('aria-disabled', 'true')
       );
+      await userEvent.click(icon);
       await waitNegativeClaim();
 
       expect(fieldDialog()).not.toBeInTheDocument();
@@ -277,11 +310,7 @@ describe('component: DropMenu', () => {
     });
 
     it('should not reopen after an Apply whose write settles', async () => {
-      const write = holdRequest({
-        method: 'post',
-        url: DROP_URL,
-        answer: () => new HttpResponse(null, { status: 500 }),
-      });
+      const write = holdPost(DROP_URL, 500);
       await openField();
 
       await applyDateField();
@@ -312,11 +341,7 @@ describe('component: DropMenu', () => {
     );
 
     it('should hand the focus back to Drop when a dated drop fails', async () => {
-      const write = holdRequest({
-        method: 'post',
-        url: DROP_URL,
-        answer: () => new HttpResponse(null, { status: 500 }),
-      });
+      const write = holdPost(DROP_URL, 500);
       await openField();
       await applyDateField();
       const restore = await screen.findByRole('button', {
@@ -331,12 +356,156 @@ describe('component: DropMenu', () => {
     });
   });
 
+  describe('the status variant', () => {
+    const renderStatus = (
+      show: DropStoreProps,
+      status: { isComplete: boolean; droppedAt?: Date },
+    ) =>
+      renderComponent(DropMenu, {
+        props: { show, variant: 'status', status },
+      });
+
+    async function openStatus(name: string) {
+      await userEvent.click(await settledControl(name));
+      return screen.findByRole('menu', { name });
+    }
+
+    const statusDot = (button: HTMLElement) =>
+      button.querySelector('.trakt-menu-glyph .drop-menu-status-dot');
+
+    it.each(
+      [
+        {
+          given: 'a show with episodes left',
+          isComplete: false,
+          status: 'Watching',
+          dot: 'watching',
+        },
+        {
+          given: 'a complete show',
+          isComplete: true,
+          status: 'Caught Up',
+          dot: 'caught-up',
+        },
+      ] as const,
+    )(
+      'should name its button $status, with the $dot dot, for $given',
+      async ({ isComplete, status, dot }) => {
+        renderStatus(SILO_DROP_SHOW, { isComplete });
+        const button = await settledControl(status);
+
+        expect(button).toHaveTextContent(new RegExp(`^${status}$`));
+        expect(statusDot(button)).toHaveAttribute('data-status', dot);
+        expect(statusDot(button)).toHaveAttribute('aria-hidden', 'true');
+      },
+    );
+
+    it("should check its status at the row's end, in the accent, then offer Drop", async () => {
+      renderStatus(SILO_DROP_SHOW, { isComplete: false });
+      await openStatus('Watching');
+
+      const current = screen.getByRole('menuitemcheckbox', {
+        name: 'Watching',
+      });
+      expect(current).toBeChecked();
+      expect(isMenuRowChecked(current)).toBe(true);
+      expect(current.querySelector('.trakt-menu-glyph .drop-menu-status-dot'))
+        .toHaveAttribute('data-status', 'watching');
+      expect(readMenuRows()).toEqual(['Drop']);
+    });
+
+    it('should open the date field on Drop and write nothing', async () => {
+      const writes = recordWrites();
+      renderStatus(SILO_DROP_SHOW, { isComplete: false });
+      await openStatus('Watching');
+
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Drop' }));
+
+      await waitFor(() => expect(field()).toHaveFocus());
+      await waitNegativeClaim();
+      expect(writes).toEqual([]);
+    });
+
+    it('should drop the show at the applied date', async () => {
+      const bodies = recordBodies(DROP_URL, { status: 201 });
+      renderStatus(SILO_DROP_SHOW, { isComplete: false });
+      await openStatus('Watching');
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Drop' }));
+      await waitFor(() => expect(field()).toHaveFocus());
+
+      await fireEvent.input(field(), { target: { value: '2026-01-15T12:00' } });
+      await applyDateField();
+
+      await waitFor(() =>
+        expect(bodies).toEqual([{
+          shows: [{
+            ids: { trakt: SILO_DROP_SHOW.id },
+            hidden_at: '2026-01-15T12:00:00.000Z',
+          }],
+        }])
+      );
+    });
+
+    it('should read Dropped and keep the focus on its button while the drop is saved', async () => {
+      holdRequest({ method: 'post', url: DROP_URL });
+      renderStatus(SILO_DROP_SHOW, { isComplete: false });
+      await openMenuFromKeyboard(await settledControl('Watching'), 'Watching');
+      await userEvent.keyboard('{ArrowDown}{Enter}');
+      await waitFor(() => expect(field()).toHaveFocus());
+
+      await applyDateField();
+
+      const button = await screen.findByRole('button', { name: 'Dropped' });
+      await waitFor(() => expect(button).toHaveFocus());
+    });
+
+    it('should read Dropped with a red dot, and its day once hydrated', async () => {
+      renderStatus(DEVS_DROP_SHOW, {
+        isComplete: false,
+        droppedAt: DROPPED_AT,
+      });
+      const button = await settledControl('Dropped');
+
+      expect(statusDot(button)).toHaveAttribute('data-status', 'dropped');
+
+      emulateHydrated();
+
+      await waitFor(() =>
+        expect(button).toHaveAccessibleName('Dropped 1 Feb 2024')
+      );
+      expect(button).toHaveTextContent(/^Dropped 1 Feb 2024$/);
+    });
+
+    it('should offer Undrop for a dropped show and restore it once confirmed', async () => {
+      const bodies = recordBodies(RESTORE_URL);
+      renderStatus(DEVS_DROP_SHOW, { isComplete: false });
+      await openStatus('Dropped');
+
+      expect(screen.getByRole('menuitemcheckbox', { name: 'Dropped' }))
+        .toBeChecked();
+      expect(readMenuRows()).toEqual(['Undrop']);
+
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Undrop' }));
+      await answerDialog('Restore this show?', 'Yes, restore it!');
+
+      await waitFor(() =>
+        expect(bodies).toEqual([{
+          shows: [{ ids: { trakt: DEVS_DROP_SHOW.id } }],
+        }])
+      );
+    });
+  });
+
   describe('for a dropped show', () => {
-    it('should offer Restore in place of Drop, titled with what it does', async () => {
+    it('should offer Restore in place of Drop, its tooltip saying what it does', async () => {
       renderComponent(DropMenu, { props: { show: DEVS_DROP_SHOW } });
       const icon = await settledControl(RESTORE_NAME);
 
-      expect(icon).toHaveAttribute('title', RESTORE_NAME);
+      await userEvent.hover(icon);
+      await waitFor(() =>
+        expect(icon).toHaveAccessibleDescription(RESTORE_NAME)
+      );
+      expect(icon).not.toHaveAttribute('title');
       expect(icon).not.toHaveAttribute('aria-haspopup');
       expect(icon.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
       expect(
@@ -370,12 +539,8 @@ describe('component: DropMenu', () => {
       expect(await settledControl(RESTORE_NAME)).toBeVisible();
     });
 
-    it('should keep the Drop menu shut while the restore is saved', async () => {
-      const saving = holdRequest({
-        method: 'post',
-        url: RESTORE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+    it('should keep Drop shut while the restore is saved', async () => {
+      const saving = holdPost(RESTORE_URL, 200);
       renderComponent(DropMenu, { props: { show: DEVS_DROP_SHOW } });
       await userEvent.click(await settledControl(RESTORE_NAME));
       await answerDialog('Restore this show?', 'Yes, restore it!');
@@ -388,7 +553,7 @@ describe('component: DropMenu', () => {
       await waitNegativeClaim();
 
       expect(icon).toHaveAttribute('aria-disabled', 'true');
-      expect(menu()).not.toBeInTheDocument();
+      expect(fieldDialog()).not.toBeInTheDocument();
     });
   });
 
@@ -399,12 +564,8 @@ describe('component: DropMenu', () => {
         emulate();
         holdRequest({ method: 'post', url: DROP_URL });
         renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
-        await openMenuFromKeyboard(
-          await settledControl(DROP_NAME),
-          'Right now',
-        );
 
-        await userEvent.keyboard('{Enter}');
+        await dropFromKeyboard(await settledControl(DROP_NAME));
 
         const restore = await screen.findByRole('button', {
           name: 'Restore show "Silo"',
@@ -443,17 +604,9 @@ describe('component: DropMenu', () => {
       'should hand the focus back to Drop when the drop $outcome',
       async ({ status, emulate }) => {
         emulate();
-        const write = holdRequest({
-          method: 'post',
-          url: DROP_URL,
-          answer: () => new HttpResponse(null, { status }),
-        });
+        const write = holdPost(DROP_URL, status);
         renderComponent(DropMenu, { props: { show: SILO_DROP_SHOW } });
-        await openMenuFromKeyboard(
-          await settledControl(DROP_NAME),
-          'Right now',
-        );
-        await userEvent.keyboard('{Enter}');
+        await dropFromKeyboard(await settledControl(DROP_NAME));
         const restore = await screen.findByRole('button', {
           name: 'Restore show "Silo"',
         });
@@ -470,11 +623,7 @@ describe('component: DropMenu', () => {
       'should hand the focus back to Restore when the restore fails, where removal $removal',
       async ({ emulate }) => {
         emulate();
-        const write = holdRequest({
-          method: 'post',
-          url: RESTORE_URL,
-          answer: () => new HttpResponse(null, { status: 500 }),
-        });
+        const write = holdPost(RESTORE_URL, 500);
         renderComponent(DropMenu, { props: { show: DEVS_DROP_SHOW } });
         await userEvent.click(await settledControl(RESTORE_NAME));
         await answerDialog('Restore this show?', 'Yes, restore it!');
@@ -532,12 +681,10 @@ describe('component: DropMenu', () => {
       const other = renderComponent(DropMenu, {
         props: { show: SILO_DROP_SHOW },
       });
-      await openMenuFromKeyboard(
-        await settledControl(DROP_NAME, pressed.container),
-        'Right now',
-      );
 
-      await userEvent.keyboard('{Enter}');
+      await dropFromKeyboard(
+        await settledControl(DROP_NAME, pressed.container),
+      );
 
       const restore = await within(pressed.container).findByRole('button', {
         name: 'Restore show "Silo"',

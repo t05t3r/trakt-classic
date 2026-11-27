@@ -1,13 +1,12 @@
 import { currentUserSettingsQuery } from '$lib/features/auth/queries/currentUserSettingsQuery.ts';
 import { fetchPageQuery } from '$lib/features/query/fetchPageQuery.ts';
+import { SIGNED_IN_ALIAS } from '$lib/utils/url/SIGNED_IN_ALIAS.ts';
+import { USER_SEGMENT } from '$lib/utils/url/USER_SEGMENT.ts';
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutLoad } from './$types';
 
 // The settings read needs the browser's token, which the server never holds.
 export const ssr = false;
-
-const SIGNED_IN_ALIAS = 'me';
-const USER_SEGMENT = /^\/users\/[^/]+/;
 
 export const load: LayoutLoad = async (
   { parent, params, url, untrack, fetch },

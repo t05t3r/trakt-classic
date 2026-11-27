@@ -7,7 +7,6 @@ import { SeasonSiloMappedMock } from '$mocks/data/summary/seasons/silo/mapped/Se
 import { isPlaceholder } from '$lib/features/image/isPlaceholder.ts';
 import { PLACEHOLDERS } from '$lib/features/image/placeholders.ts';
 import { SPECIALS } from '$lib/utils/media/SPECIALS.ts';
-import { SILO_PROGRESS_URL } from '$mocks/data/shows/SILO_PROGRESS_URL.ts';
 import { SILO_SEASON_ONE_EPISODES_URL } from '$mocks/data/shows/SILO_SEASON_ONE_EPISODES_URL.ts';
 import { SILO_SEASONS_URL } from '$mocks/data/shows/SILO_SEASONS_URL.ts';
 import { SILO_SEASON_PEOPLE_URL } from '$mocks/data/shows/SILO_SEASON_PEOPLE_URL.ts';
@@ -26,6 +25,7 @@ import { ShowSiloSeasonsWithSpecialsResponseMock } from '$mocks/data/summary/sho
 import { ShowSiloSeasonsResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloSeasonsResponseMock.ts';
 import { ShowSiloSeasonFourResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloSeasonFourResponseMock.ts';
 import { isEmpty } from '$lib/utils/array/isEmpty.ts';
+import { serveSiloProgress } from '$test/beds/progress/serveSiloProgress.ts';
 import { kindsOf } from '$test/beds/query/kindsOf.ts';
 import { runQuery } from '$test/beds/query/runQuery.ts';
 import { nextOf } from '$test/beds/query/nextOf.ts';
@@ -242,14 +242,11 @@ describe('store: useSeason', () => {
     });
 
     it('should read a season the progress does not list as empty', async () => {
-      server.use(
-        http.get(SILO_PROGRESS_URL, () =>
-          HttpResponse.json({
-            ...ShowSiloProgressResponseMock,
-            seasons: ShowSiloProgressResponseMock.seasons
-              .filter(({ number }) => number !== SILO_SEASON_PARAMS.season),
-          })),
-      );
+      serveSiloProgress({
+        ...ShowSiloProgressResponseMock,
+        seasons: ShowSiloProgressResponseMock.seasons
+          .filter(({ number }) => number !== SILO_SEASON_PARAMS.season),
+      });
       const status = await readProgress();
       const kinds = kindsOf(status);
 

@@ -25,4 +25,20 @@ describe('getLatestDate', () => {
   it('should return undefined for no dates', () => {
     expect(getLatestDate([])).toBeUndefined();
   });
+
+  it('should skip the missing dates', () => {
+    const dates = [
+      null,
+      new Date('2024-02-10T20:00:00.000Z'),
+      undefined,
+      new Date('2024-01-10T20:00:00.000Z'),
+      null,
+    ];
+
+    expect(getLatestDate(dates)).toEqual(new Date('2024-02-10T20:00:00.000Z'));
+  });
+
+  it('should return undefined when every date is missing', () => {
+    expect(getLatestDate([undefined, null])).toBeUndefined();
+  });
 });

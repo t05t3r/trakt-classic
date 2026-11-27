@@ -35,7 +35,7 @@ export type QuickActionsTarget =
     number: number;
     episodes: { count: number; aired: number };
     airDate: Date | Nil;
-    show: { id: number; title: string };
+    show: { id: number; title: string; slug: string };
   };
 
 export type QuickActionsProps = {
@@ -49,8 +49,10 @@ export type QuickActionsProps = {
   // When that Play was watched, for the icon's hover text.
   playedAt?: Date;
   // The card's media has a Play: its watch icon shows even when unaired and reads played.
-  // With no `historyId`, a press removes all its Plays.
+  // With no `historyId`, a press removes all its Plays, or on a partly watched show or season asks Watch remaining or Remove all.
   hasPlay?: true;
   // Told whether the Target has a Play: undefined until known, then held through a refetch.
   metadata?: Snippet<[boolean | undefined]>;
+  // Drawn in place of the watch, list and favourite icons.
+  status?: Snippet;
 };

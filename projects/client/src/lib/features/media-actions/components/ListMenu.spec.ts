@@ -10,13 +10,13 @@ import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import ListMenuHost from '$test/beds/media-actions/ListMenuHost.svelte';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { pagedResponse } from '$test/beds/request/pagedResponse.ts';
 import { recordWrites } from '$test/beds/request/recordWrites.ts';
 import { servePaged } from '$test/beds/request/servePaged.ts';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const setLayout = fakeLayouts({
@@ -206,11 +206,9 @@ describe('component: ListMenu', () => {
     );
 
     it('should flip a row on click, before its write lands', async () => {
-      const write = holdRequest({
-        method: 'post',
-        url: `http://localhost/users/me/lists/${UNLISTED_ID}/items`,
-        answer: () => new HttpResponse(null, { status: 201 }),
-      });
+      const write = holdPost(
+        `http://localhost/users/me/lists/${UNLISTED_ID}/items`,
+      );
       const writes = recordWrites();
       renderComponent(ListMenuHost, { props: MATRIX });
       await openMenu();

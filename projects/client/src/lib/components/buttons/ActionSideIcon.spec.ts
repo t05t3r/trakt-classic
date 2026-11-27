@@ -1,3 +1,5 @@
+import { readHint } from '$lib/components/tooltip/hint.svelte.ts';
+import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import IconCirclePlus from '@tabler/icons-svelte/icons/circle-plus';
@@ -5,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ActionSideIconMenuHost from '$test/beds/buttons/ActionSideIconMenuHost.svelte';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
+import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
 import ActionSideIcon from './ActionSideIcon.svelte';
 
 beforeEach(() => {
@@ -13,7 +16,7 @@ beforeEach(() => {
 
 describe('component: ActionSideIcon', () => {
   it('should carry its label as accessible name and, on hover, in a tooltip', async () => {
-    render(ActionSideIcon, {
+    renderComponent(ActionSideIcon, {
       props: { icon: IconCirclePlus, label: 'Add another play' },
     });
 
@@ -64,16 +67,27 @@ describe('component: ActionSideIcon', () => {
     expect(button).toHaveAttribute('type', 'button');
   });
 
-  it('should stay out of reach with no tooltip while disabled', async () => {
+  it('should stay out of reach with no tooltip while disabled', () => {
     render(ActionSideIcon, {
       props: { icon: IconCirclePlus, label: 'Drop', disabled: true },
     });
 
     const button = screen.getByRole('button', { name: 'Drop' });
-    await userEvent.hover(button);
 
-    await waitNegativeClaim();
     expect(button).toBeDisabled();
+    expect(readHint(button)).toBeUndefined();
+  });
+
+  it('should show no tooltip on the keyboard focus while inert', async () => {
+    renderComponent(ActionSideIcon, {
+      props: { icon: IconCirclePlus, label: 'Drop', ...INERT_TRIGGER_PROPS },
+    });
+
+    await userEvent.tab();
+    const button = screen.getByRole('button', { name: 'Drop' });
+
+    expect(button).toHaveFocus();
+    await waitNegativeClaim();
     expect(button).toHaveAccessibleDescription('');
     expect(screen.queryByRole('tooltip')).toBeNull();
   });

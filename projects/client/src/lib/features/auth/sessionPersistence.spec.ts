@@ -5,6 +5,7 @@ import { OAUTH_TOKEN_URL } from '$mocks/data/auth/OAUTH_TOKEN_URL.ts';
 import { server } from '$mocks/server.ts';
 import { mockRequestEvent } from '$test/request/mockRequestEvent.ts';
 import { silenceWarnings } from '$test/beds/console/silenceWarnings.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { createSessionRotator } from './createSessionRotator.ts';
@@ -52,13 +53,9 @@ describe('sessionPersistence', () => {
   });
 
   it('should rotate as the OAuth App and hold the fresh pair', async () => {
-    const tokenBodies: Array<Record<string, unknown>> = [];
-    server.use(
-      http.post(OAUTH_TOKEN_URL, async ({ request }) => {
-        tokenBodies.push(await request.json() as Record<string, unknown>);
-        return HttpResponse.json(OAuthTokenResponseMock);
-      }),
-    );
+    const tokenBodies = recordBodies(OAUTH_TOKEN_URL, {
+      answer: () => HttpResponse.json(OAuthTokenResponseMock),
+    });
     const event = authEvent();
     const session = { ...SessionMappedMock, refresh: 'rotate-success-refresh' };
     sessionPersistence.begin(event, session);

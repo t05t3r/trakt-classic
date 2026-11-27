@@ -4,6 +4,7 @@ import { OAuthTokenResponseMock } from '$mocks/data/auth/response/OAuthTokenResp
 import { OAUTH_TOKEN_URL } from '$mocks/data/auth/OAUTH_TOKEN_URL.ts';
 import { server } from '$mocks/server.ts';
 import { silenceWarnings } from '$test/beds/console/silenceWarnings.ts';
+import { recordBodies } from '$test/beds/request/recordBodies.ts';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createSessionRotator } from './createSessionRotator.ts';
@@ -94,13 +95,9 @@ describe('createSessionRotator', () => {
   });
 
   it('should coalesce concurrent rotations of the same Session into a single origin call', async () => {
-    const tokenBodies: Array<Record<string, unknown>> = [];
-    server.use(
-      http.post(OAUTH_TOKEN_URL, async ({ request }) => {
-        tokenBodies.push(await request.json() as Record<string, unknown>);
-        return HttpResponse.json(OAuthTokenResponseMock);
-      }),
-    );
+    const tokenBodies = recordBodies(OAUTH_TOKEN_URL, {
+      answer: () => HttpResponse.json(OAuthTokenResponseMock),
+    });
     const rotator = createSessionRotator({ app: OAuthAppMappedMock, fetch });
     const session = {
       access: 'old-access',
@@ -119,13 +116,9 @@ describe('createSessionRotator', () => {
   });
 
   it('should reuse a settled success for a sequential rotation of the same Session', async () => {
-    const tokenBodies: Array<Record<string, unknown>> = [];
-    server.use(
-      http.post(OAUTH_TOKEN_URL, async ({ request }) => {
-        tokenBodies.push(await request.json() as Record<string, unknown>);
-        return HttpResponse.json(OAuthTokenResponseMock);
-      }),
-    );
+    const tokenBodies = recordBodies(OAUTH_TOKEN_URL, {
+      answer: () => HttpResponse.json(OAuthTokenResponseMock),
+    });
     const rotator = createSessionRotator({ app: OAuthAppMappedMock, fetch });
     const session = {
       access: 'old-access',
@@ -148,13 +141,9 @@ describe('createSessionRotator', () => {
     });
     const start = new Date('2026-01-01T00:00:00Z').getTime();
     vi.setSystemTime(start);
-    const tokenBodies: Array<Record<string, unknown>> = [];
-    server.use(
-      http.post(OAUTH_TOKEN_URL, async ({ request }) => {
-        tokenBodies.push(await request.json() as Record<string, unknown>);
-        return HttpResponse.json(OAuthTokenResponseMock);
-      }),
-    );
+    const tokenBodies = recordBodies(OAUTH_TOKEN_URL, {
+      answer: () => HttpResponse.json(OAuthTokenResponseMock),
+    });
     const rotator = createSessionRotator({ app: OAuthAppMappedMock, fetch });
     const session = {
       access: 'old-access',

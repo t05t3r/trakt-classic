@@ -1,10 +1,14 @@
+import { LATEST_WATCHED_AT } from '$mocks/data/sync/LATEST_WATCHED_AT.ts';
 import { WATCHED_PROGRESS_URL } from '$mocks/data/sync/WATCHED_PROGRESS_URL.ts';
+import { WatchedProgressMappedMock } from '$mocks/data/sync/mapped/WatchedProgressMappedMock.ts';
+import { WatchedProgressResponseMock } from '$mocks/data/sync/response/WatchedProgressResponseMock.ts';
 import { ShowDevsMappedMock } from '$mocks/data/summary/shows/devs/ShowDevsMappedMock.ts';
 import { ShowDevsResponseMock } from '$mocks/data/summary/shows/devs/ShowDevsResponseMock.ts';
 import { ShowSiloMappedMock } from '$mocks/data/summary/shows/silo/mapped/ShowSiloMappedMock.ts';
 import { ShowSiloResponseMock } from '$mocks/data/summary/shows/silo/response/ShowSiloResponseMock.ts';
 import { InvalidateAction } from '$lib/requests/models/InvalidateAction.ts';
 import { MAX_PAGE_LIMIT } from '$lib/requests/MAX_PAGE_LIMIT.ts';
+import { time } from '$lib/utils/timing/time.ts';
 import { createTestBedInfiniteQuery } from '$test/beds/query/createTestBedInfiniteQuery.ts';
 import { observeInvalidation } from '$test/beds/query/observeInvalidation.ts';
 import { renderSnapshot } from '$test/beds/query/renderSnapshot.ts';
@@ -17,42 +21,140 @@ import { readKnown } from '$test/beds/store/readKnown.ts';
 import { watchedProgressRow } from '$test/beds/request/watchedProgressRow.ts';
 import { mapToEntries } from '$test/utils/mapToEntries.ts';
 import { describe, expect, it } from 'vitest';
-import { watchedShowsProgressQuery } from './watchedShowsProgressQuery.ts';
+import {
+  type WatchedShowsProgressParams,
+  watchedShowsProgressQuery,
+} from './watchedShowsProgressQuery.ts';
 
-const SILO_DATE = '2025-01-31T23:12:41.000Z';
 const DEVS_DATE = '2025-01-30T20:00:00.000Z';
-const SILO_ROW = watchedProgressRow(ShowSiloResponseMock, SILO_DATE);
-const DEVS_ROW = watchedProgressRow(ShowDevsResponseMock, DEVS_DATE);
+const SILO_ROW = watchedProgressRow({
+  show: ShowSiloResponseMock,
+  lastWatchedAt: LATEST_WATCHED_AT,
+});
+const DEVS_ROW = watchedProgressRow({
+  show: ShowDevsResponseMock,
+  lastWatchedAt: DEVS_DATE,
+});
 
-function readEntries() {
+const SORTED_PARAMS: WatchedShowsProgressParams = {
+  sortBy: 'title',
+  sortHow: 'asc',
+  hideCompleted: true,
+};
+
+function readEntries(params?: WatchedShowsProgressParams) {
   return runQuery({
-    factory: () => createTestBedInfiniteQuery(watchedShowsProgressQuery()),
+    factory: () =>
+      createTestBedInfiniteQuery(watchedShowsProgressQuery(params)),
     mapper: mapToEntries,
   });
 }
 
-describe('watchedShowsProgressQuery', () => {
-  it('should map a dated row to its show and its date', async () => {
-    servePaged({ url: WATCHED_PROGRESS_URL, body: [SILO_ROW] });
+async function readWithSearches(params?: WatchedShowsProgressParams) {
+  const searches = recordSearches(
+    WATCHED_PROGRESS_URL,
+    WatchedProgressResponseMock,
+  );
 
-    expect(await readEntries()).toEqual([
-      { show: ShowSiloMappedMock, watchedAt: new Date(SILO_DATE) },
-    ]);
+  const entries = await readEntries(params);
+
+  return {
+    entries,
+    searches: searches.map((search) => Object.fromEntries(search)),
+  };
+}
+
+describe('watchedShowsProgressQuery', () => {
+  describe('at the default params', () => {
+    it('should ask for every show by its date added, newest first', async () => {
+      const { searches } = await readWithSearches();
+
+      expect(searches).toEqual([
+        expect.objectContaining({
+          extended: 'full,images',
+          limit: String(MAX_PAGE_LIMIT),
+          page: '1',
+          sort_by: 'added',
+          sort_how: 'desc',
+        }),
+      ]);
+      expect(searches.at(0)).not.toHaveProperty('hide_completed');
+    });
+
+    it('should map each row to its show, its progress and its episodes', async () => {
+      const { entries } = await readWithSearches();
+
+      expect(entries).toEqual(WatchedProgressMappedMock);
+    });
+
+    it('should share one key with a call at the explicit defaults', () => {
+      expect(watchedShowsProgressQuery().queryKey).toEqual(
+        watchedShowsProgressQuery({
+          page: 1,
+          sortBy: 'added',
+          sortHow: 'desc',
+          hideCompleted: false,
+        }).queryKey,
+      );
+    });
+  });
+
+  describe('at a sorted, hide-completed set', () => {
+    it('should ask for its sort, hiding the completed shows', async () => {
+      const { searches } = await readWithSearches(SORTED_PARAMS);
+
+      expect(searches).toEqual([
+        expect.objectContaining({
+          extended: 'full,images',
+          limit: String(MAX_PAGE_LIMIT),
+          page: '1',
+          sort_by: 'title',
+          sort_how: 'asc',
+          hide_completed: 'true',
+        }),
+      ]);
+    });
+
+    it('should map each row as at the default params', async () => {
+      const { entries } = await readWithSearches(SORTED_PARAMS);
+
+      expect(entries).toEqual(WatchedProgressMappedMock);
+    });
+  });
+
+  it.each(
+    [
+      { sortBy: 'title' },
+      { sortHow: 'asc' },
+      { hideCompleted: true },
+      { page: 2 },
+    ] as const,
+  )('should have a key of its own at %o alone', (params) => {
+    expect(watchedShowsProgressQuery(params).queryKey).not.toEqual(
+      watchedShowsProgressQuery().queryKey,
+    );
   });
 
   it.each([null, undefined])(
-    'should drop a row whose date is %s, since that show has no Play',
+    'should keep a row whose date is %s, with no episodes',
     async (lastWatchedAt) => {
       servePaged({
         url: WATCHED_PROGRESS_URL,
         body: [
-          watchedProgressRow(ShowDevsResponseMock, lastWatchedAt),
-          SILO_ROW,
+          watchedProgressRow({
+            show: ShowDevsResponseMock,
+            lastWatchedAt,
+          }),
         ],
       });
 
       expect(await readEntries()).toEqual([
-        { show: ShowSiloMappedMock, watchedAt: new Date(SILO_DATE) },
+        expect.objectContaining({
+          show: ShowDevsMappedMock,
+          lastWatchedAt: null,
+          nextEpisode: null,
+          lastEpisode: null,
+        }),
       ]);
     },
   );
@@ -66,32 +168,24 @@ describe('watchedShowsProgressQuery', () => {
 
     const { snapshot } = await renderSnapshot(
       watchedShowsProgressQuery(),
-      (entries) => entries,
+      (entries) =>
+        entries.map(({ show, lastWatchedAt }) => ({ show, lastWatchedAt })),
     );
 
     expect(await readKnown(snapshot)).toEqual([
-      { show: ShowSiloMappedMock, watchedAt: new Date(SILO_DATE) },
-      { show: ShowDevsMappedMock, watchedAt: new Date(DEVS_DATE) },
+      { show: ShowSiloMappedMock, lastWatchedAt: new Date(LATEST_WATCHED_AT) },
+      { show: ShowDevsMappedMock, lastWatchedAt: new Date(DEVS_DATE) },
     ]);
   });
 
-  it('should ask for the most a page holds, with the art', async () => {
-    const searches = recordSearches(WATCHED_PROGRESS_URL, []);
-
-    await readEntries();
-
-    expect(searches.map((search) => Object.fromEntries(search))).toEqual([
-      expect.objectContaining({
-        extended: 'full,images',
-        limit: String(MAX_PAGE_LIMIT),
-        page: '1',
-      }),
-    ]);
+  it('should stay fresh for 15 minutes', () => {
+    expect(watchedShowsProgressQuery().staleTime).toBe(time.minutes(15));
   });
 
   it.each([
     InvalidateAction.MarkAsWatched('show'),
     InvalidateAction.MarkAsWatched('episode'),
+    InvalidateAction.HideProgress,
   ])('should refetch on %s', async (action) => {
     const invalidate = await observeInvalidation(() =>
       createTestBedInfiniteQuery(watchedShowsProgressQuery())

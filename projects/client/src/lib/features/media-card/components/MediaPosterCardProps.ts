@@ -23,6 +23,8 @@ export type MediaPosterCardProps =
     playedAt?: Date;
     // The card's media has a Play, read as `QuickActions` reads it.
     hasPlay?: true;
+    // A last dimmer line in the poster's tooltip.
+    tooltipLine?: string;
     badges?: Snippet;
     progress?: Snippet;
   }

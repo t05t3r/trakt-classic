@@ -7,6 +7,8 @@ import { SeasonSchema } from '$lib/requests/models/Season.ts';
 
 type ShowSeasonsParams = {
   slug: string;
+  // False reads only what another read of the show cached.
+  enabled?: boolean;
 } & ApiParams;
 
 const showSeasonsRequest = (
@@ -31,4 +33,5 @@ export const showSeasonsQuery = defineQuery({
   mapper: (response) => response.body.map(mapToSeason),
   schema: z.array(SeasonSchema),
   ttl: time.hours(3),
+  enabled: (params) => params.enabled ?? true,
 });

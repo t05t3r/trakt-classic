@@ -51,6 +51,7 @@ export const upNextQuery = defineQuery({
     InvalidateAction.Restore,
     InvalidateAction.Watchlisted('show'),
     InvalidateAction.Watchlisted('season'),
+    InvalidateAction.HideProgress,
   ],
   dependencies: [],
   request: upNextRequest,

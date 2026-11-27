@@ -4,7 +4,7 @@ import type { PosterCardMedia } from './PosterCardProps.ts';
 
 export type FanartCardMedia = Extract<
   PosterCardMedia,
-  { type: 'movie' | 'episode' }
+  { type: 'movie' | 'show' | 'episode' }
 >;
 
 export type FanartCardProps = {
@@ -17,8 +17,8 @@ export type FanartCardProps = {
   caption?: Snippet;
   badges?: Snippet;
   actions?: Snippet;
-  // Leaves an episode's show line out where the show is already known.
-  omitShowLine?: boolean;
+  // An episode's show line: 'never' where the show is already known, 'phone' below 768px only.
+  showLine?: 'always' | 'phone' | 'never';
   // 'phone' shows the titles over the art below 768px only, for a caller that sets them beside the card.
   titles?: 'always' | 'phone';
 };

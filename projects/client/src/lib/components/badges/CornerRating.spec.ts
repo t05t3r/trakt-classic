@@ -1,4 +1,7 @@
-import { render, screen } from '@testing-library/svelte';
+import { renderComponent } from '$test/beds/component/renderComponent.ts';
+import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
+import { render, screen, waitFor } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import CornerRating from './CornerRating.svelte';
 
@@ -17,8 +20,31 @@ describe('component: CornerRating', () => {
     render(CornerRating, { props: { rating: 8, label: 'Your rating: 8' } });
 
     expect(screen.getByRole('img', { name: 'Your rating: 8' }))
-      .toHaveAttribute('title', 'Your rating: 8');
+      .toBeInTheDocument();
     expect(screen.getByText('8')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('should show its label in a tooltip on a hover', async () => {
+    stubClientRects();
+    renderComponent(CornerRating, {
+      props: { rating: 8, label: 'Your rating: 8' },
+    });
+    const corner = screen.getByRole('img', { name: 'Your rating: 8' });
+
+    await userEvent.hover(corner);
+
+    await waitFor(() =>
+      expect(corner).toHaveAccessibleDescription('Your rating: 8')
+    );
+    expect(corner).not.toHaveAttribute('title');
+  });
+
+  it('should add no tab stop', async () => {
+    render(CornerRating, { props: { rating: 8, label: 'Your rating: 8' } });
+
+    await userEvent.tab();
+
+    expect(document.body).toHaveFocus();
   });
 
   it('should mark the small corner by its size', () => {

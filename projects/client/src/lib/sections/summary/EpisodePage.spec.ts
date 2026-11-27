@@ -17,6 +17,7 @@ import { ShowSiloSeasonsMappedMock } from '$mocks/data/summary/shows/silo/mapped
 import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { fakeLayouts } from '$test/beds/css/fakeLayouts.ts';
 import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
+import { ratingCornerNames } from '$test/beds/summary/ratingCornerNames.ts';
 import { openAt } from '$test/beds/url/openAt.ts';
 import { waitNegativeClaim } from '$test/beds/promise/waitNegativeClaim.ts';
 import type { EpisodeResponse } from '@trakt/api';
@@ -33,11 +34,6 @@ const setLayout = fakeLayouts({
 function serveEpisode(body: EpisodeResponse) {
   server.use(http.get(SILO_EPISODE_SUMMARY_URL, () => HttpResponse.json(body)));
 }
-
-const cornerNames = () =>
-  screen.queryAllByRole('img', { name: /^Your rating/ }).map((corner) =>
-    corner.getAttribute('aria-label')
-  );
 
 function findBreadcrumb() {
   return screen.findByRole('heading', { level: 2, name: /^Silo:/ });
@@ -287,7 +283,10 @@ describe('component: EpisodePage', () => {
       renderPage();
 
       await waitFor(() =>
-        expect(cornerNames()).toEqual(['Your rating: 10', 'Your rating: 10'])
+        expect(ratingCornerNames()).toEqual([
+          'Your rating: 10',
+          'Your rating: 10',
+        ])
       );
     });
 
@@ -302,7 +301,10 @@ describe('component: EpisodePage', () => {
       );
 
       await waitFor(() =>
-        expect(cornerNames()).toEqual(['Your rating: 10', 'Your rating: 10'])
+        expect(ratingCornerNames()).toEqual([
+          'Your rating: 10',
+          'Your rating: 10',
+        ])
       );
     });
 

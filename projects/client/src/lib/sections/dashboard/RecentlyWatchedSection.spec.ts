@@ -14,8 +14,12 @@ import { cards } from '$test/beds/dashboard/cards.ts';
 import { readyCards } from '$test/beds/dashboard/readyCards.ts';
 import { renderSection } from '$test/beds/dashboard/renderSection.ts';
 import { answerDialog } from '$test/beds/dialogs/answerDialog.ts';
+import { ariaLabelsOf } from '$test/beds/dom/ariaLabelsOf.ts';
+import { emulateHydrated } from '$test/beds/hydration/emulateHydrated.ts';
+import { captionTags } from '$test/beds/media-card/captionTags.ts';
 import { stubClientRects } from '$test/beds/menus/stubClientRects.ts';
 import { collapsedCells } from '$test/beds/pagination/collapsedCells.ts';
+import { holdPost } from '$test/beds/request/holdPost.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { holdResponse } from '$test/beds/request/holdResponse.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
@@ -159,7 +163,10 @@ describe('section: RecentlyWatchedSection', () => {
     await userEvent.click(retry);
 
     expect(
-      await within(region).findByRole('link', { name: '1x01 Freedom Day' }),
+      await within(region).findByRole('heading', {
+        level: 3,
+        name: '1x01 Freedom Day',
+      }),
     ).toBeVisible();
   });
 
@@ -202,8 +209,13 @@ describe('section: RecentlyWatchedSection', () => {
         'href',
         '/shows/silo/seasons/1/episodes/1',
       );
-      expect(within(episode).getByRole('link', { name: '1x01 Freedom Day' }))
-        .toHaveAttribute('href', '/shows/silo/seasons/1/episodes/1');
+      expect(
+        within(episode).getAllByRole('link', { name: '1x01 Freedom Day' })
+          .map((link) => link.getAttribute('href')),
+      ).toEqual([
+        '/shows/silo/seasons/1/episodes/1',
+        '/shows/silo/seasons/1/episodes/1',
+      ]);
       expect(within(episode).getByRole('link', { name: 'Silo' }))
         .toHaveAttribute('href', '/shows/silo');
     });
@@ -231,7 +243,7 @@ describe('section: RecentlyWatchedSection', () => {
       );
     });
 
-    it('should name each art link by its image alone, with the rating corner shown', async () => {
+    it("should name each art link by its card's title alone, with the rating corner shown", async () => {
       const { episode, movie } = await readyFixtureCards();
       await waitFor(() =>
         [episode, movie].forEach((card) =>
@@ -239,15 +251,13 @@ describe('section: RecentlyWatchedSection', () => {
         )
       );
 
-      expect(
-        within(episode).getByRole('link', { name: 'Silo 1x01 screenshot' }),
-      ).toHaveClass('fanart-link');
-      expect(
-        within(movie).getByRole('link', { name: '"Heretic" fanart' }),
-      ).toHaveClass('fanart-link');
+      expect(episode.querySelector('a.fanart-link'))
+        .toHaveAccessibleName('1x01 Freedom Day');
+      expect(movie.querySelector('a.fanart-link'))
+        .toHaveAccessibleName('Heretic');
     });
 
-    it('should name an art link with no screenshot by its tooltip', async () => {
+    it("should name an art link with no screenshot by its card's title", async () => {
       const play: ActivityHistoryResponse = {
         id: 1,
         watched_at: '2025-01-31T23:12:41.000Z',
@@ -266,28 +276,34 @@ describe('section: RecentlyWatchedSection', () => {
       if (!card) throw new Error('no card');
 
       expect(card.querySelector('img:not(.placeholder)')).toBeNull();
-      expect(
-        within(card).getByRole('link', { name: 'Silo\n1x01 "Freedom Day"' }),
-      ).toHaveClass('fanart-link');
+      expect(card.querySelector('a.fanart-link'))
+        .toHaveAccessibleName('1x01 Freedom Day');
     });
 
-    it("should caption an episode with its type before the play's date", async () => {
+    it("should caption an episode with its type, then the play's date once the page has hydrated", async () => {
       const { episode } = await readyFixtureCards();
+      expect(captionTags(episode)).toEqual(['Series Premiere']);
 
-      const caption = episode.querySelector('.caption');
-      expect(
-        [...(caption?.children ?? [])].map((tag) => tag.textContent?.trim()),
-      ).toEqual(['Series Premiere', '31 Jan 2025 23:12']);
-      expect(caption?.querySelector('.trakt-caption-tag'))
+      emulateHydrated();
+
+      await waitFor(() =>
+        expect(captionTags(episode))
+          .toEqual(['Series Premiere', '31 Jan 2025 23:12'])
+      );
+      expect(episode.querySelector('.caption .trakt-caption-tag'))
         .toHaveTextContent('31 Jan 2025 23:12');
     });
 
-    it("should caption a movie with the play's date only", async () => {
+    it("should caption a movie with the play's date only, once the page has hydrated", async () => {
       const { movie } = await readyFixtureCards();
+      expect(captionTags(movie)).toEqual([]);
 
+      emulateHydrated();
+
+      await waitFor(() =>
+        expect(captionTags(movie)).toEqual(['31 Jan 2025 23:12'])
+      );
       expect(movie.querySelector('.trakt-episode-type-tag')).toBeNull();
-      expect(movie.querySelector('.caption .trakt-caption-tag'))
-        .toHaveTextContent('31 Jan 2025 23:12');
     });
 
     it("should rate a Play's card from its percentage, so a slow history cannot block it", async () => {
@@ -327,7 +343,7 @@ describe('section: RecentlyWatchedSection', () => {
 
       const icons = await settledIcons(episode, 3);
 
-      expect(icons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
+      expect(ariaLabelsOf(icons)).toEqual([
         'Remove "Freedom Day" from your History',
         'Add or remove "Freedom Day" from lists',
         'Remove "Silo" from your Favorites',
@@ -465,11 +481,7 @@ describe('section: RecentlyWatchedSection', () => {
     );
 
     it('should keep the watch icon of an episode with no air date in place and pending while a confirmed remove is held', async () => {
-      holdRequest({
-        method: 'post',
-        url: SYNC_HISTORY_REMOVE_URL,
-        answer: () => new HttpResponse(null, { status: 200 }),
-      });
+      holdPost(SYNC_HISTORY_REMOVE_URL, 200);
       serve(() =>
         pagedResponse({
           body: datedPlays({ episode: { first_aired: null } }),

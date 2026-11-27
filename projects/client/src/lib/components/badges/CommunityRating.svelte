@@ -78,6 +78,16 @@
       }
     }
 
+    &[data-variant='inline'] {
+      gap: var(--ni-4);
+      font: inherit;
+
+      :global(.community-rating-heart) {
+        width: var(--icon-size-strip-heart);
+        height: var(--icon-size-strip-heart);
+      }
+    }
+
     &[data-variant='summary'] {
       align-items: flex-start;
       gap: var(--ni-7);

@@ -13,6 +13,8 @@ import { SILO_EPISODE_OFFICIAL_LISTS_URL } from '$mocks/data/shows/SILO_EPISODE_
 import { SILO_EPISODE_PERSONAL_LISTS_URL } from '$mocks/data/shows/SILO_EPISODE_PERSONAL_LISTS_URL.ts';
 import { SILO_LAST_EPISODE_URL } from '$mocks/data/shows/SILO_LAST_EPISODE_URL.ts';
 import { SILO_PROGRESS_URL } from '$mocks/data/shows/SILO_PROGRESS_URL.ts';
+import { DEVS_SUMMARY_URL } from '$mocks/data/shows/DEVS_SUMMARY_URL.ts';
+import { ShowDevsProgressResponseMock } from '$mocks/data/summary/shows/devs/response/ShowDevsProgressResponseMock.ts';
 import { SILO_SEASON_OFFICIAL_LISTS_URL } from '$mocks/data/shows/SILO_SEASON_OFFICIAL_LISTS_URL.ts';
 import { SILO_SEASON_ONE_EPISODES_URL } from '$mocks/data/shows/SILO_SEASON_ONE_EPISODES_URL.ts';
 import { SILO_SEASON_PERSONAL_LISTS_URL } from '$mocks/data/shows/SILO_SEASON_PERSONAL_LISTS_URL.ts';
@@ -100,6 +102,12 @@ export const shows = [
     SILO_PROGRESS_URL,
     () => {
       return HttpResponse.json(ShowSiloProgressResponseMock);
+    },
+  ),
+  http.get(
+    `${DEVS_SUMMARY_URL}/progress/watched`,
+    () => {
+      return HttpResponse.json(ShowDevsProgressResponseMock);
     },
   ),
   http.get(

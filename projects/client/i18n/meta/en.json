@@ -948,7 +948,7 @@
     },
     "tooltip_text_dropped_on": {
       "default": "Dropped on {date}",
-      "description": "Tooltip and accessible name of the dropped badge on a show's poster or fanart, giving the date and time the user dropped the show.",
+      "description": "Tooltip and accessible name of the dropped badge on a show's poster or fanart, and the tooltip on the date of a dropped progress row's 'Dropped on' line, giving the date and time the user dropped the show.",
       "variables": {
         "date": {
           "type": "string"
@@ -1044,7 +1044,7 @@
     },
     "tooltip_text_watched_percent": {
       "default": "<b>{percent}</b> watched",
-      "description": "Hover text of a card's watch icon on a show or season with plays; percent is an already-formatted whole-number percentage, as in '83%'.",
+      "description": "Hover text of a card's watch icon on a show or season with plays, and of a season's region on a progress row's bar; percent is an already-formatted whole-number percentage, as in '83%'.",
       "variables": {
         "percent": {
           "type": "string"
@@ -1071,9 +1071,32 @@
       "default": "Logout",
       "description": "Aria-label for the logout button."
     },
+    "tag_text_airs_on": {
+      "default": "Airs {date}",
+      "description": "Tag in the hover card of an announced episode's square on a progress season row, with the day it airs, as in 'Airs 9 Jul 2027'; also read after the square's name.",
+      "variables": {
+        "date": {
+          "type": "string",
+          "description": "The day the episode airs, as in 9 Jul 2027.",
+          "required": true
+        }
+      }
+    },
+    "tag_text_complete": {
+      "default": "Complete",
+      "description": "Badge beside the season's name in the tooltip of a season's region on a progress row's bar, when the user has watched every aired episode of the season."
+    },
+    "tag_text_returning": {
+      "default": "Returning",
+      "description": "Tag on the show's card of a caught-up progress row, when the show has neither ended nor been canceled; an ended or canceled show reads its status instead."
+    },
     "tag_text_tba": {
       "default": "TBA",
       "description": "Text for the tag that indicates that something has no release date yet. This should be as short as possible."
+    },
+    "tag_text_up_next": {
+      "default": "Up next",
+      "description": "Tag over the screenshot in the hover card of the episode a progress row's show has next to watch, and the state read after that episode's square; also, before that episode's season and number, as in 'Up next 3x03', the tag in the tooltip of its season's region on a progress row's bar."
     },
     "list_title_related_movies": {
       "default": "Related Movies",
@@ -2140,7 +2163,7 @@
     },
     "image_alt_media_fanart": {
       "default": "\"{title}\" fanart",
-      "description": "Alt text for a movie's fanart image.",
+      "description": "Alt text for a movie's or a show's fanart image.",
       "variables": {
         "title": {
           "type": "string"
@@ -2832,7 +2855,7 @@
     },
     "button_label_options": {
       "default": "Options",
-      "description": "Aria-label for the gear button, in a list's title bar or the ratings toolbar, that opens the toolbar's options panel on phones."
+      "description": "Aria-label for the gear button, in a list, history, ratings or progress toolbar, that opens the toolbar's options panel on phones."
     },
     "button_label_reset_filter": {
       "default": "Reset",
@@ -4950,7 +4973,7 @@
     },
     "tag_text_watched": {
       "default": "Watched",
-      "description": "Text for the tag that is shown before the movie or show watch count. This should be as short as possible."
+      "description": "Text for the tag that is shown before the movie or show watch count, and the state read after a watched episode's square on a progress season row. This should be as short as possible."
     },
     "tag_text_dropped": {
       "default": "Dropped",
@@ -5014,11 +5037,15 @@
     },
     "label_drop_show_at": {
       "default": "When did you drop this?",
-      "description": "Accessible label for the menu that asks when the user dropped a show, and label for the date and time field that asks the same, as a dialog and a field."
+      "description": "Label for the date and time field that asks when the user dropped a show, as a dialog and a field."
     },
-    "button_text_drop_show_now": {
-      "default": "Right now",
-      "description": "Text for the menu item that drops a show as of now."
+    "button_text_drop": {
+      "default": "Drop",
+      "description": "Text for the row of a progress row's status menu that opens a date and time field, to drop the show as of the date chosen."
+    },
+    "button_text_undrop": {
+      "default": "Undrop",
+      "description": "Text for the row of a progress row's status menu that restores a dropped show."
     },
     "button_text_add_to_history": {
       "default": "Add to history",
@@ -5046,7 +5073,7 @@
     },
     "text_action_counts_dropped": {
       "default": "{counts} · {dropped}",
-      "description": "Line under a detail page's history button for a dropped show with progress; counts is its watched and aired episodes and plays, as in '25/30 eps — 25 plays', dropped the word 'Dropped'.",
+      "description": "Line under a detail page's history button for a dropped show with progress; counts is its watched and aired episodes and plays, as in '25 / 30 eps — 25 plays', dropped the word 'Dropped'.",
       "variables": {
         "counts": {
           "type": "string"
@@ -5066,8 +5093,8 @@
       }
     },
     "text_watch_progress_counts": {
-      "default": "{completed}/{total} {unit}",
-      "description": "A show's or season's watched and aired episodes, with no plays known yet; unit is the abbreviated word, as in '25/30 eps'.",
+      "default": "{completed} / {total} {unit}",
+      "description": "A show's or season's watched and aired episodes, with no plays known yet; unit is the abbreviated word, as in '25 / 30 eps'.",
       "variables": {
         "completed": {
           "type": "number"
@@ -5081,8 +5108,8 @@
       }
     },
     "text_watch_progress_counts_plays": {
-      "default": "{completed}/{total} {unit} — {plays}",
-      "description": "A show's or season's watched and aired episodes, then its plays, specials counted in the plays only; unit is the abbreviated word and plays the counted word, as in '25/30 eps — 25 plays'.",
+      "default": "{completed} / {total} {unit} — {plays}",
+      "description": "A show's or season's watched and aired episodes, then its plays, specials counted in the plays only; unit is the abbreviated word and plays the counted word, as in '25 / 30 eps — 25 plays'.",
       "variables": {
         "completed": {
           "type": "number"
@@ -5104,7 +5131,7 @@
     },
     "text_watch_progress_unit_other": {
       "default": "eps",
-      "description": "Abbreviated word after any other total of aired episodes, as in '25/30 eps'."
+      "description": "Abbreviated word after any other total of aired episodes, as in '25 / 30 eps'."
     },
     "text_action_added": {
       "default": "Added {date}",
@@ -5174,10 +5201,6 @@
     "text_leaderboard_you": {
       "default": "You",
       "description": "Label marking the viewer's own entry in the leaderboard."
-    },
-    "text_view_all": {
-      "default": "View all",
-      "description": "Text for the button that allows users to view all items in a list."
     },
     "text_play_count": {
       "default": "{count} plays",
@@ -5260,11 +5283,27 @@
     },
     "button_text_sort_watched_date": {
       "default": "Watched Date",
-      "description": "Text for the history toolbar's one sort entry, which orders items by the date they were watched."
+      "description": "Text for the progress pages' first sort entry, which orders shows by the date they were watched."
     },
-    "button_text_sort_rated_date": {
-      "default": "Rated Date",
-      "description": "Text for the ratings toolbar's one sort entry, which orders items by the date they were rated."
+    "button_text_sort_premiered": {
+      "default": "Premiere Date",
+      "description": "Row of the watched progress page's sort menu that orders shows by the date they premiered."
+    },
+    "button_text_sort_episodes": {
+      "default": "Episodes Left",
+      "description": "Row of the watched progress page's sort menu that orders shows by the number of aired episodes left to watch."
+    },
+    "button_text_sort_time": {
+      "default": "Time Left",
+      "description": "Row of the watched progress page's sort menu that orders shows by the time their unwatched aired episodes take."
+    },
+    "button_text_sort_plays": {
+      "default": "Plays",
+      "description": "Row of the watched progress page's sort menu that orders shows by how many plays they have."
+    },
+    "button_text_sort_dropped_date": {
+      "default": "Dropped Date",
+      "description": "Row of the dropped progress page's sort menu that orders shows by the date they were dropped."
     },
     "button_label_sort_added_date": {
       "default": "Sort by date added",
@@ -5361,6 +5400,117 @@
     "button_description_sort_remaining_asc": {
       "default": "Fewest episodes left",
       "description": "Subtitle shown beneath the remaining-episodes option in the sort drawer when the sort direction is ascending."
+    },
+    "text_progress_last_watched": {
+      "default": "Last watched",
+      "description": "Words before the last episode watched in the pill above a progress row's Seasons button, as in 'Last watched 1x05 \"What to Expect on Your Trip\" 10 hours ago', and before the day the user last watched an episode of a season, in the tooltip of the season's region on a progress row's bar, as in 'Last watched 15 Aug 2026'."
+    },
+    "text_progress_last_episode_title": {
+      "default": "\"{title}\"",
+      "description": "Title of the last episode watched in the pill above a progress row's Seasons button, in quotes after its season and episode number, as in '1x05 \"What to Expect on Your Trip\"'.",
+      "variables": {
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "text_progress_no_aired": {
+      "default": "No episodes have aired yet.",
+      "description": "Line under a progress row's bar in place of its stats when none of the show's episodes has aired."
+    },
+    "text_progress_stat_announced": {
+      "default": "announced",
+      "description": "Word after the number of a season's episodes that are announced but not yet aired, on a progress season row, as in '1 announced'."
+    },
+    "text_progress_stat_left": {
+      "default": "left",
+      "description": "Word after the time and the number of aired episodes not yet watched, in the stats line under a progress row's bar and on a season row, as in '5h 57m (4 eps) left'."
+    },
+    "text_progress_stat_watched": {
+      "default": "watched",
+      "description": "Word after the watched and aired episodes, and after the time watched, in the stats line under a progress row's bar and on a season row, as in '8 / 12 watched' and '11h 49m watched'."
+    },
+    "tooltip_text_episodes_watched": {
+      "default": "Episodes watched",
+      "description": "Tooltip of the watched and aired episodes in the stats line under a progress row's bar and on a season row."
+    },
+    "tooltip_text_time_watched": {
+      "default": "Time watched",
+      "description": "Tooltip of a progress row's time watched, as in '11h 49m watched'."
+    },
+    "text_progress_status_watching": {
+      "default": "Watching",
+      "description": "Text of a progress row's status menu button, and its checked row, for a show the user still has aired episodes of to watch."
+    },
+    "text_progress_status_caught_up": {
+      "default": "Caught Up",
+      "description": "Text of a progress row's status menu button, and its checked row, for a show whose aired episodes the user has all watched; also the label in that show's card on the row, in the strip in place of its watch and list icons."
+    },
+    "text_progress_status_dropped": {
+      "default": "Dropped",
+      "description": "Text of a progress row's status menu button, and its checked row, for a dropped show before the day it was dropped is known."
+    },
+    "text_progress_status_dropped_on": {
+      "default": "Dropped {date}",
+      "description": "Text of a progress row's status menu button, and its checked row, for a dropped show, as in 'Dropped 17 Jun 2026'.",
+      "variables": {
+        "date": {
+          "type": "string"
+        }
+      }
+    },
+    "label_progress_view": {
+      "default": "View",
+      "description": "Accessible name of the progress toolbar's view menu, which lists Watched and Dropped."
+    },
+    "button_label_progress_view": {
+      "default": "View: {view}",
+      "description": "Accessible name of the button that opens the progress toolbar's view menu; view is the selected view's visible label, as in 'View: Watched'.",
+      "variables": {
+        "view": {
+          "type": "string"
+        }
+      }
+    },
+    "text_progress_view_watched": {
+      "default": "Watched",
+      "description": "Row of the progress toolbar's view menu, and its button's text while it is selected, that shows the progress of the shows the user is watching."
+    },
+    "text_progress_view_dropped": {
+      "default": "Dropped",
+      "description": "Row of the progress toolbar's view menu, and its button's text while it is selected, that shows the progress of the shows the user has dropped."
+    },
+    "text_progress_episodes_of": {
+      "default": "{completed} / {aired} episodes",
+      "description": "Shown under the progress toolbar's watched percentage while the pointer rests on it; completed is how many aired episodes of the listed shows the user has watched and aired how many have aired, as in '545 / 783 episodes'.",
+      "variables": {
+        "completed": {
+          "type": "string"
+        },
+        "aired": {
+          "type": "string"
+        }
+      }
+    },
+    "text_progress_time_left": {
+      "default": "Time left to watch",
+      "description": "Label of the progress toolbar's time left, the summed runtime of the listed shows' aired episodes the user has not watched, read after the time and shown as its tooltip; also the tooltip of a progress row's time left."
+    },
+    "text_progress_empty_watched": {
+      "default": "You haven't started any shows yet.",
+      "description": "Shown in place of the progress page's rows when the user has watched no show and neither hiding complete shows nor a single show is set."
+    },
+    "text_progress_empty_hidden": {
+      "default": "Every show is complete — nothing to hide.",
+      "description": "Shown in place of the progress page's rows when hiding complete shows leaves no show to show and no single show is set."
+    },
+    "text_progress_empty_show": {
+      "default": "This show isn't in your watched progress.",
+      "description": "Shown in place of the progress page's rows when the page is narrowed to one show that matches none of the watched rows, such as a dropped show or a complete show while complete shows are hidden."
+    },
+    "button_text_progress_all": {
+      "default": "Back to all shows",
+      "description": "Text of the button in the band under the progress toolbar while the page is narrowed to one show, which clears that show and lists every show again."
     },
     "text_about_user": {
       "default": "About {username}",
@@ -8460,7 +8610,7 @@
     },
     "stat_text_plays": {
       "default": "Plays",
-      "description": "Text for the plays stat, indicating the number of times a movie, show, or episode was watched. This should be as short and concise as possible."
+      "description": "Text for the plays stat, indicating the number of times a movie, show, or episode was watched; also the tooltip of a progress row's plays. This should be as short and concise as possible."
     },
     "limit_title_watch_history": {
       "default": "Watch History",
@@ -9096,6 +9246,10 @@
     "page_title_progress": {
       "default": "Progress",
       "description": "Title for the progress page."
+    },
+    "page_title_progress_dropped": {
+      "default": "Dropped progress",
+      "description": "Title for the progress page's dropped view, which lists the shows the user dropped."
     },
     "button_text_progress_in_progress": {
       "default": "In progress",
@@ -9853,7 +10007,7 @@
     },
     "button_text_no": {
       "default": "No",
-      "description": "Cancel button of the dialog that asks before a dropped show is restored, and of the dialog that asks how much to remove when a single play is removed from the user's history."
+      "description": "Cancel button of the dialogs that ask before a dropped show is restored and before a show's last visible season is hidden, and of the dialog that asks how much to remove when a single play is removed from the user's history."
     },
     "button_text_only_this_play": {
       "default": "Only this play",
@@ -9862,6 +10016,22 @@
     "button_text_all_plays": {
       "default": "All plays",
       "description": "Button of the dialog shown when a single play is removed from the user's history; it removes every play of that movie or episode."
+    },
+    "confirmation_title_watch_remaining": {
+      "default": "What would you like to do?",
+      "description": "Title of the dialog shown when the user presses the watched button of a show or season they have watched only part of; the dialog's body is the show's or season's title."
+    },
+    "button_text_watch_remaining": {
+      "default": "Watch remaining",
+      "description": "Button of the dialog shown for a partly watched show or season; it marks as watched only the aired episodes the user has not watched yet."
+    },
+    "button_text_remove_all": {
+      "default": "Remove all",
+      "description": "Button of the dialog shown for a partly watched show or season; it removes every play of that show or season from the user's history."
+    },
+    "button_text_nothing": {
+      "default": "Nothing",
+      "description": "Cancel button of the dialog shown for a partly watched show or season; it closes the dialog and changes nothing."
     },
     "confirmation_title_delete_list": {
       "default": "Delete list?",
@@ -11192,7 +11362,7 @@
     },
     "error_text_write_history_changed": {
       "default": "Your history changed. Try again.",
-      "description": "Toast shown when a removal from history is not sent, because their watch history changed, is still saving another change, could not be read after they confirmed, or holds no plays of a title a detail page's button shows as watched."
+      "description": "Toast shown when a removal from history is not sent, because their watch history changed, is still saving another change, could not be read after they confirmed, or holds no plays of a title a detail page's button shows as watched; also shown when Watch remaining on a partly watched show or season is not sent, because another change is still saving or no unwatched aired episode is left to mark."
     },
     "preview_feature_title_action_confirmations": {
       "default": "Action confirmations",
@@ -11249,10 +11419,6 @@
     "image_alt_selected_gif": {
       "default": "Selected GIF",
       "description": "Alt text for the GIF attached to the comment being written."
-    },
-    "image_alt_comment_gif": {
-      "default": "GIF attached to the comment",
-      "description": "Alt text for the GIF rendered underneath a posted comment."
     },
     "preview_feature_title_comment_gifs": {
       "default": "GIFs in comments",
@@ -11672,7 +11838,7 @@
     },
     "progress_label_episodes_watched": {
       "default": "{completed} of {total} episodes watched",
-      "description": "Accessible name of the progress bar under a dashboard Up Next card, and of its link to the progress page: how many of the show's aired episodes the user has watched. Also the accessible name of the progress bar on a season card in a show page's seasons block, where it counts the season's aired episodes.",
+      "description": "Accessible name of the progress bar under a dashboard Up Next card, and of its link to the progress page: how many of the show's aired episodes the user has watched. Also the accessible name of the progress bar on a season card in a show page's seasons block, where it counts the season's aired episodes, and of the bar on a progress row.",
       "variables": {
         "completed": {
           "type": "number"
@@ -11701,35 +11867,35 @@
     },
     "text_dashboard_stats_of": {
       "default": "of",
-      "description": "Word before the number of shows watched in the dashboard stats strip, as in 632 plays of 54 shows."
+      "description": "Word before the number of shows watched in the dashboard stats strip, as in 632 plays of 54 shows; also before the number of a show's aired episodes in the sentence under a progress row's bar, as in 'Watched 5 of 10 episodes'."
     },
     "text_dashboard_stats_unavailable": {
       "default": "–",
       "description": "Placeholder in the dashboard stats strip for each number when the stats failed to load."
     },
-    "text_dashboard_stats_plays_bracket_open": {
+    "text_bracketed_value_open": {
       "default": "(",
-      "description": "Opening bracket in the dashboard stats strip before a play count, as in '(5,200 plays of 269 shows)' after the episodes watched and '(900 plays)' after the movies watched."
+      "description": "Opening bracket before a bracketed value: in the dashboard stats strip before a play count, as in '(5,200 plays of 269 shows)' after the episodes watched and '(900 plays)' after the movies watched; also in the sentence under a progress row's bar, before a time watched or left, as in '5 plays (3h 10m)', and before the last episode's absolute number, as in '1x10 (10)'."
     },
-    "text_dashboard_stats_plays_bracket_close": {
+    "text_bracketed_value_close": {
       "default": ")",
-      "description": "Closing bracket in the dashboard stats strip after a play count, as in '(5,200 plays of 269 shows)' after the episodes watched and '(900 plays)' after the movies watched."
+      "description": "Closing bracket after a bracketed value: in the dashboard stats strip after a play count, as in '(5,200 plays of 269 shows)' after the episodes watched and '(900 plays)' after the movies watched; also in the sentence under a progress row's bar, after a time watched or left, as in '5 plays (3h 10m)', and after the last episode's absolute number, as in '1x10 (10)'."
     },
     "text_dashboard_stats_episodes_one": {
       "default": "episode",
-      "description": "Unit word after a count of one in the dashboard's watch stats (the stats strip and the Last 30 Days section): episodes watched; also in a show page's Total Runtime row, as in '(1 episode)'."
+      "description": "Unit word after a count of one in the dashboard's watch stats (the stats strip and the Last 30 Days section): episodes watched; also in a show page's Total Runtime row, as in '(1 episode)', and in the sentence under a progress row's bar, as in '1 episode (52m) left to watch'."
     },
     "text_dashboard_stats_episodes_other": {
       "default": "episodes",
-      "description": "Unit word after any other count in the dashboard's watch stats (the stats strip and the Last 30 Days section), or after a dash when the stats failed to load: episodes watched; also in a show page's Total Runtime row, as in '(40 episodes)'."
+      "description": "Unit word after any other count in the dashboard's watch stats (the stats strip and the Last 30 Days section), or after a dash when the stats failed to load: episodes watched; also in a show page's Total Runtime row, as in '(40 episodes)', and in the sentence under a progress row's bar, as in 'Watched 5 of 10 episodes'."
     },
     "text_dashboard_stats_plays_one": {
       "default": "play",
-      "description": "Unit word after a count of one in the dashboard's watch stats (the stats strip and the Last 30 Days section): times watched; also in a comment card's footer, the author's play count, as in '1 play'."
+      "description": "Unit word after a count of one in the dashboard's watch stats (the stats strip and the Last 30 Days section): times watched; also in a comment card's footer, the author's play count, as in '1 play', and in the sentence under a progress row's bar, as in 'for 1 play (58m)'."
     },
     "text_dashboard_stats_plays_other": {
       "default": "plays",
-      "description": "Unit word after any other count in the dashboard's watch stats (the stats strip and the Last 30 Days section), or after a dash when the stats failed to load: times watched; also in a comment card's footer, the author's play count, as in '54 plays'."
+      "description": "Unit word after any other count in the dashboard's watch stats (the stats strip and the Last 30 Days section), or after a dash when the stats failed to load: times watched; also in a comment card's footer, the author's play count, as in '54 plays', and in the sentence under a progress row's bar, as in 'for 5 plays (3h 10m)'."
     },
     "text_dashboard_stats_shows_one": {
       "default": "show",
@@ -12118,7 +12284,116 @@
     },
     "text_seasons_empty": {
       "default": "No seasons.",
-      "description": "Shown in a show page's seasons block when the show has no seasons."
+      "description": "Shown in a show page's seasons block when the show has no seasons, and in a progress row's seasons box when the show's progress lists none."
+    },
+    "button_text_view_seasons": {
+      "default": "Seasons",
+      "description": "Text of the button under a progress row's stats that opens and closes the list of the show's seasons."
+    },
+    "button_label_season_actions": {
+      "default": "Season {season} actions",
+      "description": "Accessible name and tooltip of the dots button on a season row in a progress row's seasons box, which opens the menu that hides or unhides the season; season is the season's number.",
+      "variables": {
+        "season": {
+          "type": "number"
+        }
+      }
+    },
+    "button_text_hide_season": {
+      "default": "Hide Season {season}",
+      "description": "Item of a season row's menu in a progress row's seasons box that hides the season from the user's progress; season is the season's number.",
+      "variables": {
+        "season": {
+          "type": "number"
+        }
+      }
+    },
+    "confirmation_title_hide_whole_show": {
+      "default": "Hide the whole show?",
+      "description": "Title of the confirmation dialog shown before a hide of seasons from the user's progress that would leave the show no visible season with an aired episode."
+    },
+    "warning_prompt_hide_whole_show": {
+      "default": "\"{title}\" will have no visible seasons, so it will leave your progress. You can't unhide it in this app.",
+      "description": "Body of the confirmation dialog shown before a hide of seasons from the user's progress that would leave the show no visible season with an aired episode; title is the show's title.",
+      "variables": {
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "button_text_hide_confirm": {
+      "default": "Yes, hide it!",
+      "description": "Confirm button of the dialog that asks before a show's last visible season is hidden from the user's progress."
+    },
+    "button_text_hide_season_and_later": {
+      "default": "Hide Season {season} and later",
+      "description": "Item of a season row's menu in a progress row's seasons box that hides the season and every later season from the user's progress; season is the season's number.",
+      "variables": {
+        "season": {
+          "type": "number"
+        }
+      }
+    },
+    "button_text_hide_seasons_after": {
+      "default": "Hide every season after Season {season}",
+      "description": "Item of a season row's menu in a progress row's seasons box that hides every season after this one from the user's progress; season is the season's number.",
+      "variables": {
+        "season": {
+          "type": "number"
+        }
+      }
+    },
+    "button_text_unhide_season": {
+      "default": "Unhide Season {season}",
+      "description": "Only item of a hidden season row's menu in a progress row's seasons box, which shows the season in the user's progress again; season is the season's number.",
+      "variables": {
+        "season": {
+          "type": "number"
+        }
+      }
+    },
+    "button_text_hidden_seasons_one": {
+      "default": "{count} hidden season",
+      "description": "Text of the button beside Seasons under a progress row's stats that shows and hides the show's one hidden season in the seasons box; count is 1.",
+      "variables": {
+        "count": {
+          "type": "number"
+        }
+      }
+    },
+    "button_text_hidden_seasons_other": {
+      "default": "{count} hidden seasons",
+      "description": "Text of the button beside Seasons under a progress row's stats that shows and hides the show's hidden seasons in the seasons box; count is how many seasons the user hid, more than one.",
+      "variables": {
+        "count": {
+          "type": "number"
+        }
+      }
+    },
+    "text_season_hidden": {
+      "default": "Hidden",
+      "description": "Badge on a season row in a progress row's seasons box for a season the user hid from their progress."
+    },
+    "button_label_toggle_season_episodes": {
+      "default": "Episodes of season {season}",
+      "description": "Accessible name and tooltip of the caret button before a season's link in a progress row's seasons box, which opens and closes the list of that season's episodes; season is the season's number.",
+      "variables": {
+        "season": {
+          "type": "number"
+        }
+      }
+    },
+    "text_progress_season_count": {
+      "default": "{completed} / {aired}",
+      "description": "The watched and aired episodes in the stats line under a progress row's bar and on a season row: completed is how many of the aired episodes the user has watched and aired how many have aired, as in '8 / 12'.",
+      "variables": {
+        "completed": {
+          "type": "number"
+        },
+        "aired": {
+          "type": "number"
+        }
+      }
     },
     "button_text_sort_votes": {
       "default": "Votes",
@@ -12126,7 +12401,7 @@
     },
     "button_text_sort_popularity": {
       "default": "Popularity",
-      "description": "Row of a list toolbar's sort menu that orders the List's items by how popular they are on Trakt."
+      "description": "Row of a list toolbar's sort menu that orders the List's items, or of the watched progress page's that orders the shows, by how popular they are on Trakt."
     },
     "text_episodes_empty": {
       "default": "No episodes yet.",
@@ -12343,7 +12618,7 @@
     },
     "text_lists_watched": {
       "default": "Watched",
-      "description": "Label of a list toolbar's watched percentage, the share of the List's items the user has watched, read after the percentage and shown as its tooltip."
+      "description": "Label of a list toolbar's watched percentage, the share of the List's items the user has watched, or of the progress toolbar's, the share of the listed shows' aired episodes the user has watched, read after the percentage and shown as its tooltip."
     },
     "text_lists_watched_count": {
       "default": "{watched} / {count} items",

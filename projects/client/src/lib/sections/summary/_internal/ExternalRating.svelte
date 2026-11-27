@@ -38,6 +38,8 @@
 {/if}
 
 <style lang="scss">
+  @use '$style/scss/mixins/index' as *;
+
   .trakt-external-rating {
     display: flex;
     align-items: flex-start;
@@ -69,9 +71,9 @@
     }
 
     .external-rating-value {
-      font-family: var(--font-family-heading);
+      @include heavy-heading-font;
+
       font-size: var(--font-size-hero-rating);
-      font-weight: var(--font-weight-heading-heavy);
     }
 
     .external-rating-caption {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import CommunityRating from '$lib/components/badges/CommunityRating.svelte';
   import { INERT_TRIGGER_PROPS } from '$lib/components/menus/INERT_TRIGGER_PROPS.ts';
-  import Tooltip from '$lib/components/tooltip/Tooltip.svelte';
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
   import { useDisplayEarlyRatings } from '$lib/features/auth/stores/useDisplayEarlyRatings.ts';
   import * as m from '$lib/features/i18n/messages.ts';
   import HasPlay from '$lib/features/media-actions/components/HasPlay.svelte';
@@ -29,7 +29,7 @@
   const counters = $derived(stats ? toCommunityCounters(stats) : []);
 </script>
 
-<div class="trakt-summary-ratings">
+<div class="trakt-summary-ratings no-wrap">
   <ContainerPage>
     <div class="ratings-frame" data-layout="grid">
       <div class="ratings-row" data-grid-column>
@@ -55,57 +55,54 @@
                       {@const isStored = shown?.kind === 'stored'}
                       <!-- A stored rating or the open picker, opened past the gate, is set: only a first rating needs a Play. -->
                       {@const gate = toPlayGate({ isSet: shown !== null || isOpen, hasPlay })}
-                      <Tooltip
-                        side="bottom"
-                        content={m.tooltip_text_watch_first_to_rate()}
-                        disabled={gate !== 'blocked'}
-                        disableHoverableContent
-                        keepOpenOnPress={gate === 'blocked'}
-                        triggerProps={{
-                          ...props,
-                          ...(gate === 'open' ? {} : INERT_TRIGGER_PROPS),
-                          // Only a stored rating, whose tooltip is off, takes the tooltip's description slot.
-                          ...(isStored ? { 'aria-describedby': yourRatingId } : {}),
-                        }}
+                      <!-- Only a stored rating, whose tooltip is off, takes the tooltip's description slot. -->
+                      <button
+                        type="button"
+                        class="ratings-user"
+                        class:is-rated={isRated}
+                        class:is-blocked={gate === 'blocked'}
+                        aria-label={gate === 'blocked'
+                        ? m.button_label_blocked_action({
+                          action: rateThis,
+                          reason: m.tooltip_text_watch_first_to_rate(),
+                        })
+                        : undefined}
+                        {...props}
+                        {...gate === 'open' ? {} : INERT_TRIGGER_PROPS}
+                        {...isStored ? { 'aria-describedby': yourRatingId } : {}}
+                        {@attach hint(() =>
+                          gate === 'blocked'
+                            ? {
+                              content: m.tooltip_text_watch_first_to_rate(),
+                              side: 'bottom',
+                              isPassThrough: true,
+                              keepOpenOnPress: true,
+                            }
+                            : undefined
+                        )}
                       >
-                        {#snippet trigger({ props })}
-                          <button
-                            type="button"
-                            class="ratings-user"
-                            class:is-rated={isRated}
-                            class:is-blocked={gate === 'blocked'}
-                            aria-label={gate === 'blocked'
-                            ? m.button_label_blocked_action({
-                              action: rateThis,
-                              reason: m.tooltip_text_watch_first_to_rate(),
-                            })
-                            : undefined}
-                            {...props}
-                          >
-                            {#if isRated}
-                              <IconHeartFilled
-                                class="ratings-user-heart"
-                                aria-hidden="true"
-                                data-rating={shown.value}
-                              />
-                            {:else}
-                              <IconHeart class="ratings-user-heart" aria-hidden="true" />
-                            {/if}
-                            <span class="ratings-number">
-                              {#if shown?.kind === 'unrate'}
-                                <span class="ratings-user-question">{m.text_rating_unrate()}</span>
-                                <span class="ratings-caption tag">{shown.label}</span>
-                              {:else if shown}
-                                <span class="ratings-value">{shown.value}</span>
-                                <span class="ratings-caption tag">{shown.label}</span>
-                              {:else}
-                                <span class="ratings-user-question">{rateThis}</span>
-                                <span class="ratings-caption tag">{m.text_rating_prompt()}</span>
-                              {/if}
-                            </span>
-                          </button>
-                        {/snippet}
-                      </Tooltip>
+                        {#if isRated}
+                          <IconHeartFilled
+                            class="ratings-user-heart"
+                            aria-hidden="true"
+                            data-rating={shown.value}
+                          />
+                        {:else}
+                          <IconHeart class="ratings-user-heart" aria-hidden="true" />
+                        {/if}
+                        <span class="ratings-number">
+                          {#if shown?.kind === 'unrate'}
+                            <span class="ratings-user-question">{m.text_rating_unrate()}</span>
+                            <span class="ratings-caption tag">{shown.label}</span>
+                          {:else if shown}
+                            <span class="ratings-value">{shown.value}</span>
+                            <span class="ratings-caption tag">{shown.label}</span>
+                          {:else}
+                            <span class="ratings-user-question">{rateThis}</span>
+                            <span class="ratings-caption tag">{m.text_rating_prompt()}</span>
+                          {/if}
+                        </span>
+                      </button>
                       <!-- Outside the button, so its name stays the visible text. -->
                       {#if isStored}
                         <span id={yourRatingId} class="ratings-user-description">
@@ -147,7 +144,6 @@
   .trakt-summary-ratings {
     background-color: var(--color-overlay-dark-75);
     color: var(--color-text-primary);
-    white-space: nowrap;
 
     .ratings-frame {
       box-sizing: border-box;
@@ -202,7 +198,6 @@
       border: none;
       background: none;
       color: inherit;
-      font: inherit;
       text-align: start;
       min-width: var(--rating-slot-min-width);
       cursor: pointer;
@@ -241,16 +236,16 @@
     }
 
     .ratings-value {
-      font-family: var(--font-family-heading);
+      @include heavy-heading-font;
+
       font-size: var(--font-size-hero-rating);
-      font-weight: var(--font-weight-heading-heavy);
     }
 
     .ratings-user-question {
+      @include heavy-heading-font;
+
       padding-block: var(--ni-2);
-      font-family: var(--font-family-heading);
       font-size: var(--font-size-rating-question);
-      font-weight: var(--font-weight-heading-heavy);
     }
 
     .ratings-caption {

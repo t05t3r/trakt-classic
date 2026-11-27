@@ -1,8 +1,8 @@
 import type { SortParam } from '$lib/features/view-params/stores/useSortParam.ts';
 import type { EpisodeEntry } from '$lib/requests/models/EpisodeEntry.ts';
 import { isKnownDate } from '$lib/utils/date/isKnownDate.ts';
+import { sortByValue } from '$lib/utils/sort/sortByValue.ts';
 import { EPISODES_SORT } from './EPISODES_SORT.ts';
-import { sortByValue } from './sortByValue.ts';
 
 export type EpisodesSort = SortParam<
   (typeof EPISODES_SORT)['sorts'][number]['by']
@@ -28,5 +28,10 @@ function toSortValue(
 export function sortEpisodes(
   { items, sort }: SortEpisodesParams,
 ): ReadonlyArray<EpisodeEntry> {
-  return sortByValue({ items, sort, valueOf: toSortValue });
+  return sortByValue({
+    items,
+    sort,
+    valueOf: toSortValue,
+    tieOf: ({ number }) => number,
+  });
 }

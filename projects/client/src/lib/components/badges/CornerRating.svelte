@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { hint } from '$lib/components/tooltip/hint.svelte.ts';
+
   const {
     rating,
     label,
@@ -12,14 +14,16 @@
     data-rating={rating}
     data-size={size}
     role="img"
-    title={label}
     aria-label={label}
+    {@attach hint(() => ({ content: label }))}
   >
     <span class="corner-rating-text tag" aria-hidden="true">{rating}</span>
   </div>
 {/if}
 
 <style lang="scss">
+  @use '$style/scss/mixins/index' as *;
+
   .trakt-corner-rating {
     position: absolute;
     inset-block-start: var(--ni-0);
@@ -40,14 +44,14 @@
     }
 
     .corner-rating-text {
+      @include heavy-heading-font;
+
       position: absolute;
       inset-block-start: var(--ni-0);
       inset-inline-end: var(--ni-neg-22);
       width: var(--ni-15);
       height: var(--corner-rating-size);
       color: var(--color-text-primary);
-      font-family: var(--font-family-heading);
-      font-weight: var(--font-weight-heading-heavy);
       line-height: var(--line-height-tag);
       text-align: center;
       transform: rotate(calc(var(--rtl-sign) * 45deg));

@@ -6,6 +6,7 @@ import { renderComponent } from '$test/beds/component/renderComponent.ts';
 import { failOnce } from '$test/beds/request/failOnce.ts';
 import { holdRequest } from '$test/beds/request/holdRequest.ts';
 import { notFound } from '$test/beds/request/notFound.ts';
+import { dispatchPageShow } from '$test/beds/url/dispatchPageShow.ts';
 import { fireEvent, screen } from '@testing-library/svelte';
 import { http } from 'msw';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
@@ -27,10 +28,6 @@ function stubLocation() {
   onTestFinished(() => void vi.unstubAllGlobals());
 
   return location;
-}
-
-function dispatchPageShow({ persisted }: { persisted: boolean }) {
-  window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted }));
 }
 
 describe('component: AuthProvider', () => {

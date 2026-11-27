@@ -1,6 +1,6 @@
 <script lang="ts">
   import DividedPosterGrid from '$lib/components/media/DividedPosterGrid.svelte';
-  import type { PosterGridColumns } from '$lib/components/media/PosterGridProps.ts';
+  import { FANART_COLUMNS } from '$lib/components/media/FANART_COLUMNS.ts';
   import HistoryGridCard from '$lib/features/history/components/HistoryGridCard.svelte';
   import HistoryItemBanner from '$lib/features/history/components/HistoryItemBanner.svelte';
   import {
@@ -13,26 +13,16 @@
   import { useHistoryStats } from '$lib/features/history/stores/useHistoryStats.ts';
   import { toPlayMinutes } from '$lib/features/history/toPlayMinutes.ts';
   import * as m from '$lib/features/i18n/messages.ts';
-  import ContainerPage from '$lib/sections/layout/ContainerPage.svelte';
   import UserCoverPage from '$lib/sections/layout/UserCoverPage.svelte';
   import ListItemsSection from '$lib/sections/lists/ListItemsSection.svelte';
   import ListReader from '$lib/sections/lists/ListReader.svelte';
+  import ToolbarFilterBand from '$lib/sections/lists/ToolbarFilterBand.svelte';
   import HistoryToolbar from '$lib/sections/subnav/HistoryToolbar.svelte';
   import { useDividers } from '$lib/stores/useDividers.ts';
   import { hasDateRange } from '$lib/utils/date/hasDateRange.ts';
-  import { createFocusRetention } from '$lib/utils/focus/createFocusRetention.ts';
-  import { firstFocusable } from '$lib/utils/focus/firstFocusable.ts';
   import { createKeyedReader } from '$lib/utils/store/createKeyedReader.ts';
   import { fromRune } from '$lib/utils/store/fromRune.svelte.ts';
-  import { combineLatest, EMPTY, type Observable } from 'rxjs';
-  import { tick } from 'svelte';
-
-  const FANART_COLUMNS = {
-    desktop: 4,
-    tabletLarge: 3,
-    tabletSmall: 2,
-    mobile: 1,
-  } satisfies PosterGridColumns;
+  import { combineLatest, EMPTY, identity, type Observable } from 'rxjs';
 
   const { filters }: { filters: string } = $props();
 
@@ -58,9 +48,9 @@
   const { shown } = dividers;
 
   const { latest: items, reading } = createKeyedReader<
-    Observable<HistoryReading> | undefined,
+    Observable<HistoryReading>,
     HistoryReading
-  >({ initial: undefined, read: (current) => current ?? EMPTY });
+  >({ initial: EMPTY, read: identity });
 
   const valuesKey = $derived(JSON.stringify($values));
 
@@ -69,21 +59,6 @@
       ? undefined
       : ($stats?.items ?? $reading.itemCount),
   );
-
-  let toolbarHost: HTMLElement | undefined = $state();
-  const retention = createFocusRetention();
-
-  // The X leaves with its filter, so the type menu takes its focus and Tab does not restart at the page's top.
-  const settleFocus = async () => {
-    // The item lands from a store's effect, a flush before the banner leaves.
-    await tick();
-    retention.settle(toolbarHost && firstFocusable(toolbarHost));
-  };
-
-  $effect(() => {
-    void $values?.item;
-    settleFocus();
-  });
 </script>
 
 {#if $values}
@@ -106,29 +81,27 @@
       emptyText={toEmptyText(current)}
     >
       {#snippet toolbar(controls)}
-        <div bind:this={toolbarHost}>
-          <HistoryToolbar
-            {params}
-            {dividers}
-            {itemCount}
-            plays={$stats?.plays}
-            {controls}
-          />
-        </div>
-        {#if current.item}
-          <div class="trakt-history-item-band" {@attach retention.track}>
-            <ContainerPage>
-              {#key JSON.stringify(current.item)}
-                <HistoryItemBanner
-                  item={current.item}
-                  entry={$reading?.entries?.at(0)}
-                  isEmpty={$reading?.status.kind === 'empty'}
-                  onClear={params.clearItem}
-                />
-              {/key}
-            </ContainerPage>
-          </div>
-        {/if}
+        <ToolbarFilterBand filter={current.item} {controls}>
+          {#snippet toolbar()}
+            <HistoryToolbar
+              {params}
+              {dividers}
+              {itemCount}
+              plays={$stats?.plays}
+              {controls}
+            />
+          {/snippet}
+          {#snippet band(item)}
+            {#key JSON.stringify(item)}
+              <HistoryItemBanner
+                {item}
+                entry={$reading?.entries?.at(0)}
+                isEmpty={$reading?.status.kind === 'empty'}
+                onClear={params.clearItem}
+              />
+            {/key}
+          {/snippet}
+        </ToolbarFilterBand>
       {/snippet}
       {#snippet grid(rows: ReadonlyArray<HistoryRow>)}
         {#key valuesKey}
@@ -152,10 +125,3 @@
     </ListItemsSection>
   </UserCoverPage>
 {/if}
-
-<style lang="scss">
-  .trakt-history-item-band {
-    padding-block: var(--ni-20);
-    background: var(--color-surface-raised);
-  }
-</style>

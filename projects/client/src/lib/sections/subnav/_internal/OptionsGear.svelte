@@ -3,7 +3,8 @@
   import IconSettings from '@tabler/icons-svelte/icons/settings';
   import type { OptionsGearProps } from './OptionsGearProps.ts';
 
-  const { id, open, panelId, ontoggle }: OptionsGearProps = $props();
+  const { id, open, panelId, ontoggle, changed = false }: OptionsGearProps =
+    $props();
 </script>
 
 <button
@@ -16,6 +17,9 @@
   onclick={ontoggle}
 >
   <IconSettings class="options-gear-icon" aria-hidden="true" />
+  {#if changed}
+    <span class="options-gear-dot" aria-hidden="true"></span>
+  {/if}
 </button>
 
 <style lang="scss">
@@ -23,9 +27,8 @@
 
   // Wider screens show the toolbar's controls inline, so only a phone toggles them.
   .trakt-options-gear {
+    position: relative;
     display: none;
-    margin-block: var(--options-gear-margin-block, var(--ni-0));
-    margin-inline: var(--options-gear-margin-inline, var(--ni-0));
     padding: var(--ni-0);
     border: none;
     background: none;
@@ -37,9 +40,22 @@
     }
 
     :global(.options-gear-icon) {
-      width: var(--options-gear-size, var(--icon-size-subnav));
-      height: var(--options-gear-size, var(--icon-size-subnav));
+      width: var(--icon-size-subnav);
+      height: var(--icon-size-subnav);
       stroke-width: var(--icon-stroke-chrome);
+    }
+
+    // Ringed in the toolbar's surface, so it stands clear of the glyph.
+    .options-gear-dot {
+      position: absolute;
+      inset-block-start: var(--ni-0);
+      inset-inline-end: var(--ni-0);
+      width: var(--ni-8);
+      height: var(--ni-8);
+      border-radius: var(--border-radius-round);
+      background: var(--color-accent);
+      box-shadow: var(--ni-0) var(--ni-0) var(--ni-0) var(--ni-2)
+        var(--color-surface-recessed);
     }
   }
 </style>

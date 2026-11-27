@@ -9,7 +9,7 @@
   const { selected }: { selected: UserNavKey } = $props();
 </script>
 
-<nav class="trakt-profile-tabs" aria-label={m.label_profile_navigation()}>
+<nav class="trakt-profile-tabs no-wrap" aria-label={m.label_profile_navigation()}>
   {#each userNavItems as item (item.key)}
     <a
       class="profile-tab"
@@ -28,7 +28,6 @@
     height: var(--tab-bar-height);
     background: var(--color-overlay-dark-70);
     text-align: center;
-    white-space: nowrap;
 
     .profile-tab {
       position: relative;

@@ -11,6 +11,7 @@ import { ShowSiloResponseMock } from '$mocks/data/summary/shows/silo/response/Sh
 import { DROPPED_AT } from '$mocks/data/users/DROPPED_AT.ts';
 import { HISTORY_EPISODES_URL } from '$mocks/data/users/HISTORY_EPISODES_URL.ts';
 import { HISTORY_MOVIES_URL } from '$mocks/data/users/HISTORY_MOVIES_URL.ts';
+import { LATEST_WATCHED_AT } from '$mocks/data/sync/LATEST_WATCHED_AT.ts';
 import { WATCHED_PROGRESS_URL } from '$mocks/data/sync/WATCHED_PROGRESS_URL.ts';
 import { HISTORY_SHOWS_URL } from '$mocks/data/users/HISTORY_SHOWS_URL.ts';
 import { HISTORY_URL } from '$mocks/data/users/HISTORY_URL.ts';
@@ -31,6 +32,7 @@ import { servePaged } from '$test/beds/request/servePaged.ts';
 import { serveTwoPages } from '$test/beds/request/serveTwoPages.ts';
 import { describePagedReads } from '$test/beds/store/describePagedReads.ts';
 import { readKnown } from '$test/beds/store/readKnown.ts';
+import { pagedItemsOf } from '$test/beds/store/pagedItemsOf.ts';
 import { readingOf } from '$test/beds/store/readingOf.ts';
 import { renderSettledHistory } from '$test/beds/store/renderSettledHistory.ts';
 import { renderStore } from '$test/beds/store/renderStore.ts';
@@ -67,8 +69,6 @@ const READS = [
     mapped: ShowActivityHistoryMappedMock,
   },
 ] as const;
-
-const LATEST = '2025-01-31T23:12:41.000Z';
 const LATER = '2025-01-30T20:00:00.000Z';
 const EARLIEST = '2025-01-02T08:30:00.000Z';
 
@@ -76,17 +76,7 @@ const DEVS_ROW = { ...SILO_PLAY_RESPONSE, id: 2, show: ShowDevsResponseMock };
 
 const GROUPED = { type: 'shows', genres: 'drama' } as const;
 
-function historyItems(values: Partial<HistoryItemsValues>) {
-  const replacePage = vi.fn();
-  const store = () => ({
-    reading: useHistoryItems({
-      values: { ...VALUES, ...values },
-      replacePage,
-    }),
-  });
-
-  return { store, replacePage };
-}
+const historyItems = pagedItemsOf(useHistoryItems, VALUES);
 
 function readSearch(url: string, values: Partial<HistoryItemsValues>) {
   const searches = recordSearches(url, []);
@@ -244,7 +234,7 @@ describe('store: useHistoryItems', () => {
       servePaged({
         url: HISTORY_SHOWS_URL,
         body: [
-          { ...SILO_PLAY_RESPONSE, watched_at: LATEST },
+          { ...SILO_PLAY_RESPONSE, watched_at: LATEST_WATCHED_AT },
           { ...DEVS_ROW, watched_at: LATER },
           { ...SILO_PLAY_RESPONSE, id: 3, watched_at: EARLIEST },
         ],
@@ -257,7 +247,7 @@ describe('store: useHistoryItems', () => {
 
       expect(kinds).toEqual(['loading', 'ready']);
       expect(ready.data.map(({ entry }) => entry.watchedAt)).toEqual([
-        new Date(LATEST),
+        new Date(LATEST_WATCHED_AT),
         new Date(LATER),
       ]);
       expect(ready.data.map(({ entry }) => entry.id)).toEqual([
@@ -297,7 +287,7 @@ describe('store: useHistoryItems', () => {
     it("should give a show on two of the API's pages one row, dated by its latest play", async () => {
       serveTwoPages({
         url: HISTORY_SHOWS_URL,
-        first: [{ ...SILO_PLAY_RESPONSE, watched_at: LATEST }],
+        first: [{ ...SILO_PLAY_RESPONSE, watched_at: LATEST_WATCHED_AT }],
         second: () =>
           pagedResponse({
             body: [{ ...SILO_PLAY_RESPONSE, id: 3, watched_at: EARLIEST }],
@@ -311,7 +301,7 @@ describe('store: useHistoryItems', () => {
       const ready = await nextOf(statusOf(reading), 'ready');
 
       expect(ready.data.map(({ entry }) => entry.watchedAt)).toEqual([
-        new Date(LATEST),
+        new Date(LATEST_WATCHED_AT),
       ]);
     });
 
@@ -435,15 +425,21 @@ describe('store: useHistoryItems', () => {
       servePaged({
         url: WATCHED_PROGRESS_URL,
         body: [
-          watchedProgressRow(ShowDevsResponseMock, LATER),
-          watchedProgressRow(
-            {
+          watchedProgressRow({
+            show: ShowDevsResponseMock,
+            lastWatchedAt: LATER,
+          }),
+          watchedProgressRow({
+            show: {
               ...ShowSiloResponseMock,
               ids: { ...ShowSiloResponseMock.ids, trakt: 99 },
             },
-            null,
-          ),
-          watchedProgressRow(ShowSiloResponseMock, LATEST),
+            lastWatchedAt: null,
+          }),
+          watchedProgressRow({
+            show: ShowSiloResponseMock,
+            lastWatchedAt: LATEST_WATCHED_AT,
+          }),
         ],
       });
       const { store } = historyItems({ type: 'shows' });
@@ -459,7 +455,7 @@ describe('store: useHistoryItems', () => {
 
         expect(kinds).toEqual(['loading', 'ready']);
         expect(ready.data.map(({ entry }) => entry.watchedAt)).toEqual([
-          new Date(LATEST),
+          new Date(LATEST_WATCHED_AT),
           new Date(LATER),
         ]);
         expect(ready.data.map(({ entry }) => entry.id)).toEqual([
@@ -504,7 +500,12 @@ describe('store: useHistoryItems', () => {
     it("should carry a dropped show's date on its row", async () => {
       servePaged({
         url: WATCHED_PROGRESS_URL,
-        body: [watchedProgressRow(ShowDevsResponseMock, LATER)],
+        body: [
+          watchedProgressRow({
+            show: ShowDevsResponseMock,
+            lastWatchedAt: LATER,
+          }),
+        ],
       });
       const { reading, dropped } = await renderSettledHistory(() => ({
         ...historyItems({ type: 'shows' }).store(),

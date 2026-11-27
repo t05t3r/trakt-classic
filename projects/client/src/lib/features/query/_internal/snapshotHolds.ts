@@ -51,3 +51,8 @@ export function isSnapshotCurrent(query: Query, since: number): boolean {
     held?.pages !== undefined && held.count > since
   );
 }
+
+// Whether the hold keeps a next page that failed after its pages.
+export function isSnapshotFailed(query: Query): boolean {
+  return READS.get(query)?.hold?.isFailed === true;
+}

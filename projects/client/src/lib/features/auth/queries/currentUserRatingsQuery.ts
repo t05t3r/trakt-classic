@@ -112,7 +112,7 @@ const currentUserRatedSeasonsRequest = async ({ fetch }: ApiParams) => {
       body: RatedSeasonsResponseSchema.parse(await response.json()),
       status: 200,
     }
-    : { body: [], status: 200 };
+    : { body: undefined, status: response.status };
 };
 
 const UserRatingsSchema = z.object({
@@ -149,7 +149,7 @@ export const currentUserRatingsQuery = defineQuery({
     ),
     shows: toMap(showsResponse.body, mapRatedItemResponse, (entry) => entry.id),
     seasons: toMap(
-      seasonsResponse.body,
+      seasonsResponse.body ?? [],
       mapRatedSeasonResponse,
       (entry) => entry.id,
     ),

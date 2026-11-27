@@ -14,7 +14,6 @@
   import DividersToggle from './_internal/DividersToggle.svelte';
   import ItemCountStat from './_internal/ItemCountStat.svelte';
   import type { RatingsToolbarProps } from './_internal/RatingsToolbarProps.ts';
-  import SingleSortMenu from './_internal/SingleSortMenu.svelte';
   import { thenChoose } from './_internal/thenChoose.ts';
   import { toTypeChoices } from './_internal/toTypeChoices.ts';
   import TypeMenu from './_internal/TypeMenu.svelte';
@@ -37,6 +36,9 @@
   const rating = $derived(params.rating);
   const watched = $derived(params.watched);
 
+  const isTypeChanged = $derived($type !== 'all');
+  const isRatingChanged = $derived($rating !== 'all');
+
   const selectType = (value: RatingsTypeFilter | null) =>
     params.setType(value ?? 'all');
 
@@ -44,12 +46,13 @@
     params.setRating(value ?? 'all');
 </script>
 
-<SubnavToolbar {controls} panel="options" phone="controls">
+<SubnavToolbar {controls} changed={isTypeChanged || isRatingChanged}>
   {#snippet start()}
     <TypeMenu
       value={$type === 'all' ? null : $type}
       choices={TYPE_CHOICES}
-      onChange={selectType}
+      onChange={thenChoose(controls, selectType)}
+      onRepick={controls.close}
     />
   {/snippet}
   {#snippet stats()}
@@ -63,10 +66,8 @@
       choices={RATING_CHOICES}
       all={m.button_text_rating_all()}
       onChange={thenChoose(controls, selectRating)}
+      onRepick={controls.close}
     />
-    <span class="toolbar-sort">
-      <SingleSortMenu label={m.button_text_sort_rated_date()} />
-    </span>
   {/snippet}
   {#snippet end()}
     <DividersToggle {dividers} />
@@ -74,15 +75,3 @@
   {/snippet}
 </SubnavToolbar>
 
-<style lang="scss">
-  @use '$style/scss/mixins/index' as *;
-
-  .toolbar-sort {
-    display: inline-flex;
-    margin-inline-start: var(--ni-10);
-
-    @include for-mobile {
-      margin-inline-start: var(--ni-0);
-    }
-  }
-</style>

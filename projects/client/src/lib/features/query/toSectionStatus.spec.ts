@@ -123,6 +123,21 @@ describe('toSectionStatus', () => {
     expect(kinds).toEqual(['loading', 'empty']);
   });
 
+  it('should read empty data as ready without an isEmpty', async () => {
+    serve('never-empty', []);
+    const { readings } = await renderStore(() => ({
+      readings: createTestBedQuery(titlesQuery('never-empty')).pipe(
+        map((result) => toSectionStatus({ result })),
+      ),
+    }));
+
+    const status = await firstValueFrom(
+      readings.pipe(filter(({ kind }) => kind !== 'loading')),
+    );
+
+    expect(status).toEqual({ kind: 'ready', data: [] });
+  });
+
   it.each([
     [['Severance', 'Hidden'], { kind: 'ready', data: ['Severance'] }],
     [['Hidden'], { kind: 'empty' }],
